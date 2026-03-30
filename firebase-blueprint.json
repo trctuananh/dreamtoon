@@ -1,0 +1,138 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Information about a user of the platform.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique ID of the user." },
+        "displayName": { "type": "string", "description": "The name of the user." },
+        "email": { "type": "string", "description": "The email of the user.", "format": "email" },
+        "photoURL": { "type": "string", "description": "The profile picture URL of the user." },
+        "role": { "type": "string", "description": "The role of the user (e.g., 'dreamer', 'admin').", "enum": ["dreamer", "admin"] }
+      },
+      "required": ["uid", "email"]
+    },
+    "Comic": {
+      "title": "Comic Series",
+      "description": "Information about a webtoon series.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the comic." },
+        "title": { "type": "string", "description": "The title of the comic." },
+        "description": { "type": "string", "description": "A brief description of the comic." },
+        "thumbnail": { "type": "string", "description": "The thumbnail image URL." },
+        "banner": { "type": "string", "description": "The banner image URL." },
+        "genre": { "type": "array", "items": { "type": "string" }, "description": "The genres of the comic." },
+        "views": { "type": "number", "description": "The total number of views." },
+        "rating": { "type": "number", "description": "The average rating." },
+        "ratingCount": { "type": "number", "description": "The total number of ratings." },
+        "authorUid": { "type": "string", "description": "The UID of the author." },
+        "authorName": { "type": "string", "description": "The name of the author." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
+      },
+      "required": ["id", "title", "authorUid"]
+    },
+    "Chapter": {
+      "title": "Comic Chapter",
+      "description": "A single chapter of a comic series.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the chapter." },
+        "comicId": { "type": "string", "description": "The ID of the parent comic." },
+        "authorUid": { "type": "string", "description": "The UID of the author." },
+        "title": { "type": "string", "description": "The title of the chapter." },
+        "number": { "type": "number", "description": "The chapter number." },
+        "uploadDate": { "type": "string", "description": "The date the chapter was uploaded." },
+        "images": { "type": "array", "items": { "type": "string" }, "description": "The list of image URLs for the chapter." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
+      },
+      "required": ["id", "comicId", "number", "images"]
+    },
+    "Comment": {
+      "title": "Chapter Comment",
+      "description": "A comment left by a user on a chapter.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the comment." },
+        "userId": { "type": "string", "description": "The UID of the user who commented." },
+        "userName": { "type": "string", "description": "The name of the user." },
+        "userPhoto": { "type": "string", "description": "The profile picture URL of the user." },
+        "chapterId": { "type": "string", "description": "The ID of the chapter." },
+        "comicId": { "type": "string", "description": "The ID of the comic." },
+        "text": { "type": "string", "description": "The content of the comment." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
+      },
+      "required": ["id", "userId", "chapterId", "comicId", "text"]
+    },
+    "Like": {
+      "title": "Chapter Like",
+      "description": "A like given by a user to a chapter.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the like." },
+        "userId": { "type": "string", "description": "The UID of the user who liked." },
+        "chapterId": { "type": "string", "description": "The ID of the chapter." },
+        "comicId": { "type": "string", "description": "The ID of the comic." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
+      },
+      "required": ["id", "userId", "chapterId", "comicId"]
+    },
+    "Rating": {
+      "title": "Comic Rating",
+      "description": "A rating given by a user to a comic series.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the rating (usually comicId_userId)." },
+        "userId": { "type": "string", "description": "The UID of the user who rated." },
+        "comicId": { "type": "string", "description": "The ID of the comic." },
+        "score": { "type": "number", "description": "The rating score (1-5)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
+      },
+      "required": ["id", "userId", "comicId", "score"]
+    },
+    "Following": {
+      "title": "Following",
+      "description": "A record of a user following an artist or a comic series.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the following record." },
+        "userId": { "type": "string", "description": "The UID of the user who is following." },
+        "targetId": { "type": "string", "description": "The ID of the target artist or comic." },
+        "type": { "type": "string", "description": "The type of the target (e.g., 'artist', 'comic').", "enum": ["artist", "comic"] },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
+      },
+      "required": ["id", "userId", "targetId", "type"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "The collection of user profiles."
+    },
+    "/users/{uid}/following/{id}": {
+      "schema": "Following",
+      "description": "The subcollection of following records for a specific user."
+    },
+    "/comics/{comicId}": {
+      "schema": "Comic",
+      "description": "The collection of comic series."
+    },
+    "/comics/{comicId}/chapters/{chapterId}": {
+      "schema": "Chapter",
+      "description": "The subcollection of chapters for a specific comic."
+    },
+    "/comics/{comicId}/chapters/{chapterId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "The subcollection of comments for a specific chapter."
+    },
+    "/comics/{comicId}/chapters/{chapterId}/likes/{likeId}": {
+      "schema": "Like",
+      "description": "The subcollection of likes for a specific chapter."
+    },
+    "/comics/{comicId}/ratings/{userId}": {
+      "schema": "Rating",
+      "description": "The subcollection of ratings for a specific comic."
+    }
+  }
+}

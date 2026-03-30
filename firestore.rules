@@ -1,0 +1,291 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: uid
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (optional)
+    //   - email: string (required, email format)
+    //   - photoURL: string (optional)
+    //   - role: string (optional, enum: ['dreamer', 'admin'])
+    //
+    // Collection: comics
+    // Document ID: comicId
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, max 100 chars)
+    //   - description: string (optional, max 1000 chars)
+    //   - thumbnail: string (optional, URL)
+    //   - banner: string (optional, URL)
+    //   - genre: list (optional, max 10 items)
+    //   - views: number (optional, positive)
+    //   - rating: number (optional, 0-5)
+    //   - authorUid: string (required, immutable)
+    //   - authorName: string (optional, max 50 chars)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: comics/{comicId}/chapters
+    // Document ID: chapterId
+    // Fields:
+    //   - id: string (required)
+    //   - comicId: string (required, immutable)
+    //   - title: string (optional, max 100 chars)
+    //   - number: number (required, positive)
+    //   - uploadDate: string (optional)
+    //   - images: list (required, max 50 items)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: comics/{comicId}/chapters/{chapterId}/comments
+    // Document ID: commentId
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required, immutable)
+    //   - userName: string (required)
+    //   - userPhoto: string (optional)
+    //   - chapterId: string (required, immutable)
+    //   - comicId: string (required, immutable)
+    //   - text: string (required, max 500 chars)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: comics/{comicId}/chapters/{chapterId}/likes
+    // Document ID: likeId (usually userId)
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required, immutable)
+    //   - chapterId: string (required, immutable)
+    //   - comicId: string (required, immutable)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: comics/{comicId}/ratings
+    // Document ID: userId
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required, immutable)
+    //   - comicId: string (required, immutable)
+    //   - score: number (required, 1-5)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: articles
+    // Document ID: articleId
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, max 200 chars)
+    //   - content: string (required, max 50000 chars)
+    //   - authorName: string (required)
+    //   - authorUid: string (required, immutable)
+    //   - banner: string (optional, URL)
+    //   - views: number (optional, positive)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: featured
+    // Document ID: featuredId
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, max 100 chars)
+    //   - banner: string (required, URL)
+    //   - type: string (required, enum: ['comic', 'article', 'external'])
+    //   - targetId: string (optional)
+    //   - externalUrl: string (optional, URL)
+    //   - genre: list (optional, max 5 items)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorUid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "tr.c.tuananh@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 50)) &&
+             (!('role' in data) || data.role in ['dreamer', 'admin']);
+    }
+
+    function isValidComic(data) {
+      return data.keys().hasAll(['id', 'title', 'authorUid', 'createdAt']) &&
+             data.id is string && data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.createdAt is timestamp &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+             (!('thumbnail' in data) || isValidUrl(data.thumbnail)) &&
+             (!('banner' in data) || isValidUrl(data.banner)) &&
+             (!('genre' in data) || (data.genre is list && data.genre.size() <= 10)) &&
+             (!('views' in data) || (data.views is number && data.views >= 0)) &&
+             (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5)) &&
+             (!('ratingCount' in data) || (data.ratingCount is number && data.ratingCount >= 0));
+    }
+
+    function isValidChapter(data, comicId) {
+      return data.keys().hasAll(['id', 'comicId', 'number', 'images', 'createdAt']) &&
+             data.id is string && data.comicId == comicId &&
+             data.number is number && data.number > 0 &&
+             data.images is list && data.images.size() > 0 && data.images.size() <= 50 &&
+             data.createdAt is timestamp &&
+             (!('title' in data) || (data.title is string && data.title.size() <= 100));
+    }
+
+    function isValidComment(data, comicId, chapterId) {
+      return data.keys().hasAll(['id', 'userId', 'userName', 'chapterId', 'comicId', 'text', 'createdAt']) &&
+             data.id is string && data.userId == request.auth.uid &&
+             data.userName is string && data.userName.size() > 0 &&
+             data.chapterId == chapterId && data.comicId == comicId &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 500 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidLike(data, comicId, chapterId) {
+      return data.keys().hasAll(['id', 'userId', 'chapterId', 'comicId', 'createdAt']) &&
+             data.id is string && data.userId == request.auth.uid &&
+             data.chapterId == chapterId && data.comicId == comicId &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidRating(data, comicId) {
+      return data.keys().hasAll(['id', 'userId', 'comicId', 'score', 'createdAt']) &&
+             data.id is string && data.userId == request.auth.uid &&
+             data.comicId == comicId &&
+             data.score is number && data.score >= 1 && data.score <= 5 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidArticle(data) {
+      return data.keys().hasAll(['id', 'title', 'content', 'authorUid', 'createdAt']) &&
+             data.id is string && data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 50000 &&
+             data.authorUid == request.auth.uid &&
+             data.createdAt is timestamp &&
+             (!('banner' in data) || isValidUrl(data.banner)) &&
+             (!('views' in data) || (data.views is number && data.views >= 0));
+    }
+
+    function isValidFeatured(data) {
+      return data.keys().hasAll(['id', 'title', 'banner', 'type', 'createdAt']) &&
+             data.id is string && data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             isValidUrl(data.banner) &&
+             data.type in ['comic', 'article', 'external'] &&
+             data.createdAt is timestamp &&
+             (!('targetId' in data) || data.targetId is string) &&
+             (!('externalUrl' in data) || isValidUrl(data.externalUrl)) &&
+             (!('genre' in data) || (data.genre is list && data.genre.size() <= 5));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role != 'admin' || isAdmin());
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+
+      match /following/{id} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && 
+          request.resource.data.userId == userId &&
+          request.resource.data.type in ['artist', 'comic'];
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /{path=**}/chapters/{chapterId} {
+      allow read: if true;
+    }
+
+    match /comics/{comicId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidComic(request.resource.data) && request.resource.data.authorUid == request.auth.uid;
+      allow update: if (isDocOwner() || isAdmin()) && isValidComic(request.resource.data) && 
+                       request.resource.data.authorUid == resource.data.authorUid &&
+                       request.resource.data.createdAt == resource.data.createdAt;
+      allow update: if isAuthenticated() && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'ratingCount', 'views']) &&
+                       isValidComic(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+
+      match /chapters/{chapterId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && 
+                        get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid &&
+                        isValidChapter(request.resource.data, comicId);
+        allow update: if (get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid || isAdmin()) &&
+                        isValidChapter(request.resource.data, comicId) &&
+                        request.resource.data.comicId == resource.data.comicId &&
+                        request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid || isAdmin();
+
+        match /comments/{commentId} {
+          allow read: if true;
+          allow create: if isAuthenticated() && isValidComment(request.resource.data, comicId, chapterId);
+          allow update: if (request.auth.uid == resource.data.userId || isAdmin()) && 
+                           isValidComment(request.resource.data, comicId, chapterId) &&
+                           request.resource.data.userId == resource.data.userId &&
+                           request.resource.data.createdAt == resource.data.createdAt;
+          allow delete: if request.auth.uid == resource.data.userId || isAdmin();
+        }
+
+        match /likes/{likeId} {
+          allow read: if true;
+          allow create: if isAuthenticated() && isValidLike(request.resource.data, comicId, chapterId) && likeId == request.auth.uid;
+          allow delete: if request.auth.uid == resource.data.userId || isAdmin();
+        }
+      }
+
+      match /ratings/{userId} {
+        allow read: if true;
+        allow create, update: if isAuthenticated() && isValidRating(request.resource.data, comicId) && userId == request.auth.uid;
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+    }
+
+    match /articles/{articleId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidArticle(request.resource.data);
+      allow update: if (request.auth.uid == resource.data.authorUid || isAdmin()) && 
+                       isValidArticle(request.resource.data) &&
+                       request.resource.data.authorUid == resource.data.authorUid &&
+                       request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if request.auth.uid == resource.data.authorUid || isAdmin();
+    }
+
+    match /featured/{featuredId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidFeatured(request.resource.data);
+    }
+  }
+}
