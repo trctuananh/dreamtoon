@@ -117,7 +117,18 @@ export const translations = {
     invalidHandle: "ID can only contain letters, numbers, and underscores",
     dreamer: "Dreamer",
     author: "Author",
-    admin: "Admin"
+    admin: "Admin",
+    rating: "Rating",
+    rateThis: "Rate this",
+    synopsis: "Synopsis",
+    new: "New",
+    topRated: "Top Rated",
+    noComicsFound: "No comics found",
+    explore: "Explore",
+    followingFeed: "Following Feed",
+    latestArticles: "Latest Articles",
+    welcomeBack: "Welcome Back",
+    addComment: "Add a comment..."
   },
   vi: {
     home: "Trang chủ",
@@ -237,7 +248,18 @@ export const translations = {
     invalidHandle: "ID chỉ có thể chứa chữ cái, số và dấu gạch dưới",
     dreamer: "Người mơ mộng",
     author: "Tác giả",
-    admin: "Quản trị viên"
+    admin: "Quản trị viên",
+    rating: "Đánh giá",
+    rateThis: "Đánh giá",
+    synopsis: "Tóm tắt",
+    new: "Mới",
+    topRated: "Đánh giá cao",
+    noComicsFound: "Không tìm thấy truyện",
+    explore: "Khám phá",
+    followingFeed: "Bảng tin theo dõi",
+    latestArticles: "Bài báo mới nhất",
+    welcomeBack: "Chào mừng quay lại",
+    addComment: "Thêm bình luận..."
   }
 };
 

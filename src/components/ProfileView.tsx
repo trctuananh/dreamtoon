@@ -1,0 +1,364 @@
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Layout, Compass, Star, Plus, Trash2, Library, Heart } from 'lucide-react';
+import { motion } from 'motion/react';
+import { collection, query, where, getDocs, setDoc, doc, deleteDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { Comic, Following } from '../types';
+import { Language, translations } from '../translations';
+import { useTranslation } from '../hooks/useTranslation';
+import { formatViews } from '../lib/utils';
+
+export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void }) {
+  const { t } = useTranslation(lang);
+  const [activeTab, setActiveTab] = useState<'comics' | 'following'>('comics');
+  const [isEditing, setIsEditing] = useState(false);
+  const [bio, setBio] = useState(profile?.bio || '');
+  const [displayName, setDisplayName] = useState(profile?.displayName || user.displayName || '');
+  const [handle, setHandle] = useState(profile?.handle || '');
+  const [handleError, setHandleError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setBio(profile.bio || '');
+      setDisplayName(profile.displayName || user.displayName || '');
+      setHandle(profile.handle || '');
+    }
+  }, [profile, user]);
+
+  const validateHandle = (val: string) => {
+    if (!val) return null;
+    if (!/^[a-zA-Z0-9_]+$/.test(val)) {
+      return t('invalidHandle');
+    }
+    return null;
+  };
+
+  const handleUpdateProfile = async () => {
+    const error = validateHandle(handle);
+    if (error) {
+      setHandleError(error);
+      return;
+    }
+
+    setIsUpdating(true);
+    setHandleError(null);
+    try {
+      if (handle && handle !== profile?.handle) {
+        const q = query(collection(db, 'users'), where('handle', '==', handle));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          setHandleError(t('handleTaken'));
+          setIsUpdating(false);
+          return;
+        }
+      }
+
+      await setDoc(doc(db, 'users', user.uid), { 
+        bio, 
+        displayName, 
+        handle: handle.toLowerCase() 
+      }, { merge: true });
+      setIsEditing(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const myComics = comics.filter(c => c.authorUid === user.uid);
+  const totalViews = myComics.reduce((acc, c) => acc + c.views, 0);
+  const avgRating = myComics.length > 0 
+    ? (myComics.reduce((acc, c) => acc + c.rating, 0) / myComics.length).toFixed(1) 
+    : '0.0';
+
+  const joinedDate = profile?.createdAt?.toDate 
+    ? profile.createdAt.toDate().toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : t('justNow');
+
+  const handleDelete = async (comicId: string) => {
+    if (!window.confirm(t('confirmDelete'))) return;
+    try {
+      await deleteDoc(doc(db, 'comics', comicId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `comics/${comicId}`);
+    }
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="flex items-center gap-4 mb-12">
+        <button onClick={onBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-900">
+          <ArrowLeft size={24} />
+        </button>
+        <h2 className="text-3xl font-black tracking-tight text-zinc-900">{t('profile')}</h2>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-8">
+        <div className="md:col-span-1">
+          <div className="bg-white rounded-3xl p-8 border border-zinc-100 shadow-sm sticky top-24">
+            <div className="flex flex-col items-center text-center">
+              <img 
+                src={user.photoURL || ''} 
+                alt={user.displayName || ''} 
+                className="w-32 h-32 rounded-full border-4 border-blue-500 mb-4"
+                referrerPolicy="no-referrer"
+              />
+              <h3 className="text-xl font-bold text-zinc-900">{profile?.displayName || user.displayName}</h3>
+              {profile?.handle && (
+                <p className="text-blue-500 font-bold text-sm mb-1">@{profile.handle}</p>
+              )}
+              <p className="text-zinc-500 text-sm mb-2">{user.email}</p>
+              <p className="text-xs text-zinc-400 mb-4">{t('joined')}: {joinedDate}</p>
+
+              {isEditing ? (
+                <div className="w-full mb-6 space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 text-left">{t('username')}</label>
+                    <input
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder={t('username')}
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 text-left">{t('userID')}</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">@</span>
+                      <input
+                        type="text"
+                        value={handle}
+                        onChange={(e) => setHandle(e.target.value.toLowerCase())}
+                        placeholder="username_id"
+                        className={`w-full bg-zinc-50 border ${handleError ? 'border-red-500' : 'border-zinc-200'} rounded-xl px-4 py-2 pl-8 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors`}
+                      />
+                    </div>
+                    {handleError && <p className="text-[10px] text-red-500 mt-1 text-left font-bold">{handleError}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 text-left">{t('bio')}</label>
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder={t('bio')}
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={handleUpdateProfile}
+                      disabled={isUpdating}
+                      className="flex-1 bg-blue-500 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-600 transition-colors disabled:opacity-50"
+                    >
+                      {isUpdating ? '...' : t('updateProfile')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditing(false);
+                        setBio(profile?.bio || '');
+                        setDisplayName(profile?.displayName || user.displayName || '');
+                        setHandle(profile?.handle || '');
+                        setHandleError(null);
+                      }}
+                      className="px-4 py-2 bg-zinc-100 text-zinc-600 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-colors"
+                    >
+                      {t('cancel')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full mb-6">
+                  <p className="text-sm text-zinc-600 mb-4 italic">
+                    {profile?.bio || t('noBio')}
+                  </p>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="text-blue-500 text-xs font-bold hover:underline flex items-center gap-1 mx-auto"
+                  >
+                    <Layout size={12} />
+                    {t('editProfile')}
+                  </button>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-2 gap-4 w-full pt-6 border-t border-zinc-50">
+                <div className="text-center">
+                  <p className="text-2xl font-black text-blue-600">{myComics.length}</p>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('comic')}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-black text-blue-600">{formatViews(totalViews)}</p>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('views')}</p>
+                </div>
+                <div className="text-center pt-4">
+                  <p className="text-2xl font-black text-yellow-500">{avgRating}</p>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('avgRating')}</p>
+                </div>
+                <div className="text-center pt-4">
+                  <p className="text-2xl font-black text-zinc-900">{t((profile?.role || 'dreamer') as any)}</p>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('role')}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <div className="flex items-center gap-8 mb-8 border-b border-zinc-100">
+            <button 
+              onClick={() => setActiveTab('comics')}
+              className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'comics' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-600'}`}
+            >
+              {t('myComics')}
+              {activeTab === 'comics' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
+            </button>
+            <button 
+              onClick={() => setActiveTab('following')}
+              className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'following' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-600'}`}
+            >
+              {t('following')}
+              {activeTab === 'following' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
+            </button>
+          </div>
+
+          {activeTab === 'comics' ? (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-zinc-900">{t('myComics')}</h3>
+                <button 
+                  onClick={onUpload} 
+                  className="px-4 py-2 bg-blue-500 text-white rounded-xl text-xs font-bold hover:bg-blue-600 transition-colors flex items-center gap-2"
+                >
+                  <Plus size={14} />
+                  {t('uploadWebtoon')}
+                </button>
+              </div>
+              <div className="grid gap-4">
+                {myComics.map(comic => (
+                  <div 
+                    key={comic.id} 
+                    onClick={() => onComicSelect(comic)}
+                    className="bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm flex gap-4 group cursor-pointer hover:border-blue-500/50 transition-all"
+                  >
+                    <img 
+                      src={comic.thumbnail} 
+                      alt={comic.title} 
+                      className="w-20 h-28 object-cover rounded-xl shadow-md"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+                      <div>
+                        <h4 className="font-bold text-zinc-900 truncate group-hover:text-blue-600 transition-colors">{comic.title}</h4>
+                        <div className="flex gap-2 mt-1">
+                          {comic.genre.map(g => (
+                            <span key={g} className="text-[10px] font-bold text-blue-500">#{t(g as any)}</span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-2 line-clamp-2">{comic.description}</p>
+                      </div>
+                      <div className="flex items-center gap-4 text-[10px] font-bold text-zinc-400">
+                        <span className="flex items-center gap-1"><Compass size={12} /> {formatViews(comic.views)}</span>
+                        <span className="flex items-center gap-1"><Star size={12} className="text-yellow-500 fill-yellow-500" /> {comic.rating}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button 
+                        onClick={() => onEditComic(comic)}
+                        className="flex items-center gap-2 px-3 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all text-xs font-bold"
+                        title={t('edit')}
+                      >
+                        <Layout size={16} />
+                        {t('edit')}
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(comic.id)}
+                        className="flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all text-xs font-bold"
+                        title={t('delete')}
+                      >
+                        <Trash2 size={16} />
+                        {t('delete')}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {myComics.length === 0 && (
+                  <div className="text-center py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
+                    <Library size={48} className="mx-auto text-zinc-300 mb-4" />
+                    <p className="text-zinc-500 font-medium">You haven't uploaded any comics yet.</p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="grid gap-4">
+              {following.map(f => {
+                if (f.type === 'comic') {
+                  const comic = comics.find(c => c.id === f.targetId);
+                  if (!comic) return null;
+                  return (
+                    <div 
+                      key={f.id} 
+                      onClick={() => onComicSelect(comic)}
+                      className="bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm flex items-center gap-4 group cursor-pointer hover:border-blue-500/50 transition-all"
+                    >
+                      <img 
+                        src={comic.thumbnail} 
+                        alt={comic.title} 
+                        className="w-16 h-20 object-cover rounded-xl shadow-md"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-zinc-900 truncate group-hover:text-blue-600 transition-colors">{comic.title}</h4>
+                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest mt-1">{t('comic')}</p>
+                      </div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFollow(f.targetId, 'comic');
+                        }}
+                        className="px-4 py-2 bg-zinc-900 text-white rounded-xl text-xs font-bold hover:bg-zinc-800 transition-colors"
+                      >
+                        {t('unfollow')}
+                      </button>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div 
+                      key={f.id} 
+                      className="bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm flex items-center gap-4 group transition-all"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-black text-2xl">
+                        {f.targetId[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-zinc-900 truncate">{f.targetId}</h4>
+                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest mt-1">{t('artist')}</p>
+                      </div>
+                      <button 
+                        onClick={() => onToggleFollow(f.targetId, 'artist')}
+                        className="px-4 py-2 bg-zinc-900 text-white rounded-xl text-xs font-bold hover:bg-zinc-800 transition-colors"
+                      >
+                        {t('unfollow')}
+                      </button>
+                    </div>
+                  );
+                }
+              })}
+              {following.length === 0 && (
+                <div className="text-center py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
+                  <Heart size={48} className="mx-auto text-zinc-300 mb-4" />
+                  <p className="text-zinc-500 font-medium">{t('noFollowingFeed')}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -43,6 +43,7 @@ export interface Article {
 export interface FeaturedItem {
   id: string;
   title: string;
+  description?: string;
   banner: string;
   type: 'comic' | 'article' | 'external';
   targetId?: string;
@@ -51,20 +52,34 @@ export interface FeaturedItem {
   createdAt: any;
 }
 
+export type Genre = 'Action' | 'Romance' | 'Comedy' | 'Fantasy' | 'Horror' | 'Slice of Life' | 'Drama' | 'Sci-Fi' | 'Thriller' | 'all' | 'action' | 'romance' | 'comedy' | 'drama' | 'fantasy' | 'horror' | 'sciFi' | 'sliceOfLife' | 'thriller';
+
+export interface UserProfile {
+  uid: string;
+  displayName: string;
+  email: string;
+  photoURL: string;
+  bio?: string;
+  handle?: string;
+  role?: 'admin' | 'user';
+  createdAt?: any;
+}
+
 export interface Comment {
   id: string;
-  userId: string;
+  uid: string; // Changed from userId to uid to match usage
   userName: string;
   userPhoto: string;
   chapterId: string;
   comicId: string;
-  text: string;
+  content: string; // Changed from text to content to match usage
   createdAt: any;
 }
 
 export interface Like {
   id: string;
   userId: string;
+  targetId: string; // Added targetId to match usage
   chapterId: string;
   comicId: string;
   createdAt: any;
