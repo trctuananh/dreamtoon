@@ -6,6 +6,8 @@ import {
   onSnapshot, 
   doc, 
   getDoc, 
+  getDocs,
+  where,
   updateDoc, 
   increment, 
   runTransaction, 
@@ -13,7 +15,6 @@ import {
   addDoc, 
   deleteDoc, 
   setDoc,
-  where,
   limit
 } from 'firebase/firestore';
 import { 
@@ -53,6 +54,9 @@ import { ArticleView as ArticleDetailView } from './components/ArticleView';
 import { FeaturedManager as ManageFeaturedView } from './components/FeaturedManager';
 import { LoginModal } from './components/LoginModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { MyWallView } from './components/MyWallView';
+import { ArtistWallView } from './components/ArtistWallView';
+import { CommunityView } from './components/CommunityView';
 
 // Hooks & Utils
 import { useTranslation } from './hooks/useTranslation';
@@ -84,8 +88,47 @@ export default function App() {
   const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
   const [ratingSuccess, setRatingSuccess] = useState(false);
   const [editingComic, setEditingComic] = useState<Comic | null>(null);
+  const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
 
   const { t } = useTranslation(lang);
+
+  // Deep Linking
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const artistHandle = params.get('artist');
+    if (artistHandle) {
+      const fetchArtist = async () => {
+        try {
+          // Try fetching by handle first
+          const q = query(collection(db, 'users'), where('handle', '==', artistHandle.toLowerCase()));
+          const snap = await getDocs(q);
+          
+          if (!snap.empty) {
+            const artistProfile = snap.docs[0].data() as UserProfile;
+            const artistUid = snap.docs[0].id;
+            // We need a way to show this artist's wall
+            // For now, let's use a temporary state or reuse MyWallView logic
+            // Actually, let's just set a selected artist state
+            setSelectedArtist({ uid: artistUid, profile: artistProfile });
+            setView('artist-wall');
+          } else {
+            // Try fetching by UID
+            const docRef = doc(db, 'users', artistHandle);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              setSelectedArtist({ uid: artistHandle, profile: docSnap.data() as UserProfile });
+              setView('artist-wall');
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching artist for deep link:", error);
+        }
+      };
+      fetchArtist();
+    }
+  }, []);
+
+  const [selectedArtist, setSelectedArtist] = useState<{ uid: string, profile: UserProfile } | null>(null);
 
   // Auth Listener
   useEffect(() => {
@@ -102,9 +145,24 @@ export default function App() {
   // Profile Listener
   useEffect(() => {
     if (user) {
-      const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-        if (doc.exists()) {
-          setProfile(doc.data() as UserProfile);
+      const unsubscribe = onSnapshot(doc(db, 'users', user.uid), async (snapshot) => {
+        if (snapshot.exists()) {
+          setProfile(snapshot.data() as UserProfile);
+        } else {
+          // Create initial profile if it doesn't exist
+          const initialProfile: UserProfile = {
+            uid: user.uid,
+            displayName: user.displayName || 'Anonymous',
+            email: user.email || '',
+            photoURL: user.photoURL || '',
+            role: 'user',
+            createdAt: serverTimestamp()
+          };
+          try {
+            await setDoc(doc(db, 'users', user.uid), initialProfile);
+          } catch (error) {
+            console.error("Error creating initial profile:", error);
+          }
         }
       });
       return () => unsubscribe();
@@ -244,6 +302,20 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
+  const handleArtistClick = async (uid: string) => {
+    try {
+      const docRef = doc(db, 'users', uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setSelectedArtist({ uid, profile: docSnap.data() as UserProfile });
+        setView('artist-wall');
+        window.scrollTo(0, 0);
+      }
+    } catch (error) {
+      console.error("Error fetching artist profile:", error);
+    }
+  };
+
   const handleChapterClick = async (chapter: Chapter) => {
     setSelectedChapter(chapter);
     setView('reader');
@@ -301,11 +373,14 @@ export default function App() {
       setSelectedComic(null);
     } else if (view === 'explore') {
       setView('home');
-    } else if (view === 'profile') {
+    } else if (view === 'profile' || view === 'my-wall' || view === 'community') {
       setView('home');
     } else if (view === 'edit-comic') {
       setView('profile');
       setEditingComic(null);
+    } else if (view === 'edit-chapter') {
+      setView('detail');
+      setEditingChapter(null);
     } else if (view === 'manage-featured') {
       setView('home');
     } else {
@@ -373,11 +448,35 @@ export default function App() {
     }
   };
 
+  const handleMoveChapter = async (chapter: Chapter, direction: 'up' | 'down') => {
+    if (!selectedComic) return;
+    const idx = chapters.findIndex(c => c.id === chapter.id);
+    if (idx === -1) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === chapters.length - 1) return;
+
+    const otherIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const otherChapter = chapters[otherIdx];
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const ch1Ref = doc(db, 'comics', selectedComic.id, 'chapters', chapter.id);
+        const ch2Ref = doc(db, 'comics', selectedComic.id, 'chapters', otherChapter.id);
+        
+        transaction.update(ch1Ref, { number: otherChapter.number });
+        transaction.update(ch2Ref, { number: chapter.number });
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `comics/${selectedComic.id}/chapters`);
+    }
+  };
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-blue-100">
         <Navbar 
           user={user}
+          profile={profile}
           view={view}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -435,6 +534,12 @@ export default function App() {
                 onChapterClick={handleChapterClick}
                 onToggleFollow={handleToggleFollow}
                 onAddChapter={() => setView('add-chapter')}
+                onEditChapter={(chapter) => {
+                  setEditingChapter(chapter);
+                  setView('edit-chapter');
+                }}
+                onMoveChapter={handleMoveChapter}
+                onArtistClick={handleArtistClick}
                 onBack={handleBack}
                 lang={lang}
               />
@@ -475,8 +580,8 @@ export default function App() {
                   try {
                     await addDoc(collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'comments'), {
                       uid: user.uid,
-                      userName: user.displayName || 'Anonymous',
-                      userPhoto: user.photoURL || '',
+                      userName: profile?.displayName || user.displayName || 'Anonymous',
+                      userPhoto: profile?.photoURL || user.photoURL || '',
                       chapterId: selectedChapter.id,
                       comicId: selectedComic.id,
                       content: text,
@@ -528,6 +633,7 @@ export default function App() {
             {view === 'edit-comic' && editingComic && (
               <UploadView
                 user={user}
+                profile={profile}
                 comics={comics}
                 lang={lang}
                 onSuccess={() => {
@@ -546,6 +652,7 @@ export default function App() {
             {view === 'upload' && (
               <UploadView 
                 user={user} 
+                profile={profile}
                 comics={comics}
                 lang={lang}
                 onSuccess={() => {
@@ -570,9 +677,29 @@ export default function App() {
               />
             )}
 
+            {view === 'edit-chapter' && selectedComic && editingChapter && (
+              <AddChapterView 
+                comicId={selectedComic.id}
+                authorUid={selectedComic.authorUid}
+                chapterCount={chapters.length}
+                initialData={editingChapter}
+                lang={lang}
+                onSuccess={() => {
+                  setView('detail');
+                  setEditingChapter(null);
+                  window.scrollTo(0, 0);
+                }}
+                onCancel={() => {
+                  setView('detail');
+                  setEditingChapter(null);
+                }}
+              />
+            )}
+
             {view === 'create-article' && (
               <CreateArticleView 
                 user={user}
+                profile={profile}
                 lang={lang}
                 onSuccess={() => {
                   setView('home');
@@ -597,6 +724,35 @@ export default function App() {
                 featuredItems={featuredItems}
                 lang={lang}
                 onBack={() => setView('home')}
+              />
+            )}
+
+            {view === 'my-wall' && user && (
+              <MyWallView 
+                user={user}
+                profile={profile}
+                lang={lang}
+                onBack={handleBack}
+              />
+            )}
+
+            {view === 'artist-wall' && selectedArtist && (
+              <ArtistWallView 
+                artistUid={selectedArtist.uid}
+                artistProfile={selectedArtist.profile}
+                lang={lang}
+                onBack={handleBack}
+              />
+            )}
+
+            {view === 'community' && (
+              <CommunityView 
+                user={user}
+                comics={comics}
+                lang={lang}
+                onBack={handleBack}
+                onArtistClick={handleArtistClick}
+                onLogin={() => setIsLoginModalOpen(true)}
               />
             )}
           </AnimatePresence>

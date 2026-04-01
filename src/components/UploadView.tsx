@@ -9,7 +9,7 @@ import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { validateImage } from '../lib/utils';
 
-export function UploadView({ user, comics, onSuccess, onCancel, lang, initialData }: { user: FirebaseUser | null, comics: Comic[], onSuccess: () => void, onCancel: () => void, lang: Language, initialData?: Comic }) {
+export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, initialData }: { user: FirebaseUser | null, profile: any, comics: Comic[], onSuccess: () => void, onCancel: () => void, lang: Language, initialData?: Comic }) {
   const { t } = useTranslation(lang);
   const GENRES = ['action', 'romance', 'comedy', 'drama', 'fantasy', 'horror', 'sciFi', 'sliceOfLife', 'thriller'];
   
@@ -85,7 +85,7 @@ export function UploadView({ user, comics, onSuccess, onCancel, lang, initialDat
       thumbnail,
       banner,
       authorUid: user.uid,
-      authorName: user.displayName,
+      authorName: profile?.displayName || user.displayName,
       updatedAt: serverTimestamp(),
     };
 

@@ -51,15 +51,15 @@ export function HomeView({
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative h-[600px] w-full overflow-hidden bg-zinc-900">
+      <div className="relative h-[250px] w-full overflow-hidden bg-zinc-900">
         <AnimatePresence mode="wait">
-          {featuredItems.length > 0 && (
+          {featuredItems.length > 0 ? (
             <motion.div
               key={heroIndex}
-              initial={{ opacity: 0, scale: 1.1 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
               className="absolute inset-0"
             >
               <img 
@@ -68,21 +68,20 @@ export function HomeView({
                 className="w-full h-full object-cover opacity-60"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/20" />
-              <div className="absolute inset-0 container mx-auto px-4 flex flex-col justify-end pb-24">
+              <div className="absolute inset-0 bg-gradient-to-t from-white via-white/10 to-black/30" />
+              <div className="absolute inset-0 container mx-auto px-4 flex flex-col justify-center">
                 <motion.div
-                  initial={{ y: 30, opacity: 0 }}
+                  initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
                   className="max-w-2xl"
                 >
-                  <span className="px-4 py-2 bg-blue-500 text-white text-xs font-black uppercase tracking-widest rounded-full mb-6 inline-block shadow-xl shadow-blue-500/20">
+                  <span className="px-3 py-1 bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-3 inline-block shadow-lg shadow-blue-500/20">
                     {t('featured')}
                   </span>
-                  <h2 className="text-7xl font-black text-white mb-6 tracking-tighter leading-none drop-shadow-2xl">
+                  <h2 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tighter leading-tight drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
                     {featuredItems[heroIndex].title}
                   </h2>
-                  <p className="text-xl text-white/90 mb-8 line-clamp-2 font-medium leading-relaxed drop-shadow-md">
+                  <p className="text-sm text-white/90 mb-4 line-clamp-1 font-medium drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">
                     {featuredItems[heroIndex].description}
                   </p>
                   <button 
@@ -96,49 +95,74 @@ export function HomeView({
                         if (article) onArticleClick(article);
                       }
                     }}
-                    className="group flex items-center gap-3 px-8 py-4 bg-white text-zinc-900 rounded-full font-black text-sm hover:bg-blue-500 hover:text-white transition-all shadow-2xl hover:scale-105 active:scale-95"
+                    className="group flex items-center gap-2 px-5 py-2 bg-white text-zinc-900 rounded-full font-black text-[10px] hover:bg-blue-500 hover:text-white transition-all shadow-xl"
                   >
                     {t('readNow')}
-                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 </motion.div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-900"
+            >
+              <div className="text-center px-4">
+                <BookOpen size={40} className="text-white/20 mx-auto mb-3" />
+                <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter mb-1 uppercase">
+                  Welcome to <span className="text-blue-400">Dream</span>Toon
+                </h2>
+                <p className="text-white/60 font-bold uppercase tracking-[0.3em] text-[10px]">
+                  Your portal to infinite stories
+                </p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
         
         {/* Hero Indicators */}
-        <div className="absolute bottom-12 right-12 flex gap-3 z-20">
-          {featuredItems.map((_, idx) => (
-            <div 
-              key={idx}
-              className={`h-1.5 transition-all rounded-full ${idx === heroIndex ? 'w-12 bg-blue-500' : 'w-4 bg-white/30 hover:bg-white/50'}`}
-            />
-          ))}
-        </div>
+        {featuredItems.length > 1 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+            {featuredItems.map((_, idx) => (
+              <button 
+                key={idx}
+                onClick={() => setHeroIndex(idx)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${idx === heroIndex ? 'w-8 bg-blue-500' : 'w-2 bg-white/30 hover:bg-white/50'}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 mt-12 relative z-20">
-        <div className="grid lg:grid-cols-4 gap-12">
+      <div className="container mx-auto px-4 mt-8 relative z-20">
+        <div className="grid lg:grid-cols-4 gap-8 md:gap-12">
           {/* Left Column: Comics Grid */}
           <div className="lg:col-span-3">
-            <div className="flex items-center justify-between mb-10">
-              <h3 className="text-4xl font-black text-zinc-900 tracking-tight">
+            <div className="flex items-center justify-between mb-6 md:mb-10">
+              <h3 className="text-2xl md:text-4xl font-black text-zinc-900 tracking-tight">
                 {t('trending')}
               </h3>
-              <div className="h-1 flex-1 mx-8 bg-zinc-50 rounded-full" />
+              <div className="h-1 flex-1 mx-4 md:mx-8 bg-zinc-50 rounded-full" />
+              <button 
+                onClick={() => onComicClick(filteredComics[0])} // Placeholder for "See All"
+                className="text-xs font-black text-blue-500 uppercase tracking-widest hover:text-blue-600 transition-colors"
+              >
+                {t('readNow')}
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-12">
-              {filteredComics.map((comic) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-12">
+              {filteredComics.slice(0, 6).map((comic) => (
                 <motion.div 
                   layout
                   key={comic.id}
                   onClick={() => onComicClick(comic)}
                   className="group cursor-pointer"
                 >
-                  <div className="relative aspect-[2/3] rounded-[24px] overflow-hidden mb-4 shadow-xl group-hover:shadow-blue-500/20 transition-all group-hover:-translate-y-2">
+                  <div className="relative aspect-[2/3] rounded-[20px] md:rounded-[24px] overflow-hidden mb-3 md:mb-4 shadow-lg group-hover:shadow-blue-500/20 transition-all group-hover:-translate-y-1">
                     <img 
                       src={comic.thumbnail} 
                       alt={comic.title} 
@@ -146,21 +170,21 @@ export function HomeView({
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="flex items-center gap-1.5 text-white text-[10px] font-bold">
-                        <Star size={12} className="text-yellow-400 fill-yellow-400" />
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 text-white text-[8px] md:text-[10px] font-bold">
+                        <Star size={10} className="text-yellow-400 fill-yellow-400" />
                         {comic.rating}
                       </div>
-                      <div className="flex items-center gap-1.5 text-white text-[10px] font-bold">
-                        <Compass size={12} />
+                      <div className="flex items-center gap-1 text-white text-[8px] md:text-[10px] font-bold">
+                        <Compass size={10} />
                         {formatViews(comic.views)}
                       </div>
                     </div>
                   </div>
-                  <h4 className="font-black text-zinc-900 mb-1 group-hover:text-blue-600 transition-colors truncate px-1">{comic.title}</h4>
-                  <div className="flex gap-2 px-1">
+                  <h4 className="font-black text-zinc-900 text-sm md:text-base mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors truncate px-1">{comic.title}</h4>
+                  <div className="flex gap-1.5 md:gap-2 px-1">
                     {comic.genre.slice(0, 2).map(g => (
-                      <span key={g} className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">{t(g as any)}</span>
+                      <span key={g} className="text-[8px] md:text-[10px] font-bold text-blue-500 uppercase tracking-widest">{t(g as any)}</span>
                     ))}
                   </div>
                 </motion.div>

@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
+import { UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 
-export function CreateArticleView({ user, lang, onSuccess, onCancel }: { user: any, lang: Language, onSuccess: () => void, onCancel: () => void }) {
+export function CreateArticleView({ user, profile, lang, onSuccess, onCancel }: { user: any, profile: UserProfile | null, lang: Language, onSuccess: () => void, onCancel: () => void }) {
   const { t } = useTranslation(lang);
   const [title, setTitle] = useState('');
   const [banner, setBanner] = useState('');
@@ -22,7 +23,7 @@ export function CreateArticleView({ user, lang, onSuccess, onCancel }: { user: a
         banner,
         content,
         authorUid: user.uid,
-        authorName: user.displayName,
+        authorName: profile?.displayName || user.displayName,
         views: 0,
         createdAt: serverTimestamp()
       });

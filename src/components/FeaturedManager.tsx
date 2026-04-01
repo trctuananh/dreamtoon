@@ -48,6 +48,30 @@ export function FeaturedManager({
     }
   };
 
+  const seedSampleData = async () => {
+    const samples = [
+      { title: "Midnight Chronicles", banner: "https://picsum.photos/seed/midnight/1920/1080", description: "A dark mystery unfolding in the heart of a neon city.", type: 'comic' },
+      { title: "Skyward Bound", banner: "https://picsum.photos/seed/sky/1920/1080", description: "Soar through the clouds in this epic adventure of freedom.", type: 'comic' },
+      { title: "The Last Alchemist", banner: "https://picsum.photos/seed/alchemist/1920/1080", description: "Magic has a price, and he's about to pay it all.", type: 'comic' },
+      { title: "Neon Pulse", banner: "https://picsum.photos/seed/pulse/1920/1080", description: "The rhythm of the city is the only thing keeping her alive.", type: 'article' },
+      { title: "Lost in Translation", banner: "https://picsum.photos/seed/lost/1920/1080", description: "A journey across worlds where words are the only weapons.", type: 'comic' }
+    ];
+
+    try {
+      for (const sample of samples) {
+        await addDoc(collection(db, 'featured'), {
+          ...sample,
+          targetId: 'sample',
+          genre: sample.type === 'comic' ? ['Action', 'Mystery'] : ['Article'],
+          createdAt: serverTimestamp()
+        });
+      }
+      alert("5 Sample items added! Go back to Home to see them.");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'featured');
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-8">
@@ -57,12 +81,20 @@ export function FeaturedManager({
           </button>
           <h2 className="text-3xl font-black tracking-tight">Manage Featured</h2>
         </div>
-        <button 
-          onClick={() => setIsAdding(!isAdding)}
-          className="px-6 py-2 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 transition-colors flex items-center gap-2"
-        >
-          {isAdding ? 'Cancel' : <><Plus size={18} /> Add New</>}
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={seedSampleData}
+            className="px-6 py-2 bg-zinc-100 text-zinc-600 rounded-full font-bold hover:bg-zinc-200 transition-colors"
+          >
+            Seed 5 Samples
+          </button>
+          <button 
+            onClick={() => setIsAdding(!isAdding)}
+            className="px-6 py-2 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 transition-colors flex items-center gap-2"
+          >
+            {isAdding ? 'Cancel' : <><Plus size={18} /> Add New</>}
+          </button>
+        </div>
       </div>
 
       {isAdding && (

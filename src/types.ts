@@ -27,7 +27,7 @@ export interface Comic {
   createdAt?: any;
 }
 
-export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'edit-comic';
+export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall';
 
 export interface Article {
   id: string;
@@ -62,6 +62,8 @@ export interface UserProfile {
   bio?: string;
   handle?: string;
   role?: 'admin' | 'user';
+  donateInfo?: { text: string; imageUrl: string };
+  commissionInfo?: { text: string; imageUrl: string };
   createdAt?: any;
 }
 
@@ -98,5 +100,18 @@ export interface Following {
   userId: string;
   targetId: string;
   type: 'artist' | 'comic';
+  createdAt: any;
+}
+
+export interface Post {
+  id: string;
+  authorUid: string;
+  authorName: string;
+  authorPhoto: string;
+  content: string;
+  imageUrl?: string;
+  type: 'twit' | 'sketch' | 'donate' | 'commission';
+  likes: number;
+  comments: number;
   createdAt: any;
 }

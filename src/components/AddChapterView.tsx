@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Language } from '../translations';
+import { Chapter } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
 import { validateImage } from '../lib/utils';
 
-export function AddChapterView({ comicId, authorUid, chapterCount, onSuccess, onCancel, lang }: { comicId: string, authorUid: string, chapterCount: number, onSuccess: () => void, onCancel: () => void, lang: Language }) {
+export function AddChapterView({ comicId, authorUid, chapterCount, initialData, onSuccess, onCancel, lang }: { comicId: string, authorUid: string, chapterCount: number, initialData?: Chapter, onSuccess: () => void, onCancel: () => void, lang: Language }) {
   const { t } = useTranslation(lang);
-  const [title, setTitle] = useState('');
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [imageUrls, setImageUrls] = useState<string[]>(initialData?.images || []);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,18 +67,25 @@ export function AddChapterView({ comicId, authorUid, chapterCount, onSuccess, on
 
     setIsUploading(true);
     try {
-      await addDoc(collection(db, 'comics', comicId, 'chapters'), {
-        comicId,
-        authorUid,
-        title,
-        number: chapterCount + 1,
-        images: imageUrls,
-        uploadDate: new Date().toLocaleDateString(),
-        createdAt: serverTimestamp()
-      });
+      if (initialData) {
+        await updateDoc(doc(db, 'comics', comicId, 'chapters', initialData.id), {
+          title,
+          images: imageUrls,
+        });
+      } else {
+        await addDoc(collection(db, 'comics', comicId, 'chapters'), {
+          comicId,
+          authorUid,
+          title,
+          number: chapterCount + 1,
+          images: imageUrls,
+          uploadDate: new Date().toLocaleDateString(),
+          createdAt: serverTimestamp()
+        });
+      }
       onSuccess();
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, `comics/${comicId}/chapters`);
+      handleFirestoreError(error, initialData ? OperationType.UPDATE : OperationType.CREATE, `comics/${comicId}/chapters`);
     } finally {
       setIsUploading(false);
     }

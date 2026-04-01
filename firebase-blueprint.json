@@ -11,7 +11,21 @@
         "email": { "type": "string", "description": "The email of the user.", "format": "email" },
         "photoURL": { "type": "string", "description": "The profile picture URL of the user." },
         "role": { "type": "string", "description": "The role of the user (e.g., 'dreamer', 'admin').", "enum": ["dreamer", "admin"] },
-        "bio": { "type": "string", "description": "The biography of the user." }
+        "bio": { "type": "string", "description": "The biography of the user." },
+        "donateInfo": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "imageUrl": { "type": "string" }
+          }
+        },
+        "commissionInfo": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "imageUrl": { "type": "string" }
+          }
+        }
       },
       "required": ["uid", "email"]
     },
@@ -105,6 +119,24 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
       },
       "required": ["id", "userId", "targetId", "type"]
+    },
+    "Post": {
+      "title": "Community Post",
+      "description": "A post created by a user on their wall or in the community.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the post." },
+        "authorUid": { "type": "string", "description": "The UID of the author." },
+        "authorName": { "type": "string", "description": "The name of the author." },
+        "authorPhoto": { "type": "string", "description": "The profile picture URL of the author." },
+        "content": { "type": "string", "description": "The content of the post." },
+        "imageUrl": { "type": "string", "description": "The URL of an image attached to the post." },
+        "type": { "type": "string", "description": "The type of the post.", "enum": ["twit", "sketch", "donate", "commission"] },
+        "likes": { "type": "number", "description": "The number of likes." },
+        "comments": { "type": "number", "description": "The number of comments." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
+      },
+      "required": ["id", "authorUid", "content", "type"]
     }
   },
   "firestore": {
@@ -135,6 +167,10 @@
     "/comics/{comicId}/ratings/{userId}": {
       "schema": "Rating",
       "description": "The subcollection of ratings for a specific comic."
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "The collection of community posts."
     }
   }
 }

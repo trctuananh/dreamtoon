@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Compass, Star, Clock, BookOpen, Share2, Heart, MessageCircle, Send, Trash2, Plus } from 'lucide-react';
+import { ArrowLeft, Compass, Star, Clock, BookOpen, Share2, Heart, MessageCircle, Send, Trash2, Plus, ChevronUp, ChevronDown, Edit2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Comic, Chapter, Following } from '../types';
 import { Language } from '../translations';
@@ -20,6 +20,9 @@ export function ComicDetailView({
   onChapterClick, 
   onToggleFollow, 
   onAddChapter,
+  onEditChapter,
+  onMoveChapter,
+  onArtistClick,
   onBack
 }: { 
   comic: Comic, 
@@ -34,6 +37,9 @@ export function ComicDetailView({
   onChapterClick: (chapter: Chapter) => void, 
   onToggleFollow: (id: string, type: 'artist' | 'comic') => void, 
   onAddChapter: () => void,
+  onEditChapter: (chapter: Chapter) => void,
+  onMoveChapter: (chapter: Chapter, direction: 'up' | 'down') => void,
+  onArtistClick: (uid: string) => void,
   onBack: () => void
 }) {
   const { t } = useTranslation(lang);
@@ -127,7 +133,7 @@ export function ComicDetailView({
                 <div>
                   <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{t('author')}</p>
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-zinc-900">{comic.authorName}</p>
+                    <p className="font-bold text-zinc-900 hover:text-blue-500 cursor-pointer transition-colors" onClick={() => onArtistClick(comic.authorUid)}>{comic.authorName}</p>
                     <button 
                       onClick={() => onToggleFollow(comic.authorUid, 'artist')}
                       className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border transition-all ${
@@ -184,25 +190,51 @@ export function ComicDetailView({
             </div>
 
             <div className="grid gap-3">
-              {chapters.map(ch => (
-                <button 
-                  key={ch.id}
-                  onClick={() => onChapterClick(ch)}
-                  className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 font-black group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                      {ch.number}
+              {chapters.map((ch, idx) => (
+                <div key={ch.id} className="flex gap-2">
+                  <button 
+                    onClick={() => onChapterClick(ch)}
+                    className="flex-1 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 font-black group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                        {ch.number}
+                      </div>
+                      <div className="text-left">
+                        <h4 className="font-bold text-zinc-900 group-hover:text-blue-600 transition-colors">{ch.title}</h4>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{ch.uploadDate}</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <h4 className="font-bold text-zinc-900 group-hover:text-blue-600 transition-colors">{ch.title}</h4>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{ch.uploadDate}</p>
+                    <div className="p-2 bg-zinc-50 rounded-full text-zinc-400 group-hover:bg-blue-500 group-hover:text-white transition-all">
+                      <BookOpen size={16} />
                     </div>
-                  </div>
-                  <div className="p-2 bg-zinc-50 rounded-full text-zinc-400 group-hover:bg-blue-500 group-hover:text-white transition-all">
-                    <BookOpen size={16} />
-                  </div>
-                </button>
+                  </button>
+
+                  {user && user.uid === comic.authorUid && (
+                    <div className="flex flex-col gap-1">
+                      <button 
+                        disabled={idx === 0}
+                        onClick={() => onMoveChapter(ch, 'up')}
+                        className="p-2 bg-white border border-zinc-100 rounded-lg text-zinc-400 hover:text-blue-500 hover:border-blue-500 disabled:opacity-30 transition-all"
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button 
+                        onClick={() => onEditChapter(ch)}
+                        className="p-2 bg-white border border-zinc-100 rounded-lg text-zinc-400 hover:text-blue-500 hover:border-blue-500 transition-all"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button 
+                        disabled={idx === chapters.length - 1}
+                        onClick={() => onMoveChapter(ch, 'down')}
+                        className="p-2 bg-white border border-zinc-100 rounded-lg text-zinc-400 hover:text-blue-500 hover:border-blue-500 disabled:opacity-30 transition-all"
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
               {chapters.length === 0 && (
                 <div className="text-center py-12 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">

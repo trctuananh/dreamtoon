@@ -15,6 +15,8 @@ service cloud.firestore {
     //   - photoURL: string (optional)
     //   - role: string (optional, enum: ['dreamer', 'admin'])
     //   - bio: string (optional, max 500 chars)
+    //   - donateInfo: map (optional, {text: string, imageUrl: string})
+    //   - commissionInfo: map (optional, {text: string, imageUrl: string})
     //
     // Collection: comics
     // Document ID: comicId
@@ -93,6 +95,19 @@ service cloud.firestore {
     //   - genre: list (optional, max 5 items)
     //   - createdAt: timestamp (required, immutable)
     //
+    // Collection: posts
+    // Document ID: postId
+    // Fields:
+    //   - authorUid: string (required, immutable)
+    //   - authorName: string (optional)
+    //   - authorPhoto: string (optional)
+    //   - content: string (required, max 2000 chars)
+    //   - imageUrl: string (optional, URL)
+    //   - type: string (required, enum: ['twit', 'sketch', 'donate', 'commission'])
+    //   - likes: number (optional, positive)
+    //   - comments: number (optional, positive)
+    //   - createdAt: timestamp (required, immutable)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -133,11 +148,13 @@ service cloud.firestore {
       return data.keys().hasAll(['uid', 'email']) &&
              data.uid == request.auth.uid &&
              isValidEmail(data.email) &&
-             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
-             (!('handle' in data) || (data.handle is string && data.handle.matches("^[a-z0-9_]*$") && data.handle.size() <= 30)) &&
-             (!('photoURL' in data) || (data.photoURL is string)) &&
-             (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
-             (!('role' in data) || data.role in ['dreamer', 'admin']);
+             (!('displayName' in data) || (data.displayName is string || data.displayName == null)) &&
+             (!('handle' in data) || (data.handle is string || data.handle == null)) &&
+             (!('photoURL' in data) || (data.photoURL is string || data.photoURL == null)) &&
+             (!('bio' in data) || (data.bio is string || data.bio == null)) &&
+             (!('role' in data) || data.role in ['dreamer', 'admin']) &&
+             (!('donateInfo' in data) || (data.donateInfo is map || data.donateInfo == null)) &&
+             (!('commissionInfo' in data) || (data.commissionInfo is map || data.commissionInfo == null));
     }
 
     function isValidComic(data) {
@@ -145,30 +162,30 @@ service cloud.firestore {
              data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
              data.authorUid is string &&
              data.createdAt is timestamp &&
-             (!('id' in data) || data.id is string) &&
-             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
-             (!('thumbnail' in data) || (data.thumbnail is string)) &&
-             (!('banner' in data) || (data.banner is string)) &&
-             (!('genre' in data) || (data.genre is list && data.genre.size() <= 10)) &&
-             (!('tags' in data) || (data.tags is list && data.tags.size() <= 10)) &&
-             (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 100)) &&
-             (!('views' in data) || (data.views is number && data.views >= 0)) &&
-             (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5)) &&
-             (!('ratingCount' in data) || (data.ratingCount is number && data.ratingCount >= 0)) &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp);
+             (!('id' in data) || (data.id is string || data.id == null)) &&
+             (!('description' in data) || (data.description is string || data.description == null)) &&
+             (!('thumbnail' in data) || (data.thumbnail is string || data.thumbnail == null)) &&
+             (!('banner' in data) || (data.banner is string || data.banner == null)) &&
+             (!('genre' in data) || (data.genre is list || data.genre == null)) &&
+             (!('tags' in data) || (data.tags is list || data.tags == null)) &&
+             (!('authorName' in data) || (data.authorName is string || data.authorName == null)) &&
+             (!('views' in data) || (data.views is number || data.views == null)) &&
+             (!('rating' in data) || (data.rating is number || data.rating == null)) &&
+             (!('ratingCount' in data) || (data.ratingCount is number || data.ratingCount == null)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp || data.updatedAt == null));
     }
 
     function isValidChapter(data, comicId) {
       return data.keys().hasAll(['comicId', 'number', 'images', 'createdAt']) &&
              data.comicId == comicId &&
              data.number is number && data.number > 0 &&
-             data.images is list && data.images.size() > 0 && data.images.size() <= 100 &&
+             data.images is list && data.images.size() > 0 &&
              data.createdAt is timestamp &&
-             (!('id' in data) || data.id is string) &&
-             (!('title' in data) || (data.title is string && data.title.size() <= 100)) &&
-             (!('authorUid' in data) || data.authorUid is string) &&
-             (!('views' in data) || (data.views is number && data.views >= 0)) &&
-             (!('uploadDate' in data) || data.uploadDate is string);
+             (!('id' in data) || (data.id is string || data.id == null)) &&
+             (!('title' in data) || (data.title is string || data.title == null)) &&
+             (!('authorUid' in data) || (data.authorUid is string || data.authorUid == null)) &&
+             (!('views' in data) || (data.views is number || data.views == null)) &&
+             (!('uploadDate' in data) || (data.uploadDate is string || data.uploadDate == null));
     }
 
     function isValidComment(data, comicId, chapterId) {
@@ -178,8 +195,8 @@ service cloud.firestore {
              data.chapterId == chapterId && data.comicId == comicId &&
              data.text is string && data.text.size() > 0 && data.text.size() <= 1000 &&
              data.createdAt is timestamp &&
-             (!('id' in data) || data.id is string) &&
-             (!('userPhoto' in data) || data.userPhoto is string);
+             (!('id' in data) || (data.id is string || data.id == null)) &&
+             (!('userPhoto' in data) || (data.userPhoto is string || data.userPhoto == null));
     }
 
     function isValidLike(data, comicId, chapterId) {
@@ -202,13 +219,13 @@ service cloud.firestore {
     function isValidArticle(data) {
       return data.keys().hasAll(['title', 'content', 'authorUid', 'createdAt']) &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
-             data.content is string && data.content.size() > 0 && data.content.size() <= 100000 &&
+             data.content is string && data.content.size() > 0 &&
              data.authorUid == request.auth.uid &&
              data.createdAt is timestamp &&
-             (!('id' in data) || data.id is string) &&
-             (!('banner' in data) || data.banner is string) &&
-             (!('authorName' in data) || data.authorName is string) &&
-             (!('views' in data) || (data.views is number && data.views >= 0));
+             (!('id' in data) || (data.id is string || data.id == null)) &&
+             (!('banner' in data) || (data.banner is string || data.banner == null)) &&
+             (!('authorName' in data) || (data.authorName is string || data.authorName == null)) &&
+             (!('views' in data) || (data.views is number || data.views == null));
     }
 
     function isValidFeatured(data) {
@@ -221,6 +238,20 @@ service cloud.firestore {
              (!('targetId' in data) || data.targetId is string) &&
              (!('externalUrl' in data) || data.externalUrl is string) &&
              (!('genre' in data) || (data.genre is list && data.genre.size() <= 5));
+    }
+
+    function isValidPost(data) {
+      return data.keys().hasAll(['authorUid', 'content', 'type', 'createdAt']) &&
+             data.authorUid == request.auth.uid &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
+             data.type in ['twit', 'sketch', 'donate', 'commission'] &&
+             data.createdAt is timestamp &&
+             (!('id' in data) || (data.id is string || data.id == null)) &&
+             (!('authorName' in data) || (data.authorName is string || data.authorName == null)) &&
+             (!('authorPhoto' in data) || (data.authorPhoto is string || data.authorPhoto == null)) &&
+             (!('imageUrl' in data) || (data.imageUrl is string || data.imageUrl == null)) &&
+             (!('likes' in data) || (data.likes is number && data.likes >= 0)) &&
+             (!('comments' in data) || (data.comments is number && data.comments >= 0));
     }
 
     // ===============================================================
@@ -307,6 +338,16 @@ service cloud.firestore {
     match /featured/{featuredId} {
       allow read: if true;
       allow create, update, delete: if isAdmin() && isValidFeatured(request.resource.data);
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidPost(request.resource.data);
+      allow update: if (request.auth.uid == resource.data.authorUid || isAdmin()) && 
+                       isValidPost(request.resource.data) &&
+                       request.resource.data.authorUid == resource.data.authorUid &&
+                       request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if request.auth.uid == resource.data.authorUid || isAdmin();
     }
   }
 }

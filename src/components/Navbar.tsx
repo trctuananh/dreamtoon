@@ -1,7 +1,7 @@
 import React from 'react';
-import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft } from 'lucide-react';
+import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
-import { View } from '../types';
+import { View, UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 
@@ -15,7 +15,8 @@ export function Navbar({
   setSearchQuery, 
   onBack, 
   onLogout, 
-  onLogin 
+  onLogin,
+  profile
 }: { 
   user: FirebaseUser | null, 
   view: View, 
@@ -26,9 +27,12 @@ export function Navbar({
   setSearchQuery: (q: string) => void, 
   onBack: () => void, 
   onLogout: () => void, 
-  onLogin: () => void 
+  onLogin: () => void,
+  profile: UserProfile | null
 }) {
   const { t } = useTranslation(lang);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100 px-4 py-3 flex items-center justify-between">
@@ -45,7 +49,7 @@ export function Navbar({
             <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
               <BookOpen size={20} className="text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tighter text-blue-500">DREAM<span className="text-zinc-900">TOON</span></span>
+            <span className="text-xl font-bold tracking-tighter text-blue-500 uppercase">Dream<span className="text-zinc-900">Toon</span></span>
           </div>
         )}
 
@@ -65,33 +69,87 @@ export function Navbar({
             <Compass size={18} />
             {t('originals')}
           </button>
-          <button 
-            onClick={() => setView('profile')}
-            className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'profile' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
-          >
-            <User size={18} />
-            {t('profile')}
-          </button>
+          
+          {/* Dreamers Dropdown */}
+          <div className="relative group">
+            <button 
+              className={`text-sm font-bold flex items-center gap-2 transition-colors ${['profile', 'my-wall', 'community'].includes(view) ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
+            >
+              <Users size={18} />
+              {t('dreamers')}
+              <ChevronDown size={14} className="group-hover:rotate-180 transition-transform" />
+            </button>
+            
+            <div className="absolute left-0 top-full pt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+              <div className="bg-white rounded-xl shadow-xl border border-zinc-100 py-2 overflow-hidden">
+                <button 
+                  onClick={() => setView('community')}
+                  className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center gap-3 transition-colors ${view === 'community' ? 'bg-blue-50 text-blue-600' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                >
+                  <Users size={16} className="text-blue-500" />
+                  {t('community')}
+                </button>
+                {user && (
+                  <button 
+                    onClick={() => setView('my-wall')}
+                    className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center gap-3 transition-colors ${view === 'my-wall' ? 'bg-blue-50 text-blue-600' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                  >
+                    <PenTool size={16} className="text-purple-500" />
+                    {t('myWall')}
+                  </button>
+                )}
+                <button 
+                  onClick={() => setView('profile')}
+                  className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center gap-3 transition-colors ${view === 'profile' ? 'bg-blue-50 text-blue-600' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                >
+                  <User size={16} className="text-zinc-400" />
+                  {t('profile')}
+                </button>
+                <div className="h-px bg-zinc-50 my-1" />
+                <button 
+                  onClick={() => window.open('https://discord.gg/', '_blank')}
+                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-zinc-600 hover:bg-zinc-50 flex items-center gap-3 transition-colors"
+                >
+                  <MessageSquare size={16} className="text-indigo-500" />
+                  {t('discord')}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {view === 'home' && (
-        <div className="flex-1 max-w-md mx-4 relative hidden sm:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+        <div className={`flex-1 max-w-md mx-4 relative ${isSearchOpen ? 'block absolute inset-x-0 top-0 h-full bg-white z-50 px-4 flex items-center' : 'hidden sm:block'}`}>
+          <Search className="absolute left-3 sm:left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
           <input 
             type="text" 
             placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-zinc-50 border border-zinc-100 rounded-full py-2 pl-10 pr-4 focus:outline-none focus:border-blue-500 transition-colors text-sm text-zinc-900"
+            className="w-full bg-zinc-50 border border-zinc-100 rounded-full py-2 pl-10 pr-10 focus:outline-none focus:border-blue-500 transition-colors text-sm text-zinc-900"
+            autoFocus={isSearchOpen}
           />
+          {isSearchOpen && (
+            <button 
+              onClick={() => setIsSearchOpen(false)}
+              className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400 hover:text-zinc-900"
+            >
+              {t('cancel')}
+            </button>
+          )}
         </div>
       )}
 
       <div className="flex items-center gap-2">
-        <button className="sm:hidden p-2 hover:bg-zinc-100 rounded-full text-zinc-600">
-          <Search size={22} />
-        </button>
+        {view === 'home' && (
+          <button 
+            onClick={() => setIsSearchOpen(true)}
+            className="sm:hidden p-2 hover:bg-zinc-100 rounded-full text-zinc-600"
+          >
+            <Search size={22} />
+          </button>
+        )}
         
         {user ? (
           <div className="flex items-center gap-3">
@@ -103,14 +161,14 @@ export function Navbar({
             </button>
             <div className="relative group">
               <img 
-                src={user.photoURL || ''} 
-                alt={user.displayName || ''} 
+                src={profile?.photoURL || user.photoURL || ''} 
+                alt={profile?.displayName || user.displayName || ''} 
                 className="w-8 h-8 rounded-full border-2 border-blue-500 cursor-pointer"
                 referrerPolicy="no-referrer"
               />
               <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-zinc-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                 <div className="px-4 py-2 border-b border-zinc-50">
-                  <p className="text-xs font-bold text-zinc-900 truncate">{user.displayName}</p>
+                  <p className="text-xs font-bold text-zinc-900 truncate">{profile?.displayName || user.displayName}</p>
                   <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
                 </div>
                 <button 
@@ -118,6 +176,25 @@ export function Navbar({
                   className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
                 >
                   {t('profile')}
+                </button>
+                <button 
+                  onClick={() => setView('community')}
+                  className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 md:hidden"
+                >
+                  {t('community')}
+                </button>
+                <button 
+                  onClick={() => setView('my-wall')}
+                  className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 md:hidden"
+                >
+                  {t('myWall')}
+                </button>
+                <div className="h-px bg-zinc-50 my-1 md:hidden" />
+                <button 
+                  onClick={() => window.open('https://discord.gg/', '_blank')}
+                  className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 md:hidden"
+                >
+                  {t('discord')}
                 </button>
                 <button 
                   onClick={() => setView('upload')}
@@ -184,10 +261,106 @@ export function Navbar({
           </button>
         </div>
         
-        <button className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600 md:hidden">
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600 md:hidden"
+        >
           <Menu size={24} />
         </button>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[60] bg-white md:hidden overflow-y-auto">
+          <div className="p-4 flex items-center justify-between border-b border-zinc-100">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                <BookOpen size={20} className="text-white" />
+              </div>
+              <span className="text-xl font-bold tracking-tighter text-blue-500 uppercase">Dream<span className="text-zinc-900">Toon</span></span>
+            </div>
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-2 hover:bg-zinc-100 rounded-full text-zinc-900"
+            >
+              <ChevronLeft size={24} />
+            </button>
+          </div>
+          <div className="p-6 space-y-8">
+            <div className="space-y-4">
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{t('home')}</p>
+              <button 
+                onClick={() => { setView('home'); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'home' ? 'text-blue-500' : 'text-zinc-900'}`}
+              >
+                <HomeIcon size={24} />
+                {t('home')}
+              </button>
+              <button 
+                onClick={() => { setView('explore'); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'explore' ? 'text-blue-500' : 'text-zinc-900'}`}
+              >
+                <Compass size={24} />
+                {t('originals')}
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{t('dreamers')}</p>
+              <button 
+                onClick={() => { setView('community'); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'community' ? 'text-blue-500' : 'text-zinc-900'}`}
+              >
+                <Users size={24} />
+                {t('community')}
+              </button>
+              {user && (
+                <button 
+                  onClick={() => { setView('my-wall'); setIsMobileMenuOpen(false); }}
+                  className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-900'}`}
+                >
+                  <PenTool size={24} />
+                  {t('myWall')}
+                </button>
+              )}
+              <button 
+                onClick={() => { window.open('https://discord.gg/', '_blank'); setIsMobileMenuOpen(false); }}
+                className="w-full text-left py-3 text-lg font-black flex items-center gap-4 text-zinc-900"
+              >
+                <MessageSquare size={24} className="text-indigo-500" />
+                {t('discord')}
+              </button>
+            </div>
+
+            <div className="pt-8 border-t border-zinc-100">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex-1">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">{t('language')}</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setLang('en')} className={`px-4 py-2 rounded-xl text-xs font-bold ${lang === 'en' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-zinc-100 text-zinc-500'}`}>English</button>
+                    <button onClick={() => setLang('vi')} className={`px-4 py-2 rounded-xl text-xs font-bold ${lang === 'vi' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-zinc-100 text-zinc-500'}`}>Tiếng Việt</button>
+                  </div>
+                </div>
+              </div>
+              {user ? (
+                <button 
+                  onClick={() => { onLogout(); setIsMobileMenuOpen(false); }}
+                  className="w-full py-4 bg-red-50 text-red-500 rounded-2xl font-black text-center"
+                >
+                  {t('logout')}
+                </button>
+              ) : (
+                <button 
+                  onClick={() => { onLogin(); setIsMobileMenuOpen(false); }}
+                  className="w-full py-4 bg-blue-500 text-white rounded-2xl font-black text-center shadow-xl shadow-blue-500/20"
+                >
+                  {t('login')}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

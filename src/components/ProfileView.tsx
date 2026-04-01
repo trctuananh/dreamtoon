@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Layout, Compass, Star, Plus, Trash2, Library, Heart } from 'lucide-react';
 import { motion } from 'motion/react';
-import { collection, query, where, getDocs, setDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Comic, Following } from '../types';
 import { Language, translations } from '../translations';
@@ -59,6 +59,30 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
         displayName, 
         handle: handle.toLowerCase() 
       }, { merge: true });
+
+      // Update all posts by this user to reflect the new name
+      const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', user.uid));
+      const postsSnap = await getDocs(postsQuery);
+      const postUpdates = postsSnap.docs.map(postDoc => 
+        updateDoc(doc(db, 'posts', postDoc.id), { authorName: displayName })
+      );
+
+      // Update all comics by this user to reflect the new name
+      const comicsQuery = query(collection(db, 'comics'), where('authorUid', '==', user.uid));
+      const comicsSnap = await getDocs(comicsQuery);
+      const comicUpdates = comicsSnap.docs.map(comicDoc => 
+        updateDoc(doc(db, 'comics', comicDoc.id), { authorName: displayName })
+      );
+
+      // Update all articles by this user to reflect the new name
+      const articlesQuery = query(collection(db, 'articles'), where('authorUid', '==', user.uid));
+      const articlesSnap = await getDocs(articlesQuery);
+      const articleUpdates = articlesSnap.docs.map(articleDoc => 
+        updateDoc(doc(db, 'articles', articleDoc.id), { authorName: displayName })
+      );
+
+      await Promise.all([...postUpdates, ...comicUpdates, ...articleUpdates]);
+
       setIsEditing(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
@@ -97,20 +121,24 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
-          <div className="bg-white rounded-3xl p-8 border border-zinc-100 shadow-sm sticky top-24">
-            <div className="flex flex-col items-center text-center">
-              <img 
-                src={user.photoURL || ''} 
-                alt={user.displayName || ''} 
-                className="w-32 h-32 rounded-full border-4 border-blue-500 mb-4"
-                referrerPolicy="no-referrer"
-              />
-              <h3 className="text-xl font-bold text-zinc-900">{profile?.displayName || user.displayName}</h3>
+          <div className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm sticky top-24 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-blue-500 to-indigo-600" />
+            <div className="flex flex-col items-center text-center relative z-10">
+              <div className="relative mb-4">
+                <img 
+                  src={user.photoURL || ''} 
+                  alt={user.displayName || ''} 
+                  className="w-32 h-32 rounded-[2.5rem] border-4 border-white shadow-2xl object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 border-4 border-white rounded-full shadow-lg" />
+              </div>
+              <h3 className="text-2xl font-black text-zinc-900 tracking-tight">{profile?.displayName || user.displayName}</h3>
               {profile?.handle && (
-                <p className="text-blue-500 font-bold text-sm mb-1">@{profile.handle}</p>
+                <p className="text-blue-500 font-black text-sm mb-1 tracking-tight">@{profile.handle}</p>
               )}
-              <p className="text-zinc-500 text-sm mb-2">{user.email}</p>
-              <p className="text-xs text-zinc-400 mb-4">{t('joined')}: {joinedDate}</p>
+              <p className="text-zinc-400 text-xs font-bold mb-2">{user.email}</p>
+              <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] mb-6">{t('joined')}: {joinedDate}</p>
 
               {isEditing ? (
                 <div className="w-full mb-6 space-y-4">
