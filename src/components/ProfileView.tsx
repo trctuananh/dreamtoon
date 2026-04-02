@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Layout, Compass, Star, Plus, Trash2, Library, Heart } from 'lucide-react';
+import { ArrowLeft, Layout, Compass, Star, Plus, Trash2, Library, Heart, LogOut, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
 import { collection, query, where, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, auth } from '../firebase';
 import { Comic, Following } from '../types';
 import { Language, translations } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
-import { formatViews } from '../lib/utils';
+import { formatViews, validateImage } from '../lib/utils';
 
-export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void }) {
+export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow, onLogout }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onLogout: () => void }) {
   const { t } = useTranslation(lang);
   const [activeTab, setActiveTab] = useState<'comics' | 'following'>('comics');
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState(profile?.bio || '');
   const [displayName, setDisplayName] = useState(profile?.displayName || user.displayName || '');
   const [handle, setHandle] = useState(profile?.handle || '');
+  const [photoURL, setPhotoURL] = useState(profile?.photoURL || user.photoURL || '');
   const [handleError, setHandleError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -23,6 +24,7 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
       setBio(profile.bio || '');
       setDisplayName(profile.displayName || user.displayName || '');
       setHandle(profile.handle || '');
+      setPhotoURL(profile.photoURL || user.photoURL || '');
     }
   }, [profile, user]);
 
@@ -31,7 +33,28 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
     if (!/^[a-zA-Z0-9_]+$/.test(val)) {
       return t('invalidHandle');
     }
+    const reserved = ['home', 'explore', 'detail', 'reader', 'upload', 'add-chapter', 'edit-chapter', 'article', 'create-article', 'manage-featured', 'profile', 'edit-comic', 'my-wall', 'community', 'artist-wall', 'api', 'admin', 'auth'];
+    if (reserved.includes(val.toLowerCase())) {
+      return t('handleTaken');
+    }
     return null;
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await validateImage(file);
+    if (!result.valid) {
+      alert(result.error || 'Invalid image');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setPhotoURL(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleUpdateProfile = async () => {
@@ -57,28 +80,29 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
       await setDoc(doc(db, 'users', user.uid), { 
         bio, 
         displayName, 
-        handle: handle.toLowerCase() 
+        handle: handle.toLowerCase(),
+        photoURL
       }, { merge: true });
 
-      // Update all posts by this user to reflect the new name
+      // Update all posts by this user to reflect the new name and photo
       const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', user.uid));
       const postsSnap = await getDocs(postsQuery);
       const postUpdates = postsSnap.docs.map(postDoc => 
-        updateDoc(doc(db, 'posts', postDoc.id), { authorName: displayName })
+        updateDoc(doc(db, 'posts', postDoc.id), { authorName: displayName, authorPhoto: photoURL })
       );
 
-      // Update all comics by this user to reflect the new name
+      // Update all comics by this user to reflect the new name and photo
       const comicsQuery = query(collection(db, 'comics'), where('authorUid', '==', user.uid));
       const comicsSnap = await getDocs(comicsQuery);
       const comicUpdates = comicsSnap.docs.map(comicDoc => 
-        updateDoc(doc(db, 'comics', comicDoc.id), { authorName: displayName })
+        updateDoc(doc(db, 'comics', comicDoc.id), { authorName: displayName, authorPhoto: photoURL })
       );
 
-      // Update all articles by this user to reflect the new name
+      // Update all articles by this user to reflect the new name and photo
       const articlesQuery = query(collection(db, 'articles'), where('authorUid', '==', user.uid));
       const articlesSnap = await getDocs(articlesQuery);
       const articleUpdates = articlesSnap.docs.map(articleDoc => 
-        updateDoc(doc(db, 'articles', articleDoc.id), { authorName: displayName })
+        updateDoc(doc(db, 'articles', articleDoc.id), { authorName: displayName, authorPhoto: photoURL })
       );
 
       await Promise.all([...postUpdates, ...comicUpdates, ...articleUpdates]);
@@ -124,16 +148,22 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
           <div className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm sticky top-24 overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-blue-500 to-indigo-600" />
             <div className="flex flex-col items-center text-center relative z-10">
-              <div className="relative mb-4">
+              <div className="relative mb-4 group">
                 <img 
-                  src={user.photoURL || ''} 
-                  alt={user.displayName || ''} 
+                  src={photoURL || user.photoURL || ''} 
+                  alt={displayName || user.displayName || ''} 
                   className="w-32 h-32 rounded-[2.5rem] border-4 border-white shadow-2xl object-cover"
                   referrerPolicy="no-referrer"
                 />
+                {isEditing && (
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[2.5rem] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="text-white" size={32} />
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                  </label>
+                )}
                 <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 border-4 border-white rounded-full shadow-lg" />
               </div>
-              <h3 className="text-2xl font-black text-zinc-900 tracking-tight">{profile?.displayName || user.displayName}</h3>
+              <h3 className="text-2xl font-black text-zinc-900 tracking-tight">{displayName || profile?.displayName || user.displayName}</h3>
               {profile?.handle && (
                 <p className="text-blue-500 font-black text-sm mb-1 tracking-tight">@{profile.handle}</p>
               )}
@@ -231,6 +261,14 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('role')}</p>
                 </div>
               </div>
+
+              <button
+                onClick={onLogout}
+                className="mt-8 w-full flex items-center justify-center gap-2 px-4 py-3 bg-zinc-100 text-zinc-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-600 transition-all"
+              >
+                <LogOut size={16} />
+                {t('logout')}
+              </button>
             </div>
           </div>
         </div>

@@ -21,6 +21,9 @@ import {
   signInWithPopup, 
   signOut, 
   onAuthStateChanged, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  updateProfile, 
   User as FirebaseUser 
 } from 'firebase/auth';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -95,28 +98,32 @@ export default function App() {
   // Deep Linking
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const artistHandle = params.get('artist');
+    let artistHandle = params.get('artist');
+    
+    // Also check pathname for dreamtoon.vn/id format
+    if (!artistHandle && window.location.pathname !== '/') {
+      // Remove leading slash and any trailing slashes
+      artistHandle = window.location.pathname.replace(/^\/|\/$/g, '');
+    }
+
     if (artistHandle) {
       const fetchArtist = async () => {
         try {
           // Try fetching by handle first
-          const q = query(collection(db, 'users'), where('handle', '==', artistHandle.toLowerCase()));
+          const q = query(collection(db, 'users'), where('handle', '==', artistHandle!.toLowerCase()));
           const snap = await getDocs(q);
           
           if (!snap.empty) {
             const artistProfile = snap.docs[0].data() as UserProfile;
             const artistUid = snap.docs[0].id;
-            // We need a way to show this artist's wall
-            // For now, let's use a temporary state or reuse MyWallView logic
-            // Actually, let's just set a selected artist state
             setSelectedArtist({ uid: artistUid, profile: artistProfile });
             setView('artist-wall');
           } else {
             // Try fetching by UID
-            const docRef = doc(db, 'users', artistHandle);
+            const docRef = doc(db, 'users', artistHandle!);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-              setSelectedArtist({ uid: artistHandle, profile: docSnap.data() as UserProfile });
+              setSelectedArtist({ uid: artistHandle!, profile: docSnap.data() as UserProfile });
               setView('artist-wall');
             }
           }
@@ -287,10 +294,43 @@ export default function App() {
     }
   };
 
+  const handleEmailLogin = async (email: string, pass: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      setIsLoginModalOpen(false);
+    } catch (error: any) {
+      console.error('Email login failed:', error);
+      let message = t('errorOccurred');
+      if (error.code === 'auth/user-not-found') message = t('userNotFound');
+      if (error.code === 'auth/wrong-password') message = t('wrongPassword');
+      if (error.code === 'auth/invalid-email') message = t('invalidEmail');
+      throw new Error(message);
+    }
+  };
+
+  const handleEmailRegister = async (email: string, pass: string, name: string) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(userCredential.user, {
+        displayName: name
+      });
+      // The onAuthStateChanged will handle the rest
+      setIsLoginModalOpen(false);
+    } catch (error: any) {
+      console.error('Email registration failed:', error);
+      let message = t('errorOccurred');
+      if (error.code === 'auth/email-already-in-use') message = t('emailInUse');
+      if (error.code === 'auth/weak-password') message = t('weakPassword');
+      if (error.code === 'auth/invalid-email') message = t('invalidEmail');
+      throw new Error(message);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
       setView('home');
+      window.scrollTo(0, 0);
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -307,9 +347,16 @@ export default function App() {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setSelectedArtist({ uid, profile: docSnap.data() as UserProfile });
+        const data = docSnap.data() as UserProfile;
+        setSelectedArtist({ uid, profile: data });
         setView('artist-wall');
         window.scrollTo(0, 0);
+        // Update URL to dreamtoon.vn/id
+        if (data.handle) {
+          window.history.pushState(null, '', `/${data.handle}`);
+        } else {
+          window.history.pushState(null, '', `/${uid}`);
+        }
       }
     } catch (error) {
       console.error("Error fetching artist profile:", error);
@@ -363,18 +410,27 @@ export default function App() {
     setSelectedTag(null);
     if (view === 'reader') {
       setView('detail');
+    } else if (view === 'artist-wall') {
+      setSelectedArtist(null);
+      setView('home');
+      window.history.pushState(null, '', '/');
     } else if (view === 'article') {
       setView('home');
       setSelectedArticle(null);
+      window.history.pushState(null, '', '/');
     } else if (view === 'create-article') {
       setView('home');
+      window.history.pushState(null, '', '/');
     } else if (view === 'detail') {
       setView('home');
       setSelectedComic(null);
+      window.history.pushState(null, '', '/');
     } else if (view === 'explore') {
       setView('home');
+      window.history.pushState(null, '', '/');
     } else if (view === 'profile' || view === 'my-wall' || view === 'community') {
       setView('home');
+      window.history.pushState(null, '', '/');
     } else if (view === 'edit-comic') {
       setView('profile');
       setEditingComic(null);
@@ -383,10 +439,12 @@ export default function App() {
       setEditingChapter(null);
     } else if (view === 'manage-featured') {
       setView('home');
+      window.history.pushState(null, '', '/');
     } else {
       setView('home');
       setSelectedComic(null);
       setSelectedChapter(null);
+      window.history.pushState(null, '', '/');
     }
     window.scrollTo(0, 0);
   };
@@ -538,6 +596,11 @@ export default function App() {
                   setEditingChapter(chapter);
                   setView('edit-chapter');
                 }}
+                onEditComic={(comic) => {
+                  setEditingComic(comic);
+                  setView('edit-comic');
+                  window.scrollTo(0, 0);
+                }}
                 onMoveChapter={handleMoveChapter}
                 onArtistClick={handleArtistClick}
                 onBack={handleBack}
@@ -621,11 +684,13 @@ export default function App() {
                 onEditComic={(comic) => {
                   setEditingComic(comic);
                   setView('edit-comic');
+                  window.scrollTo(0, 0);
                 }}
                 onComicSelect={handleComicClick}
                 onUpload={() => setView('upload')}
                 onBack={handleBack}
                 onToggleFollow={handleToggleFollow}
+                onLogout={handleLogout}
                 lang={lang}
               />
             )}
@@ -738,6 +803,7 @@ export default function App() {
 
             {view === 'artist-wall' && selectedArtist && (
               <ArtistWallView 
+                user={user}
                 artistUid={selectedArtist.uid}
                 artistProfile={selectedArtist.profile}
                 lang={lang}
@@ -761,6 +827,8 @@ export default function App() {
             isOpen={isLoginModalOpen} 
             onClose={() => setIsLoginModalOpen(false)} 
             onLogin={handleLogin}
+            onEmailLogin={handleEmailLogin}
+            onEmailRegister={handleEmailRegister}
             lang={lang}
           />
 

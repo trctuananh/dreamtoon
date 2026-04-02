@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Image as ImageIcon, Trash2, Heart, ArrowLeft, PenTool, X, Save, DollarSign, Briefcase, Upload, Camera, Share2, Copy, Check } from 'lucide-react';
-import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, serverTimestamp, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Post, UserProfile } from '../types';
 import { Language } from '../translations';
@@ -20,6 +20,7 @@ export function MyWallView({ user, profile, lang, onBack }: { user: any, profile
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [infoText, setInfoText] = useState('');
   const [infoImage, setInfoImage] = useState<string | null>(null);
+  const [commissionQuestions, setCommissionQuestions] = useState<string[]>(['', '', '', '', '']);
   const [isSavingInfo, setIsSavingInfo] = useState(false);
   const infoFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,11 +95,19 @@ export function MyWallView({ user, profile, lang, onBack }: { user: any, profile
     setIsSavingInfo(true);
     try {
       const field = activeInfoModal === 'donate' ? 'donateInfo' : 'commissionInfo';
-      await updateDoc(doc(db, 'users', user.uid), {
+      const updateData: any = {
         [field]: {
           text: infoText,
           imageUrl: infoImage
         }
+      };
+      
+      if (activeInfoModal === 'commission') {
+        updateData.commissionQuestions = commissionQuestions.filter(q => q.trim() !== '');
+      }
+
+      await updateDoc(doc(db, 'users', user.uid), {
+        ...updateData
       });
       setIsEditingInfo(false);
     } catch (error) {
@@ -113,6 +122,12 @@ export function MyWallView({ user, profile, lang, onBack }: { user: any, profile
     const info = type === 'donate' ? profile?.donateInfo : profile?.commissionInfo;
     setInfoText(info?.text || '');
     setInfoImage(info?.imageUrl || null);
+    if (type === 'commission') {
+      const existingQuestions = profile?.commissionQuestions || [];
+      const newQuestions = [...existingQuestions];
+      while (newQuestions.length < 5) newQuestions.push('');
+      setCommissionQuestions(newQuestions.slice(0, 5));
+    }
     setIsEditingInfo(false);
   };
 
@@ -125,17 +140,31 @@ export function MyWallView({ user, profile, lang, onBack }: { user: any, profile
     }
   };
 
-  const handleLike = async (postId: string) => {
+  const handleLike = async (post: Post) => {
+    if (!user || post.likedBy?.includes(user.uid)) return;
     try {
-      await updateDoc(doc(db, 'posts', postId), {
-        likes: increment(1)
+      await updateDoc(doc(db, 'posts', post.id), {
+        likes: increment(1),
+        likedBy: arrayUnion(user.uid)
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `posts/${postId}`);
+      handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
     }
   };
 
-  const shareUrl = `${window.location.origin}/?artist=${profile?.handle || user.uid}`;
+  const handleUnlike = async (post: Post) => {
+    if (!user || !post.likedBy?.includes(user.uid)) return;
+    try {
+      await updateDoc(doc(db, 'posts', post.id), {
+        likes: increment(-1),
+        likedBy: arrayRemove(user.uid)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
+    }
+  };
+
+  const shareUrl = `https://dreamtoon.vn/${profile?.handle || user.uid}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -308,11 +337,12 @@ export function MyWallView({ user, profile, lang, onBack }: { user: any, profile
 
               <div className="flex items-center gap-6 pt-5 border-t border-zinc-50">
                 <button 
-                  onClick={() => handleLike(post.id)}
-                  className="flex items-center gap-2 text-zinc-400 hover:text-red-500 transition-all text-xs font-black uppercase tracking-wider"
+                  onClick={() => handleLike(post)}
+                  onDoubleClick={() => handleUnlike(post)}
+                  className={`flex items-center gap-2 transition-all text-xs font-black uppercase tracking-wider ${post.likedBy?.includes(user.uid) ? 'text-red-500' : 'text-zinc-400 hover:text-red-500'}`}
                 >
-                  <div className="p-2 rounded-full hover:bg-red-50 transition-colors">
-                    <Heart size={18} />
+                  <div className={`p-2 rounded-full transition-colors ${post.likedBy?.includes(user.uid) ? 'bg-red-50' : 'hover:bg-red-50'}`}>
+                    <Heart size={18} fill={post.likedBy?.includes(user.uid) ? "currentColor" : "none"} />
                   </div>
                   {post.likes || 0}
                 </button>
@@ -362,6 +392,28 @@ export function MyWallView({ user, profile, lang, onBack }: { user: any, profile
                         placeholder={activeInfoModal === 'donate' ? t('donateInfo') : t('commissionInfo')}
                       />
                     </div>
+                    {activeInfoModal === 'commission' && (
+                      <div className="space-y-3">
+                        <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('commissionQuestions')}</label>
+                        {commissionQuestions.map((q, i) => (
+                          <div key={i} className="flex items-center gap-3">
+                            <span className="text-[10px] font-black text-zinc-300">{i + 1}</span>
+                            <input 
+                              type="text"
+                              value={q}
+                              onChange={(e) => {
+                                const newQs = [...commissionQuestions];
+                                newQs[i] = e.target.value;
+                                setCommissionQuestions(newQs);
+                              }}
+                              placeholder={`${t('question')} ${i + 1}`}
+                              className="flex-1 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">{t('infoImageUrl')}</label>
                       <div className="flex items-center gap-4">

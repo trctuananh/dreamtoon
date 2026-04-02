@@ -15,6 +15,7 @@ export interface Comic {
   title: string;
   authorName: string;
   authorUid: string;
+  authorPhoto?: string;
   genre: string[];
   tags: string[];
   description: string;
@@ -35,6 +36,7 @@ export interface Article {
   content: string; // Markdown supported
   authorName: string;
   authorUid: string;
+  authorPhoto?: string;
   banner: string;
   views: number;
   createdAt: any;
@@ -64,7 +66,19 @@ export interface UserProfile {
   role?: 'admin' | 'user';
   donateInfo?: { text: string; imageUrl: string };
   commissionInfo?: { text: string; imageUrl: string };
+  commissionQuestions?: string[];
   createdAt?: any;
+}
+
+export interface CommissionRequest {
+  id: string;
+  artistUid: string;
+  guestUid: string;
+  guestName: string;
+  guestEmail: string;
+  answers: { question: string; answer: string }[];
+  status: 'pending' | 'accepted' | 'rejected' | 'completed';
+  createdAt: any;
 }
 
 export interface Comment {
@@ -112,6 +126,7 @@ export interface Post {
   imageUrl?: string;
   type: 'twit' | 'sketch' | 'donate' | 'commission';
   likes: number;
+  likedBy?: string[];
   comments: number;
   createdAt: any;
 }

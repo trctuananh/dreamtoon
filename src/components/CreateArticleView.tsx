@@ -24,6 +24,7 @@ export function CreateArticleView({ user, profile, lang, onSuccess, onCancel }: 
         content,
         authorUid: user.uid,
         authorName: profile?.displayName || user.displayName,
+        authorPhoto: profile?.photoURL || user.photoURL || '',
         views: 0,
         createdAt: serverTimestamp()
       });

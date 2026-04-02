@@ -86,6 +86,7 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
       banner,
       authorUid: user.uid,
       authorName: profile?.displayName || user.displayName,
+      authorPhoto: profile?.photoURL || user.photoURL || '',
       updatedAt: serverTimestamp(),
     };
 

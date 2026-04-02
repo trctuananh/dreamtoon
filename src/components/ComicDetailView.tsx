@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Compass, Star, Clock, BookOpen, Share2, Heart, MessageCircle, Send, Trash2, Plus, ChevronUp, ChevronDown, Edit2 } from 'lucide-react';
+import { ArrowLeft, Compass, Star, Clock, BookOpen, Share2, Heart, MessageCircle, Send, Trash2, Plus, ChevronUp, ChevronDown, Edit2, DollarSign } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Comic, Chapter, Following } from '../types';
 import { Language } from '../translations';
@@ -21,6 +21,7 @@ export function ComicDetailView({
   onToggleFollow, 
   onAddChapter,
   onEditChapter,
+  onEditComic,
   onMoveChapter,
   onArtistClick,
   onBack
@@ -38,6 +39,7 @@ export function ComicDetailView({
   onToggleFollow: (id: string, type: 'artist' | 'comic') => void, 
   onAddChapter: () => void,
   onEditChapter: (chapter: Chapter) => void,
+  onEditComic: (comic: Comic) => void,
   onMoveChapter: (chapter: Chapter, direction: 'up' | 'down') => void,
   onArtistClick: (uid: string) => void,
   onBack: () => void
@@ -45,6 +47,7 @@ export function ComicDetailView({
   const { t } = useTranslation(lang);
   const isFollowingComic = following.some(f => f.targetId === comic.id && f.type === 'comic');
   const isFollowingArtist = following.some(f => f.targetId === comic.authorUid && f.type === 'artist');
+  const isAuthor = user && user.uid === comic.authorUid;
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-20">
@@ -97,6 +100,15 @@ export function ComicDetailView({
               </div>
 
               <div className="space-y-3">
+                {isAuthor && (
+                  <button 
+                    onClick={() => onEditComic(comic)}
+                    className="w-full py-4 bg-blue-50 text-blue-600 rounded-full font-bold text-sm hover:bg-blue-100 transition-all border border-blue-100 flex items-center justify-center gap-2"
+                  >
+                    <Edit2 size={18} />
+                    {t('edit')}
+                  </button>
+                )}
                 <button 
                   onClick={() => onToggleFollow(comic.id, 'comic')}
                   className={`w-full py-4 rounded-full font-bold text-sm transition-all shadow-xl flex items-center justify-center gap-2 ${
@@ -116,6 +128,13 @@ export function ComicDetailView({
                   className="w-full py-4 bg-zinc-900 text-white rounded-full font-bold text-sm hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 disabled:opacity-50"
                 >
                   {t('readNow')}
+                </button>
+                <button 
+                  onClick={() => onArtistClick(comic.authorUid)}
+                  className="w-full py-4 bg-green-500 text-white rounded-full font-bold text-sm hover:bg-green-600 transition-all shadow-xl shadow-green-500/20 flex items-center justify-center gap-2"
+                >
+                  <DollarSign size={18} />
+                  {t('donate')}
                 </button>
               </div>
             </div>

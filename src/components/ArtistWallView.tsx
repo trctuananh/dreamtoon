@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment } from 'firebase/firestore';
+import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send } from 'lucide-react';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Post, UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function ArtistWallView({ artistUid, artistProfile, lang, onBack }: { artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void }) {
+export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }: { user: any, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   
   // Info Modal State
   const [activeInfoModal, setActiveInfoModal] = useState<'donate' | 'commission' | null>(null);
+  const [showCommissionForm, setShowCommissionForm] = useState(false);
+  const [answers, setAnswers] = useState<string[]>(['', '', '', '', '']);
+  const [guestEmail, setGuestEmail] = useState(user?.email || '');
+  const [guestName, setGuestName] = useState(user?.displayName || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   // Share State
   const [showShareModal, setShowShareModal] = useState(false);
@@ -38,17 +44,31 @@ export function ArtistWallView({ artistUid, artistProfile, lang, onBack }: { art
     return () => unsubscribe();
   }, [artistUid]);
 
-  const handleLike = async (postId: string) => {
+  const handleLike = async (post: Post) => {
+    if (!user || post.likedBy?.includes(user.uid)) return;
     try {
-      await updateDoc(doc(db, 'posts', postId), {
-        likes: increment(1)
+      await updateDoc(doc(db, 'posts', post.id), {
+        likes: increment(1),
+        likedBy: arrayUnion(user.uid)
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `posts/${postId}`);
+      handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
     }
   };
 
-  const shareUrl = `${window.location.origin}/?artist=${artistProfile?.handle || artistUid}`;
+  const handleUnlike = async (post: Post) => {
+    if (!user || !post.likedBy?.includes(user.uid)) return;
+    try {
+      await updateDoc(doc(db, 'posts', post.id), {
+        likes: increment(-1),
+        likedBy: arrayRemove(user.uid)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
+    }
+  };
+
+  const shareUrl = `https://dreamtoon.vn/${artistProfile?.handle || artistUid}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -64,6 +84,56 @@ export function ArtistWallView({ artistUid, artistProfile, lang, onBack }: { art
       telegram: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`
     };
     window.open(urls[platform], '_blank');
+  };
+
+  const handleSubmitCommission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsSubmitting(true);
+    try {
+      const commissionData = {
+        artistUid,
+        guestUid: user.uid,
+        guestName,
+        guestEmail,
+        answers: (artistProfile.commissionQuestions || []).map((q, i) => ({
+          question: q,
+          answer: answers[i]
+        })),
+        status: 'pending',
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'commissions'), commissionData);
+      
+      // Create a notification for the artist
+      await addDoc(collection(db, 'notifications'), {
+        uid: artistUid,
+        type: 'commission',
+        title: 'New Commission Request',
+        message: `${guestName} has sent a new commission request.`,
+        link: 'profile', // Or a specific commissions view
+        read: false,
+        createdAt: serverTimestamp()
+      });
+
+      // NOTE: Real email sending would require a server-side function (e.g. Firebase Functions)
+      // or a third-party service like SendGrid/Mailgun.
+      // For now, we simulate the intent.
+      console.log(`Email would be sent to ${artistProfile.email} about new commission from ${guestEmail}`);
+
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        setSubmitSuccess(false);
+        setShowCommissionForm(false);
+        setActiveInfoModal(null);
+        setAnswers(['', '', '', '', '']);
+      }, 3000);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'commissions');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -161,11 +231,12 @@ export function ArtistWallView({ artistUid, artistProfile, lang, onBack }: { art
 
               <div className="flex items-center gap-6 pt-5 border-t border-zinc-50">
                 <button 
-                  onClick={() => handleLike(post.id)}
-                  className="flex items-center gap-2 text-zinc-400 hover:text-red-500 transition-all text-xs font-black uppercase tracking-wider"
+                  onClick={() => handleLike(post)}
+                  onDoubleClick={() => handleUnlike(post)}
+                  className={`flex items-center gap-2 transition-all text-xs font-black uppercase tracking-wider ${post.likedBy?.includes(user?.uid) ? 'text-red-500' : 'text-zinc-400 hover:text-red-500'}`}
                 >
-                  <div className="p-2 rounded-full hover:bg-red-50 transition-colors">
-                    <Heart size={18} />
+                  <div className={`p-2 rounded-full transition-colors ${post.likedBy?.includes(user?.uid) ? 'bg-red-50' : 'hover:bg-red-50'}`}>
+                    <Heart size={18} fill={post.likedBy?.includes(user?.uid) ? "currentColor" : "none"} />
                   </div>
                   {post.likes || 0}
                 </button>
@@ -193,26 +264,106 @@ export function ArtistWallView({ artistUid, artistProfile, lang, onBack }: { art
             >
               <div className={`p-6 flex items-center justify-between text-white ${activeInfoModal === 'donate' ? 'bg-green-500' : 'bg-orange-500'}`}>
                 <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-2">
-                  {activeInfoModal === 'donate' ? <DollarSign size={20} /> : <Briefcase size={20} />}
-                  {t(activeInfoModal as any)}
+                  {showCommissionForm ? <Send size={20} /> : (activeInfoModal === 'donate' ? <DollarSign size={20} /> : <Briefcase size={20} />)}
+                  {showCommissionForm ? t('submitCommission') : t(activeInfoModal as any)}
                 </h3>
-                <button onClick={() => setActiveInfoModal(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                <button onClick={() => {
+                  setActiveInfoModal(null);
+                  setShowCommissionForm(false);
+                }} className="p-2 hover:bg-white/20 rounded-full transition-colors">
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="p-8 space-y-6">
-                <div className="text-zinc-700 text-sm leading-relaxed whitespace-pre-wrap min-h-[100px]">
-                  {(activeInfoModal === 'donate' ? artistProfile.donateInfo?.text : artistProfile.commissionInfo?.text) || (activeInfoModal === 'donate' ? t('donateInfo') : t('commissionInfo'))}
-                </div>
-                {(activeInfoModal === 'donate' ? artistProfile.donateInfo?.imageUrl : artistProfile.commissionInfo?.imageUrl) && (
-                  <div className="rounded-2xl overflow-hidden border border-zinc-100 shadow-md">
-                    <img 
-                      src={activeInfoModal === 'donate' ? artistProfile.donateInfo?.imageUrl : artistProfile.commissionInfo?.imageUrl} 
-                      alt={activeInfoModal} 
-                      className="w-full h-auto object-cover"
-                      referrerPolicy="no-referrer"
-                    />
+              <div className="p-8">
+                {showCommissionForm ? (
+                  <form onSubmit={handleSubmitCommission} className="space-y-6">
+                    {submitSuccess ? (
+                      <div className="text-center py-12 bg-green-50 rounded-3xl border-2 border-dashed border-green-200">
+                        <p className="text-green-600 font-black uppercase tracking-widest">{t('commissionSubmitted')}</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-4">
+                          <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('guestInfo')}</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t('yourName')}</label>
+                              <input 
+                                required
+                                type="text"
+                                value={guestName}
+                                onChange={(e) => setGuestName(e.target.value)}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-orange-500 transition-colors"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t('yourEmail')}</label>
+                              <input 
+                                required
+                                type="email"
+                                value={guestEmail}
+                                onChange={(e) => setGuestEmail(e.target.value)}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-orange-500 transition-colors"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('commissionQuestions')}</h4>
+                          {(artistProfile.commissionQuestions || []).map((q, i) => (
+                            <div key={i} className="space-y-1">
+                              <label className="block text-xs font-bold text-zinc-700">{q}</label>
+                              <textarea 
+                                required
+                                value={answers[i]}
+                                onChange={(e) => {
+                                  const newAns = [...answers];
+                                  newAns[i] = e.target.value;
+                                  setAnswers(newAns);
+                                }}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-orange-500 transition-colors resize-none"
+                                rows={2}
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        <button 
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full py-4 bg-orange-500 text-white rounded-full font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/20 disabled:opacity-50"
+                        >
+                          {isSubmitting ? '...' : t('submitCommission')}
+                        </button>
+                      </>
+                    )}
+                  </form>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="text-zinc-700 text-sm leading-relaxed whitespace-pre-wrap min-h-[100px]">
+                      {(activeInfoModal === 'donate' ? artistProfile.donateInfo?.text : artistProfile.commissionInfo?.text) || (activeInfoModal === 'donate' ? t('donateInfo') : t('commissionInfo'))}
+                    </div>
+                    {(activeInfoModal === 'donate' ? artistProfile.donateInfo?.imageUrl : artistProfile.commissionInfo?.imageUrl) && (
+                      <div className="rounded-2xl overflow-hidden border border-zinc-100 shadow-md">
+                        <img 
+                          src={activeInfoModal === 'donate' ? artistProfile.donateInfo?.imageUrl : artistProfile.commissionInfo?.imageUrl} 
+                          alt={activeInfoModal || 'info'} 
+                          className="w-full h-auto object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+                    {activeInfoModal === 'commission' && artistProfile.commissionQuestions && artistProfile.commissionQuestions.length > 0 && (
+                      <button 
+                        onClick={() => setShowCommissionForm(true)}
+                        className="w-full py-4 bg-zinc-900 text-white rounded-full font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 flex items-center justify-center gap-2"
+                      >
+                        <Send size={18} />
+                        {t('startNow')}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
