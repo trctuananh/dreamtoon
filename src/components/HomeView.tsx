@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Compass, BookOpen } from 'lucide-react';
-import { Comic, FeaturedItem, Chapter, Article } from '../types';
+import { Comic, FeaturedItem, Chapter, Article, Following } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { formatViews } from '../lib/utils';
@@ -10,15 +10,21 @@ export function HomeView({
   featuredItems, 
   comics, 
   articles, 
+  followingFeed,
+  following,
+  user,
   lang, 
+  searchQuery,
   onComicClick, 
   onArticleClick, 
+  onChapterClick,
   onExploreClick,
 }: { 
   featuredItems: FeaturedItem[], 
   comics: Comic[], 
   articles: Article[], 
   followingFeed: Chapter[], 
+  following?: Following[],
   user: any,
   lang: Language, 
   searchQuery: string, 
@@ -29,6 +35,14 @@ export function HomeView({
 }) {
   const { t } = useTranslation(lang);
   const [heroIndex, setHeroIndex] = React.useState(0);
+  const [trendingTab, setTrendingTab] = React.useState<'trending' | 'popular'>('trending');
+
+  // Calculate favorite comics based on followed comics or followed artists
+  const followedComicIds = following?.filter(f => f.type === 'comic').map(f => f.targetId) || [];
+  const followedArtistIds = following?.filter(f => f.type === 'artist').map(f => f.targetId) || [];
+  const favoriteComics = comics.filter(comic => 
+    followedComicIds.includes(comic.id) || followedArtistIds.includes(comic.authorUid)
+  );
 
   // Auto-advance hero
   React.useEffect(() => {
@@ -109,22 +123,38 @@ export function HomeView({
         </div>
       </div>
 
-      {/* Section: Trending Now */}
+      {/* Section: Trending & Popular */}
       <div className="px-6 mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-2xl font-black text-zinc-900 tracking-tight">
-            {t('trending')}
-          </h3>
-          <button 
-            onClick={onExploreClick}
-            className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
-          >
-            {t('viewAll')}
-          </button>
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-black text-zinc-900 tracking-tight">
+              {t('trendingAndPopular') || 'Trending & Popular Series'}
+            </h3>
+            <button 
+              onClick={onExploreClick}
+              className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
+            >
+              {t('viewAll')}
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setTrendingTab('trending')}
+              className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${trendingTab === 'trending' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600'}`}
+            >
+              {t('trending')}
+            </button>
+            <button 
+              onClick={() => setTrendingTab('popular')}
+              className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${trendingTab === 'popular' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600'}`}
+            >
+              {t('popular')}
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
-          {comics.slice(0, 6).map((comic) => (
+          {(trendingTab === 'trending' ? comics.slice(0, 6) : [...comics].sort((a, b) => b.views - a.views).slice(0, 6)).map((comic) => (
             <motion.div
               key={comic.id}
               onClick={() => onComicClick(comic)}
@@ -191,6 +221,54 @@ export function HomeView({
           ))}
         </div>
       </div>
+      {/* Section: Favorites */}
+      {favoriteComics.length > 0 && (
+        <div className="px-6 mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-black text-zinc-900 tracking-tight">
+              {t('favorites')}
+            </h3>
+            <button 
+              onClick={onExploreClick}
+              className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
+            >
+              {t('viewAll')}
+            </button>
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
+            {favoriteComics.slice(0, 6).map((comic) => (
+              <motion.div
+                key={comic.id}
+                onClick={() => onComicClick(comic)}
+                className="flex-shrink-0 w-[180px] group cursor-pointer"
+              >
+                <div className="relative aspect-[3/4] rounded-[2rem] overflow-hidden mb-3 shadow-lg shadow-zinc-200/50">
+                  <img 
+                    src={comic.thumbnail} 
+                    alt={comic.title} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <h4 className="font-bold text-zinc-900 text-sm truncate mb-1 group-hover:text-blue-600 transition-colors">
+                  {comic.title}
+                </h4>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
+                    {t(comic.genre[0] as any)}
+                  </span>
+                  <span className="w-1 h-1 bg-zinc-200 rounded-full" />
+                  <span className="text-[10px] font-bold text-zinc-400">
+                    ★ {comic.rating?.toFixed(1) || '0.0'}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

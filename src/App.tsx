@@ -613,6 +613,7 @@ export default function App() {
                 articles={articles}
                 featuredItems={featuredItems}
                 followingFeed={followingFeed}
+                following={following}
                 user={user}
                 searchQuery={searchQuery}
                 onComicClick={handleComicClick}
