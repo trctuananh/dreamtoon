@@ -9,7 +9,7 @@ import { Language, translations } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { formatViews, validateImage } from '../lib/utils';
 
-export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow, onLogout }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onLogout: () => void }) {
+export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow, onLogout, isGuest = false }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onLogout: () => void, isGuest?: boolean }) {
   const { t } = useTranslation(lang);
   const [activeTab, setActiveTab] = useState<'comics' | 'following'>('comics');
   const [isEditing, setIsEditing] = useState(false);
@@ -184,7 +184,7 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
               {profile?.handle && (
                 <p className="text-blue-500 font-black text-sm mb-1 tracking-tight">@{profile.handle}</p>
               )}
-              <p className="text-zinc-400 text-xs font-bold mb-2">{user.email}</p>
+              {!isGuest && <p className="text-zinc-400 text-xs font-bold mb-2">{user.email}</p>}
               <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] mb-6">{t('joined')}: {joinedDate}</p>
 
               {isEditing ? (
@@ -250,13 +250,15 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   <p className="text-sm text-zinc-600 mb-4 italic">
                     {profile?.bio || t('noBio')}
                   </p>
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="text-blue-500 text-xs font-bold hover:underline flex items-center gap-1 mx-auto"
-                  >
-                    <Layout size={12} />
-                    {t('editProfile')}
-                  </button>
+                  {!isGuest && (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="text-blue-500 text-xs font-bold hover:underline flex items-center gap-1 mx-auto"
+                    >
+                      <Layout size={12} />
+                      {t('editProfile')}
+                    </button>
+                  )}
                 </div>
               )}
               
@@ -279,46 +281,52 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                 </div>
               </div>
 
-              <button
-                onClick={onLogout}
-                className="mt-8 w-full flex items-center justify-center gap-2 px-4 py-3 bg-zinc-100 text-zinc-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-600 transition-all"
-              >
-                <LogOut size={16} />
-                {t('logout')}
-              </button>
+              {!isGuest && (
+                <button
+                  onClick={onLogout}
+                  className="mt-8 w-full flex items-center justify-center gap-2 px-4 py-3 bg-zinc-100 text-zinc-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-600 transition-all"
+                >
+                  <LogOut size={16} />
+                  {t('logout')}
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         <div className="md:col-span-2">
-          <div className="flex items-center gap-8 mb-8 border-b border-zinc-100">
-            <button 
-              onClick={() => setActiveTab('comics')}
-              className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'comics' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-600'}`}
-            >
-              {t('myComics')}
-              {activeTab === 'comics' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
-            </button>
-            <button 
-              onClick={() => setActiveTab('following')}
-              className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'following' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-600'}`}
-            >
-              {t('following')}
-              {activeTab === 'following' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
-            </button>
-          </div>
+          {!isGuest && (
+            <div className="flex items-center gap-8 mb-8 border-b border-zinc-100">
+              <button 
+                onClick={() => setActiveTab('comics')}
+                className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'comics' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-600'}`}
+              >
+                {t('myComics')}
+                {activeTab === 'comics' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
+              </button>
+              <button 
+                onClick={() => setActiveTab('following')}
+                className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'following' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-600'}`}
+              >
+                {t('following')}
+                {activeTab === 'following' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
+              </button>
+            </div>
+          )}
 
           {activeTab === 'comics' ? (
             <>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-zinc-900">{t('myComics')}</h3>
-                <button 
-                  onClick={onUpload} 
-                  className="px-4 py-2 bg-blue-500 text-white rounded-xl text-xs font-bold hover:bg-blue-600 transition-colors flex items-center gap-2"
-                >
-                  <Plus size={14} />
-                  {t('uploadWebtoon')}
-                </button>
+                <h3 className="text-2xl font-bold text-zinc-900">{isGuest ? t('comic') : t('myComics')}</h3>
+                {!isGuest && (
+                  <button 
+                    onClick={onUpload} 
+                    className="px-4 py-2 bg-blue-500 text-white rounded-xl text-xs font-bold hover:bg-blue-600 transition-colors flex items-center gap-2"
+                  >
+                    <Plus size={14} />
+                    {t('uploadWebtoon')}
+                  </button>
+                )}
               </div>
               <div className="grid gap-4">
                 {myComics.map(comic => (
@@ -348,24 +356,26 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                         <span className="flex items-center gap-1"><Star size={12} className="text-yellow-500 fill-yellow-500" /> {comic.rating}</span>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button 
-                        onClick={() => onEditComic(comic)}
-                        className="flex items-center gap-2 px-3 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all text-xs font-bold"
-                        title={t('edit')}
-                      >
-                        <Layout size={16} />
-                        {t('edit')}
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(comic.id)}
-                        className="flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all text-xs font-bold"
-                        title={t('delete')}
-                      >
-                        <Trash2 size={16} />
-                        {t('delete')}
-                      </button>
-                    </div>
+                    {!isGuest && (
+                      <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          onClick={() => onEditComic(comic)}
+                          className="flex items-center gap-2 px-3 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all text-xs font-bold"
+                          title={t('edit')}
+                        >
+                          <Layout size={16} />
+                          {t('edit')}
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(comic.id)}
+                          className="flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all text-xs font-bold"
+                          title={t('delete')}
+                        >
+                          <Trash2 size={16} />
+                          {t('delete')}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {myComics.length === 0 && (

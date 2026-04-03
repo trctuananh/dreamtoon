@@ -69,10 +69,10 @@ export function ComicDetailView({
       </div>
 
       <div className="container mx-auto px-4 -mt-32 relative z-10 max-w-6xl">
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
           {/* Left Column: Info Card */}
           <div className="md:col-span-1">
-            <div className="bg-white rounded-3xl p-8 shadow-2xl border border-zinc-100 sticky top-8">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-100 sticky top-8">
               <img 
                 src={comic.thumbnail} 
                 alt={comic.title} 
@@ -141,8 +141,8 @@ export function ComicDetailView({
           </div>
 
           {/* Right Column: Content */}
-          <div className="md:col-span-2 pt-32">
-            <h1 className="text-5xl font-black text-zinc-900 mb-4 tracking-tight leading-none">{comic.title}</h1>
+          <div className="md:col-span-2 pt-8 sm:pt-32">
+            <h1 className="text-4xl sm:text-5xl font-black text-zinc-900 mb-4 tracking-tight leading-none">{comic.title}</h1>
             
             <div className="flex items-center gap-6 mb-8">
               <div className="flex items-center gap-3">

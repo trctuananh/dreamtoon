@@ -105,10 +105,38 @@ export default function App() {
     // Also check pathname for dreamtoon.vn/id format
     if (!artistHandle && window.location.pathname !== '/') {
       // Remove leading slash and any trailing slashes
-      artistHandle = window.location.pathname.replace(/^\/|\/$/g, '');
-    }
+      const pathParts = window.location.pathname.replace(/^\/|\/$/g, '').split('/');
+      artistHandle = pathParts[0];
+      const isProfileView = pathParts[1] === 'profile';
 
-    if (artistHandle) {
+      if (artistHandle) {
+        const fetchArtist = async () => {
+          try {
+            // Try fetching by handle first from profiles collection
+            const q = query(collection(db, 'profiles'), where('handle', '==', artistHandle!.toLowerCase()));
+            const snap = await getDocs(q);
+            
+            if (!snap.empty) {
+              const artistProfile = snap.docs[0].data() as UserProfile;
+              const artistUid = snap.docs[0].id;
+              setSelectedArtist({ uid: artistUid, profile: artistProfile });
+              setView(isProfileView ? 'public-profile' : 'artist-wall');
+            } else {
+              // Try fetching by UID from profiles collection
+              const docRef = doc(db, 'profiles', artistHandle!);
+              const docSnap = await getDoc(docRef);
+              if (docSnap.exists()) {
+                setSelectedArtist({ uid: artistHandle!, profile: docSnap.data() as UserProfile });
+                setView(isProfileView ? 'public-profile' : 'artist-wall');
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching artist for deep link:", error);
+          }
+        };
+        fetchArtist();
+      }
+    } else if (artistHandle) {
       const fetchArtist = async () => {
         try {
           // Try fetching by handle first from profiles collection
@@ -396,6 +424,26 @@ export default function App() {
     }
   };
 
+  const handlePublicProfileClick = async (uid: string) => {
+    try {
+      const docRef = doc(db, 'profiles', uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data() as UserProfile;
+        setSelectedArtist({ uid, profile: data });
+        setView('public-profile');
+        window.scrollTo(0, 0);
+        if (data.handle) {
+          window.history.pushState(null, '', `/${data.handle}/profile`);
+        } else {
+          window.history.pushState(null, '', `/${uid}/profile`);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching artist profile:", error);
+    }
+  };
+
   const handleChapterClick = async (chapter: Chapter) => {
     setSelectedChapter(chapter);
     setView('reader');
@@ -468,7 +516,7 @@ export default function App() {
     setSelectedTag(null);
     if (view === 'reader') {
       setView('detail');
-    } else if (view === 'artist-wall') {
+    } else if (view === 'artist-wall' || view === 'public-profile') {
       setSelectedArtist(null);
       setView('home');
       window.history.pushState(null, '', '/');
@@ -765,6 +813,23 @@ export default function App() {
               />
             )}
 
+            {view === 'public-profile' && selectedArtist && (
+              <ProfileView
+                user={{ uid: selectedArtist.uid, displayName: selectedArtist.profile.displayName, photoURL: selectedArtist.profile.photoURL }}
+                profile={selectedArtist.profile}
+                comics={comics}
+                following={following}
+                onEditComic={() => {}}
+                onComicSelect={handleComicClick}
+                onUpload={() => {}}
+                onBack={handleBack}
+                onToggleFollow={handleToggleFollow}
+                onLogout={() => {}}
+                lang={lang}
+                isGuest={true}
+              />
+            )}
+
             {view === 'edit-comic' && editingComic && (
               <UploadView
                 user={user}
@@ -895,6 +960,7 @@ export default function App() {
                 artistProfile={selectedArtist.profile}
                 lang={lang}
                 onBack={handleBack}
+                onProfileClick={handlePublicProfileClick}
               />
             )}
 

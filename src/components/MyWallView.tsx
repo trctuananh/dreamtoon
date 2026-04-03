@@ -297,8 +297,8 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="flex flex-col gap-6 mb-8">
+    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
+      <div className="flex flex-col gap-6 mb-6 sm:mb-8">
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
             <button 
@@ -327,8 +327,8 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
       </div>
 
       {/* Commission Progress Timeline */}
-      <div className="bg-white rounded-3xl p-6 border border-zinc-100 shadow-sm mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-zinc-100 shadow-sm mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
             <Layout size={18} className="text-zinc-400" />
             <h4 className="text-xs font-black text-zinc-900 uppercase tracking-widest">{t('commissionProgress')}</h4>
@@ -527,7 +527,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
       </div>
 
       {/* Post Form */}
-      <div className="bg-white rounded-3xl p-6 border border-zinc-100 shadow-sm mb-8">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-zinc-100 shadow-sm mb-6 sm:mb-8">
         <form onSubmit={handlePost}>
           <div className="flex gap-4 mb-4">
             <img 
@@ -591,7 +591,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
       </div>
 
       {/* Posts List */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <AnimatePresence mode="popLayout">
           {posts.map((post) => (
             <motion.div
@@ -600,7 +600,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-[2rem] p-6 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
+              className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">

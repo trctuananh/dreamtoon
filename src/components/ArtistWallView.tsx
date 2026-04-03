@@ -7,7 +7,7 @@ import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, onBack }: { user: any, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void }) {
+export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick }: { user: any, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   
@@ -266,27 +266,30 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-900">
-            <ArrowLeft size={24} />
-          </button>
+    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+        <div className="flex items-center gap-3">
+          <img 
+            src={artistProfile.photoURL || ''} 
+            alt={artistProfile.displayName} 
+            className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover"
+            referrerPolicy="no-referrer"
+          />
           <div className="flex items-center gap-3">
-            <img 
-              src={artistProfile.photoURL || ''} 
-              alt={artistProfile.displayName} 
-              className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover"
-              referrerPolicy="no-referrer"
-            />
             <div>
               <h2 className="text-xl font-black tracking-tight text-zinc-900">{artistProfile.displayName}</h2>
               <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
             </div>
+            <button 
+              onClick={() => onProfileClick(artistUid)}
+              className="px-3 py-1 border-2 border-red-500 text-red-500 rounded-md font-black uppercase tracking-widest text-xs hover:bg-red-50 transition-colors"
+            >
+              {t('viewProfilesAndArtworks')}
+            </button>
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button 
             onClick={() => setActiveInfoModal('donate')}
             className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
@@ -324,8 +327,8 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
 
       {/* Commission Progress Table */}
       {commissionWorks.length > 0 && (
-        <div className="bg-white rounded-3xl p-6 border border-zinc-100 shadow-sm mb-8">
-          <div className="flex items-center gap-2 mb-6">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-zinc-100 shadow-sm mb-6 sm:mb-8">
+          <div className="flex items-center gap-2 mb-4 sm:mb-6">
             <Layout size={18} className="text-zinc-400" />
             <h4 className="text-xs font-black text-zinc-900 uppercase tracking-widest">{t('commissionProgress')}</h4>
           </div>
@@ -388,7 +391,7 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
       )}
 
       {/* Posts List */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <AnimatePresence mode="popLayout">
           {posts.map((post) => (
             <motion.div
@@ -397,7 +400,7 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-[2rem] p-6 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
+              className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">

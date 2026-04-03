@@ -12,7 +12,8 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
   const [posts, setPosts] = useState<Post[]>([]);
   const [topCreators, setTopCreators] = useState<{uid: string, name: string, photo: string, views: number}[]>([]);
   const [topMonthCreators, setTopMonthCreators] = useState<{uid: string, name: string, photo: string, views: number}[]>([]);
-  const [rankingTab, setRankingTab] = useState<'month' | 'all'>('month');
+  const [newCreators, setNewCreators] = useState<{uid: string, name: string, photo: string, views: number}[]>([]);
+  const [rankingTab, setRankingTab] = useState<'month' | 'all' | 'new'>('month');
 
   useEffect(() => {
     if (!comics || comics.length === 0) return;
@@ -22,6 +23,7 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
 
     const authorViewsAllTime: Record<string, {name: string, views: number}> = {};
     const authorViewsMonth: Record<string, {name: string, views: number}> = {};
+    const authorFirstComicDate: Record<string, {name: string, firstDate: Date, views: number}> = {};
 
     comics.forEach(comic => {
       // All Time
@@ -38,6 +40,14 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
         }
         authorViewsMonth[comic.authorUid].views += comic.views;
       }
+
+      // New Artists
+      if (!authorFirstComicDate[comic.authorUid]) {
+        authorFirstComicDate[comic.authorUid] = { name: comic.authorName, firstDate: createdAt, views: 0 };
+      } else if (createdAt < authorFirstComicDate[comic.authorUid].firstDate) {
+        authorFirstComicDate[comic.authorUid].firstDate = createdAt;
+      }
+      authorFirstComicDate[comic.authorUid].views += comic.views;
     });
 
     const sortedAllTime = Object.entries(authorViewsAllTime)
@@ -48,6 +58,11 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
     const sortedMonth = Object.entries(authorViewsMonth)
       .map(([uid, data]) => ({ uid, ...data }))
       .sort((a, b) => b.views - a.views)
+      .slice(0, 5);
+
+    const sortedNew = Object.entries(authorFirstComicDate)
+      .map(([uid, data]) => ({ uid, ...data }))
+      .sort((a, b) => b.firstDate.getTime() - a.firstDate.getTime())
       .slice(0, 5);
 
     const fetchPhotos = async (authors: any[]) => {
@@ -65,12 +80,14 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
     };
 
     const loadAll = async () => {
-      const [allTime, month] = await Promise.all([
+      const [allTime, month, newArtists] = await Promise.all([
         fetchPhotos(sortedAllTime),
-        fetchPhotos(sortedMonth)
+        fetchPhotos(sortedMonth),
+        fetchPhotos(sortedNew)
       ]);
       setTopCreators(allTime);
       setTopMonthCreators(month);
+      setNewCreators(newArtists);
     };
 
     loadAll();
@@ -132,7 +149,7 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       {/* Ranking Tabs */}
-      <div className="grid grid-cols-2 gap-3 mb-8">
+      <div className="grid grid-cols-3 gap-3 mb-8">
         <button
           onClick={() => setRankingTab('month')}
           className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
@@ -153,13 +170,23 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
         >
           {t('topAllTime')}
         </button>
+        <button
+          onClick={() => setRankingTab('new')}
+          className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
+            rankingTab === 'new' 
+            ? 'bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20' 
+            : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'
+          }`}
+        >
+          {t('newArtist') || 'New Artist'}
+        </button>
       </div>
 
       {/* Top Creators Display */}
-      {(rankingTab === 'month' ? topMonthCreators : topCreators).length > 0 && (
+      {(rankingTab === 'month' ? topMonthCreators : rankingTab === 'all' ? topCreators : newCreators).length > 0 && (
         <div className="mb-10">
           <div className="flex items-center gap-4 overflow-x-auto pb-4 no-scrollbar">
-            {(rankingTab === 'month' ? topMonthCreators : topCreators).map((creator, index) => (
+            {(rankingTab === 'month' ? topMonthCreators : rankingTab === 'all' ? topCreators : newCreators).map((creator, index) => (
               <motion.button
                 key={`${rankingTab}-${creator.uid}`}
                 initial={{ opacity: 0, scale: 0.9 }}

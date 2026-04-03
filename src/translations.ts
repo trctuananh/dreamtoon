@@ -204,7 +204,9 @@ export const translations = {
     newWork: "New Work",
     topMonth: "Top of the Month",
     topAllTime: "Top All Time",
-    workImage: "Work Image"
+    newArtist: "New Artist",
+    workImage: "Work Image",
+    viewProfilesAndArtworks: "Profile"
   },
   vi: {
     home: "Trang chủ",
@@ -411,7 +413,9 @@ export const translations = {
     newWork: "Công việc mới",
     topMonth: "Bảng xếp hạng tháng",
     topAllTime: "Bảng xếp hạng tổng",
-    workImage: "Hình ảnh công việc"
+    newArtist: "Tác giả mới",
+    workImage: "Hình ảnh công việc",
+    viewProfilesAndArtworks: "Hồ sơ"
   }
 };
 
