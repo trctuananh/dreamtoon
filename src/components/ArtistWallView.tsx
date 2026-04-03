@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, Trash2, MessageCircle, Layout } from 'lucide-react';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { Post, UserProfile } from '../types';
+import { Post, UserProfile, Donation, CommissionWork, Following } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }: { user: any, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void }) {
+export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, onBack }: { user: any, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   
@@ -20,9 +20,68 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Donation Message State
+  const [donationMessages, setDonationMessages] = useState<Donation[]>([]);
+  const [commissionWorks, setCommissionWorks] = useState<CommissionWork[]>([]);
+  const [donorName, setDonorName] = useState(user?.displayName || '');
+  const [donorMessage, setDonorMessage] = useState('');
+  const [isPostingDonation, setIsPostingDonation] = useState(false);
+  const [showDonationForm, setShowDonationForm] = useState(false);
+
   // Share State
   const [showShareModal, setShowShareModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [viewingWorkImage, setViewingWorkImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      const q = query(
+        collection(db, 'users', user.uid, 'following'),
+        where('targetId', '==', artistUid),
+        where('type', '==', 'artist')
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setIsFollowing(!snapshot.empty);
+      });
+      return () => unsubscribe();
+    }
+  }, [user, artistUid]);
+
+  const handleFollow = async () => {
+    if (!user) return;
+    try {
+      const followData: Following = {
+        id: `artist_${artistUid}`,
+        userId: user.uid,
+        targetId: artistUid,
+        type: 'artist',
+        createdAt: serverTimestamp()
+      };
+      await setDoc(doc(db, 'users', user.uid, 'following', followData.id), followData);
+      
+      // Add notification for artist
+      await addDoc(collection(db, 'users', artistUid, 'notifications'), {
+        type: 'follow',
+        fromUid: user.uid,
+        fromName: user.displayName || 'Anonymous',
+        fromPhoto: user.photoURL || '',
+        createdAt: serverTimestamp(),
+        read: false
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/following`);
+    }
+  };
+
+  const handleUnfollow = async () => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'following', `artist_${artistUid}`));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/following/artist_${artistUid}`);
+    }
+  };
 
   useEffect(() => {
     const q = query(
@@ -39,6 +98,45 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
       setPosts(newPosts);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'posts');
+    });
+
+    return () => unsubscribe();
+  }, [artistUid]);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'donations'),
+      where('artistUid', '==', artistUid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newDonations = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Donation[];
+      setDonationMessages(newDonations);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'donations');
+    });
+
+    return () => unsubscribe();
+  }, [artistUid]);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'users', artistUid, 'commissions'),
+      orderBy('order', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newWorks = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CommissionWork[];
+      setCommissionWorks(newWorks);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `users/${artistUid}/commissions`);
     });
 
     return () => unsubscribe();
@@ -136,6 +234,37 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
     }
   };
 
+  const handlePostDonation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!donorMessage.trim() || !donorName.trim()) return;
+
+    setIsPostingDonation(true);
+    try {
+      await addDoc(collection(db, 'donations'), {
+        artistUid,
+        donorUid: user?.uid || null,
+        donorName: donorName.trim(),
+        message: donorMessage.trim(),
+        createdAt: serverTimestamp()
+      });
+      setDonorMessage('');
+      setShowDonationForm(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'donations');
+    } finally {
+      setIsPostingDonation(false);
+    }
+  };
+
+  const handleDeleteDonation = async (donationId: string) => {
+    if (!window.confirm(t('confirmDeleteMessage'))) return;
+    try {
+      await deleteDoc(doc(db, 'donations', donationId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `donations/${donationId}`);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="flex items-center justify-between mb-8">
@@ -172,6 +301,18 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
             <Briefcase size={14} />
             {t('commission')}
           </button>
+          {user && user.uid !== artistUid && (
+            <button 
+              onClick={isFollowing ? handleUnfollow : handleFollow}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
+                isFollowing 
+                ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
+                : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
+              }`}
+            >
+              {isFollowing ? t('following') : t('follow')}
+            </button>
+          )}
           <button 
             onClick={() => setShowShareModal(true)}
             className="p-2 bg-zinc-100 text-zinc-600 rounded-xl hover:bg-zinc-200 transition-all"
@@ -180,6 +321,71 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
           </button>
         </div>
       </div>
+
+      {/* Commission Progress Table */}
+      {commissionWorks.length > 0 && (
+        <div className="bg-white rounded-3xl p-6 border border-zinc-100 shadow-sm mb-8">
+          <div className="flex items-center gap-2 mb-6">
+            <Layout size={18} className="text-zinc-400" />
+            <h4 className="text-xs font-black text-zinc-900 uppercase tracking-widest">{t('commissionProgress')}</h4>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {commissionWorks.map((work) => (
+              <div key={work.id} className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 hover:border-zinc-200 transition-all">
+                <div className="flex gap-4">
+                  {/* Thumbnail */}
+                  <div className="flex-shrink-0">
+                    {work.imageUrl ? (
+                      <button 
+                        onClick={() => setViewingWorkImage(work.imageUrl || null)}
+                        className="w-14 h-14 rounded-xl overflow-hidden border border-zinc-200 hover:scale-105 transition-transform"
+                      >
+                        <img src={work.imageUrl} alt={work.title} className="w-full h-full object-cover" />
+                      </button>
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-zinc-200 flex items-center justify-center text-zinc-400">
+                        <Layout size={20} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h5 className="text-sm font-black text-zinc-900 tracking-tight truncate">{work.title}</h5>
+                          {work.clientName && (
+                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest truncate">
+                              / {work.clientName.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="px-2 py-0.5 bg-zinc-200 text-zinc-600 rounded text-[8px] font-black uppercase tracking-widest flex-shrink-0">
+                            {work.status}
+                          </span>
+                          <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden shadow-inner flex-1">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${work.progress}%` }}
+                              className="h-full bg-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest flex-shrink-0">
+                        {work.updatedAt?.toDate ? work.updatedAt.toDate().toLocaleDateString() : '...'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Posts List */}
       <div className="space-y-6">
@@ -216,6 +422,27 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
               <div className="text-zinc-700 text-[15px] leading-relaxed mb-5 font-medium whitespace-pre-wrap">
                 {post.content}
               </div>
+
+              {post.type === 'commission' && (
+                <div className="mb-5 bg-zinc-50 rounded-2xl p-5 border border-zinc-100">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h5 className="text-sm font-black text-zinc-900 tracking-tight">{post.commissionTitle}</h5>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="px-2 py-0.5 bg-zinc-200 text-zinc-600 rounded-md text-[10px] font-black uppercase tracking-widest">{post.commissionStatus}</span>
+                        <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">{post.commissionProgress}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-zinc-200 rounded-full overflow-hidden shadow-inner">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${post.commissionProgress}%` }}
+                      className="h-full bg-zinc-900"
+                    />
+                  </div>
+                </div>
+              )}
 
               {post.imageUrl && (
                 <div className="rounded-3xl overflow-hidden mb-5 border border-zinc-100 shadow-sm group/img relative">
@@ -270,6 +497,7 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
                 <button onClick={() => {
                   setActiveInfoModal(null);
                   setShowCommissionForm(false);
+                  setShowDonationForm(false);
                 }} className="p-2 hover:bg-white/20 rounded-full transition-colors">
                   <X size={20} />
                 </button>
@@ -340,6 +568,41 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
                       </>
                     )}
                   </form>
+                ) : showDonationForm ? (
+                  <form onSubmit={handlePostDonation} className="space-y-6">
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('leaveMessage')}</h4>
+                      <div>
+                        <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t('yourName')}</label>
+                        <input 
+                          required
+                          type="text"
+                          value={donorName}
+                          onChange={(e) => setDonorName(e.target.value)}
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-green-500 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t('shareThoughts')}</label>
+                        <textarea 
+                          required
+                          value={donorMessage}
+                          onChange={(e) => setDonorMessage(e.target.value)}
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-green-500 transition-colors resize-none"
+                          rows={3}
+                          placeholder="Thank you for your support!"
+                        />
+                      </div>
+                    </div>
+                    <button 
+                      type="submit"
+                      disabled={isPostingDonation}
+                      className="w-full py-4 bg-green-500 text-white rounded-full font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-xl shadow-green-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <Send size={18} />
+                      {isPostingDonation ? '...' : t('postMessage')}
+                    </button>
+                  </form>
                 ) : (
                   <div className="space-y-6">
                     <div className="text-zinc-700 text-sm leading-relaxed whitespace-pre-wrap min-h-[100px]">
@@ -355,6 +618,15 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
                         />
                       </div>
                     )}
+                    {activeInfoModal === 'donate' && (
+                      <button 
+                        onClick={() => setShowDonationForm(true)}
+                        className="w-full py-4 bg-zinc-900 text-white rounded-full font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 flex items-center justify-center gap-2"
+                      >
+                        <MessageCircle size={18} />
+                        {t('leaveMessage')}
+                      </button>
+                    )}
                     {activeInfoModal === 'commission' && artistProfile.commissionQuestions && artistProfile.commissionQuestions.length > 0 && (
                       <button 
                         onClick={() => setShowCommissionForm(true)}
@@ -364,9 +636,67 @@ export function ArtistWallView({ user, artistUid, artistProfile, lang, onBack }:
                         {t('startNow')}
                       </button>
                     )}
+
+                    {/* Donation Messages List */}
+                    {activeInfoModal === 'donate' && donationMessages.length > 0 && (
+                      <div className="pt-6 border-t border-zinc-100">
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{t('donationMessages')}</h4>
+                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                          {donationMessages.map((msg) => (
+                            <div key={msg.id} className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 relative group">
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="text-xs font-black text-zinc-900">{msg.donorName}</span>
+                                <span className="text-[10px] font-black text-zinc-300 uppercase">
+                                  {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleDateString() : '...'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-zinc-600 leading-relaxed">{msg.message}</p>
+                              {(user?.uid === artistUid || isAdmin) && (
+                                <button 
+                                  onClick={() => handleDeleteDonation(msg.id)}
+                                  className="absolute top-2 right-2 p-1 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                  title={t('deleteMessage')}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Image Viewer Modal */}
+      <AnimatePresence>
+        {viewingWorkImage && (
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm cursor-zoom-out"
+            onClick={() => setViewingWorkImage(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-4xl w-full h-full flex items-center justify-center"
+            >
+              <img 
+                src={viewingWorkImage} 
+                alt="Work preview" 
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              />
+              <button 
+                onClick={() => setViewingWorkImage(null)}
+                className="absolute top-4 right-4 p-3 bg-white/10 text-white rounded-full hover:bg-white/20 transition-colors"
+              >
+                <X size={24} />
+              </button>
             </motion.div>
           </div>
         )}

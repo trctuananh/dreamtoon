@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown } from 'lucide-react';
+import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown, Star, LayoutDashboard, HelpCircle } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { View, UserProfile } from '../types';
 import { Language } from '../translations';
@@ -16,7 +16,8 @@ export function Navbar({
   onBack, 
   onLogout, 
   onLogin,
-  profile
+  profile,
+  unreadNotificationsCount
 }: { 
   user: FirebaseUser | null, 
   view: View, 
@@ -28,7 +29,8 @@ export function Navbar({
   onBack: () => void, 
   onLogout: () => void, 
   onLogin: () => void,
-  profile: UserProfile | null
+  profile: UserProfile | null,
+  unreadNotificationsCount: number
 }) {
   const { t } = useTranslation(lang);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -77,67 +79,38 @@ export function Navbar({
             {/* Desktop Nav Links (Hidden on mobile) */}
             <div className="hidden md:flex items-center gap-6 mr-4">
               <button 
-                onClick={() => setView('home')}
-                className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'home' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
-              >
-                <HomeIcon size={18} />
-                {t('home')}
-              </button>
+              onClick={() => setView('home')}
+              className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'home' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
+            >
+              <HomeIcon size={18} />
+              {t('home')}
+            </button>
+            <button 
+              onClick={() => setView('explore')}
+              className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'explore' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
+            >
+              <Compass size={18} />
+              {t('explore')}
+            </button>
+            
+            <button 
+              onClick={() => setView('community')}
+              className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'community' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
+            >
+              <Star size={18} className="text-amber-500" />
+              {t('dreamWorld')}
+            </button>
+
+            {user && (
               <button 
-                onClick={() => setView('explore')}
-                className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'explore' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
+                onClick={() => setView('my-wall')}
+                className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
               >
-                <Compass size={18} />
-                {t('originals')}
+                <Users size={18} />
+                {t('myWall')}
               </button>
-              
-              {/* Dreamers Dropdown */}
-              <div className="relative group">
-                <button 
-                  className={`text-sm font-bold flex items-center gap-2 transition-colors ${['profile', 'my-wall', 'community'].includes(view) ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
-                >
-                  <Users size={18} />
-                  {t('dreamers')}
-                  <ChevronDown size={14} className="group-hover:rotate-180 transition-transform" />
-                </button>
-                
-                <div className="absolute right-0 top-full pt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                  <div className="bg-white rounded-xl shadow-xl border border-zinc-100 py-2 overflow-hidden">
-                    <button 
-                      onClick={() => setView('community')}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center gap-3 transition-colors ${view === 'community' ? 'bg-blue-50 text-blue-600' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                    >
-                      <Users size={16} className="text-blue-500" />
-                      {t('community')}
-                    </button>
-                    {user && (
-                      <button 
-                        onClick={() => setView('my-wall')}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center gap-3 transition-colors ${view === 'my-wall' ? 'bg-blue-50 text-blue-600' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                      >
-                        <PenTool size={16} className="text-purple-500" />
-                        {t('myWall')}
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => setView('profile')}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center gap-3 transition-colors ${view === 'profile' ? 'bg-blue-50 text-blue-600' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                    >
-                      <User size={16} className="text-zinc-400" />
-                      {t('profile')}
-                    </button>
-                    <div className="h-px bg-zinc-50 my-1" />
-                    <button 
-                      onClick={() => window.open('https://discord.gg/', '_blank')}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-zinc-600 hover:bg-zinc-50 flex items-center gap-3 transition-colors"
-                    >
-                      <MessageSquare size={16} className="text-indigo-500" />
-                      {t('discord')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
+          </div>
 
             {/* Profile / Login */}
             {user ? (
@@ -160,6 +133,15 @@ export function Navbar({
                     className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
                   >
                     {t('profile')}
+                  </button>
+                  <button 
+                    onClick={() => setView('notifications')}
+                    className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 flex items-center justify-between"
+                  >
+                    <span>{t('notifications')}</span>
+                    {unreadNotificationsCount > 0 && (
+                      <span className="w-2 h-2 bg-red-500 rounded-full" />
+                    )}
                   </button>
                   {user?.email === 'tr.c.tuananh@gmail.com' && (
                     <>
@@ -188,7 +170,7 @@ export function Navbar({
             ) : (
               <button 
                 onClick={onLogin}
-                className="px-3 py-1.5 bg-blue-500 text-white text-xs font-bold rounded-full hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
+                className="px-4 py-2 bg-blue-500 text-white text-xs font-bold rounded-xl hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
               >
                 {t('login')}
               </button>
@@ -234,15 +216,24 @@ export function Navbar({
             className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'explore' ? 'text-blue-500' : 'text-zinc-500'}`}
           >
             <Compass size={18} />
-            <span className="text-[10px] font-bold">{t('originals')}</span>
+            <span className="text-[10px] font-bold">{t('explore')}</span>
           </button>
           <button 
             onClick={() => setView('community')}
-            className={`flex flex-col items-center gap-0.5 transition-colors ${['profile', 'my-wall', 'community'].includes(view) ? 'text-blue-500' : 'text-zinc-500'}`}
+            className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'community' ? 'text-blue-500' : 'text-zinc-500'}`}
           >
-            <Users size={18} />
-            <span className="text-[10px] font-bold">{t('dreamers')}</span>
+            <Star size={18} className="text-amber-500" />
+            <span className="text-[10px] font-bold">{t('dreamWorld')}</span>
           </button>
+          {user && (
+            <button 
+              onClick={() => setView('my-wall')}
+              className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-500'}`}
+            >
+              <Users size={18} />
+              <span className="text-[10px] font-bold">{t('myWall')}</span>
+            </button>
+          )}
         </div>
       </nav>
 
@@ -264,48 +255,46 @@ export function Navbar({
             </button>
           </div>
           <div className="p-6 space-y-8">
-            <div className="space-y-4">
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{t('home')}</p>
-              <button 
-                onClick={() => { setView('home'); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'home' ? 'text-blue-500' : 'text-zinc-900'}`}
-              >
-                <HomeIcon size={24} />
-                {t('home')}
-              </button>
-              <button 
-                onClick={() => { setView('explore'); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'explore' ? 'text-blue-500' : 'text-zinc-900'}`}
-              >
-                <Compass size={24} />
-                {t('originals')}
-              </button>
-            </div>
+            {user && (
+              <div className="space-y-4">
+                <button 
+                  onClick={() => { setView('profile'); setIsMobileMenuOpen(false); }}
+                  className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'profile' ? 'text-blue-500' : 'text-zinc-900'}`}
+                >
+                  <User size={24} />
+                  {t('profile')}
+                </button>
+                <button 
+                  onClick={() => { setView('notifications'); setIsMobileMenuOpen(false); }}
+                  className={`w-full text-left py-3 text-lg font-black flex items-center justify-between ${view === 'notifications' ? 'text-blue-500' : 'text-zinc-900'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Star size={24} className="text-blue-500" />
+                    {t('notifications')}
+                  </div>
+                  {unreadNotificationsCount > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
 
             <div className="space-y-4">
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{t('dreamers')}</p>
-              <button 
-                onClick={() => { setView('community'); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'community' ? 'text-blue-500' : 'text-zinc-900'}`}
-              >
-                <Users size={24} />
-                {t('community')}
-              </button>
-              {user && (
-                <button 
-                  onClick={() => { setView('my-wall'); setIsMobileMenuOpen(false); }}
-                  className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-900'}`}
-                >
-                  <PenTool size={24} />
-                  {t('myWall')}
-                </button>
-              )}
               <button 
                 onClick={() => { window.open('https://discord.gg/', '_blank'); setIsMobileMenuOpen(false); }}
                 className="w-full text-left py-3 text-lg font-black flex items-center gap-4 text-zinc-900"
               >
                 <MessageSquare size={24} className="text-indigo-500" />
                 {t('discord')}
+              </button>
+              <button 
+                onClick={() => { setView('support'); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'support' ? 'text-blue-500' : 'text-zinc-900'}`}
+              >
+                <HelpCircle size={24} />
+                {t('support')}
               </button>
             </div>
 

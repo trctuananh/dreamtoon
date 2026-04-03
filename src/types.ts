@@ -28,7 +28,20 @@ export interface Comic {
   createdAt?: any;
 }
 
-export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall';
+export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall' | 'notifications' | 'support';
+
+export interface Notification {
+  id: string;
+  recipientId: string;
+  senderId: string;
+  senderName: string;
+  senderPhoto: string;
+  type: 'like' | 'comment' | 'follow' | 'new_chapter';
+  targetId: string;
+  targetTitle?: string;
+  read: boolean;
+  createdAt: any;
+}
 
 export interface Article {
   id: string;
@@ -117,6 +130,28 @@ export interface Following {
   createdAt: any;
 }
 
+export interface Donation {
+  id: string;
+  artistUid: string;
+  donorUid?: string;
+  donorName: string;
+  message: string;
+  amount?: number;
+  createdAt: any;
+}
+
+export interface CommissionWork {
+  id: string;
+  artistUid: string;
+  title: string;
+  clientName?: string;
+  status: string;
+  progress: number;
+  order: number;
+  imageUrl?: string;
+  updatedAt: any;
+}
+
 export interface Post {
   id: string;
   authorUid: string;
@@ -125,6 +160,10 @@ export interface Post {
   content: string;
   imageUrl?: string;
   type: 'twit' | 'sketch' | 'donate' | 'commission';
+  commissionId?: string;
+  commissionTitle?: string;
+  commissionStatus?: string;
+  commissionProgress?: number;
   likes: number;
   likedBy?: string[];
   comments: number;

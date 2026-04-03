@@ -60,6 +60,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { MyWallView } from './components/MyWallView';
 import { ArtistWallView } from './components/ArtistWallView';
 import { CommunityView } from './components/CommunityView';
+import { NotificationsView } from './components/NotificationsView';
 
 // Hooks & Utils
 import { useTranslation } from './hooks/useTranslation';
@@ -92,6 +93,7 @@ export default function App() {
   const [ratingSuccess, setRatingSuccess] = useState(false);
   const [editingComic, setEditingComic] = useState<Comic | null>(null);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   const { t } = useTranslation(lang);
 
@@ -109,8 +111,8 @@ export default function App() {
     if (artistHandle) {
       const fetchArtist = async () => {
         try {
-          // Try fetching by handle first
-          const q = query(collection(db, 'users'), where('handle', '==', artistHandle!.toLowerCase()));
+          // Try fetching by handle first from profiles collection
+          const q = query(collection(db, 'profiles'), where('handle', '==', artistHandle!.toLowerCase()));
           const snap = await getDocs(q);
           
           if (!snap.empty) {
@@ -119,8 +121,8 @@ export default function App() {
             setSelectedArtist({ uid: artistUid, profile: artistProfile });
             setView('artist-wall');
           } else {
-            // Try fetching by UID
-            const docRef = doc(db, 'users', artistHandle!);
+            // Try fetching by UID from profiles collection
+            const docRef = doc(db, 'profiles', artistHandle!);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
               setSelectedArtist({ uid: artistHandle!, profile: docSnap.data() as UserProfile });
@@ -154,7 +156,19 @@ export default function App() {
     if (user) {
       const unsubscribe = onSnapshot(doc(db, 'users', user.uid), async (snapshot) => {
         if (snapshot.exists()) {
-          setProfile(snapshot.data() as UserProfile);
+          const userData = snapshot.data() as UserProfile;
+          setProfile(userData);
+
+          // Ensure public profile exists
+          try {
+            const profileSnap = await getDoc(doc(db, 'profiles', user.uid));
+            if (!profileSnap.exists()) {
+              const { email, ...publicProfile } = userData;
+              await setDoc(doc(db, 'profiles', user.uid), publicProfile);
+            }
+          } catch (e) {
+            console.error("Error ensuring public profile:", e);
+          }
         } else {
           // Create initial profile if it doesn't exist
           const initialProfile: UserProfile = {
@@ -167,6 +181,9 @@ export default function App() {
           };
           try {
             await setDoc(doc(db, 'users', user.uid), initialProfile);
+            // Also create public profile
+            const { email, ...publicProfile } = initialProfile;
+            await setDoc(doc(db, 'profiles', user.uid), publicProfile);
           } catch (error) {
             console.error("Error creating initial profile:", error);
           }
@@ -276,6 +293,22 @@ export default function App() {
     }
   }, [user, following]);
 
+  // Notifications Listener
+  useEffect(() => {
+    if (user) {
+      const q = query(
+        collection(db, 'users', user.uid, 'notifications'),
+        where('read', '==', false)
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setUnreadNotificationsCount(snapshot.size);
+      });
+      return () => unsubscribe();
+    } else {
+      setUnreadNotificationsCount(0);
+    }
+  }, [user]);
+
   // Scroll Listener
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
@@ -344,7 +377,7 @@ export default function App() {
 
   const handleArtistClick = async (uid: string) => {
     try {
-      const docRef = doc(db, 'users', uid);
+      const docRef = doc(db, 'profiles', uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data() as UserProfile;
@@ -400,9 +433,34 @@ export default function App() {
           type,
           createdAt: serverTimestamp()
         });
+        
+        // Create notification for artist follow
+        if (type === 'artist') {
+          createNotification(targetId, 'follow', user.uid);
+        }
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `following/${followId}`);
+    }
+  };
+
+  const createNotification = async (recipientId: string, type: 'like' | 'comment' | 'follow' | 'new_chapter', targetId: string, targetTitle?: string) => {
+    if (!user || user.uid === recipientId) return;
+
+    try {
+      await addDoc(collection(db, 'users', recipientId, 'notifications'), {
+        recipientId,
+        senderId: user.uid,
+        senderName: profile?.displayName || user.displayName || 'Anonymous',
+        senderPhoto: profile?.photoURL || user.photoURL || '',
+        type,
+        targetId,
+        targetTitle,
+        read: false,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error creating notification:", error);
     }
   };
 
@@ -544,6 +602,7 @@ export default function App() {
           onBack={handleBack}
           lang={lang}
           setLang={setLang}
+          unreadNotificationsCount={unreadNotificationsCount}
         />
 
         <main className="pb-20 sm:pb-0">
@@ -566,6 +625,10 @@ export default function App() {
                   if (comic) setSelectedComic(comic);
                   setSelectedChapter(chapter);
                   setView('reader');
+                }}
+                onExploreClick={() => {
+                  setView('explore');
+                  window.scrollTo(0, 0);
                 }}
                 lang={lang}
               />
@@ -633,6 +696,9 @@ export default function App() {
                         comicId: selectedComic.id,
                         createdAt: serverTimestamp()
                       });
+                      
+                      // Create notification for like
+                      createNotification(selectedComic.authorUid, 'like', selectedChapter.id, selectedComic.title);
                     }
                   } catch (error) {
                     handleFirestoreError(error, OperationType.WRITE, `likes/${user.uid}`);
@@ -650,6 +716,9 @@ export default function App() {
                       content: text,
                       createdAt: serverTimestamp()
                     });
+                    
+                    // Create notification for comment
+                    createNotification(selectedComic.authorUid, 'comment', selectedChapter.id, selectedComic.title);
                   } catch (error) {
                     handleFirestoreError(error, OperationType.CREATE, 'comments');
                   }
@@ -782,6 +851,21 @@ export default function App() {
               />
             )}
 
+            {view === 'notifications' && user && (
+              <NotificationsView 
+                user={user}
+                lang={lang}
+                onBack={handleBack}
+              />
+            )}
+
+            {view === 'support' && (
+              <div className="container mx-auto px-4 py-20 text-center">
+                <h2 className="text-3xl font-black mb-4 uppercase tracking-tight">Support (Q&A)</h2>
+                <p className="text-zinc-500 font-bold uppercase tracking-widest">Coming Soon</p>
+              </div>
+            )}
+
             {view === 'manage-featured' && (
               <ManageFeaturedView 
                 comics={comics}
@@ -798,12 +882,14 @@ export default function App() {
                 profile={profile}
                 lang={lang}
                 onBack={handleBack}
+                setView={setView}
               />
             )}
 
             {view === 'artist-wall' && selectedArtist && (
               <ArtistWallView 
                 user={user}
+                isAdmin={profile?.role === 'admin'}
                 artistUid={selectedArtist.uid}
                 artistProfile={selectedArtist.profile}
                 lang={lang}
@@ -819,6 +905,7 @@ export default function App() {
                 onBack={handleBack}
                 onArtistClick={handleArtistClick}
                 onLogin={() => setIsLoginModalOpen(true)}
+                setView={setView}
               />
             )}
           </AnimatePresence>

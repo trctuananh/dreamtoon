@@ -137,6 +137,72 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
       },
       "required": ["id", "authorUid", "content", "type"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the notification." },
+        "recipientId": { "type": "string", "description": "The UID of the user receiving the notification." },
+        "senderId": { "type": "string", "description": "The UID of the user who triggered the notification." },
+        "senderName": { "type": "string", "description": "The name of the sender." },
+        "senderPhoto": { "type": "string", "description": "The profile picture URL of the sender." },
+        "type": { "type": "string", "description": "The type of notification.", "enum": ["like", "comment", "follow", "new_chapter"] },
+        "targetId": { "type": "string", "description": "The ID of the related content (post, comic, etc.)." },
+        "targetTitle": { "type": "string", "description": "The title of the related content." },
+        "read": { "type": "boolean", "description": "Whether the notification has been read." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
+      },
+      "required": ["id", "recipientId", "senderId", "type", "read"]
+    },
+    "Donation": {
+      "title": "Donation Message",
+      "description": "A message left by a user after donating to an artist.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the donation record." },
+        "artistUid": { "type": "string", "description": "The UID of the artist who received the donation." },
+        "donorUid": { "type": "string", "description": "The UID of the donor (optional)." },
+        "donorName": { "type": "string", "description": "The name of the donor." },
+        "message": { "type": "string", "description": "The support message." },
+        "amount": { "type": "number", "description": "The donation amount (optional)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
+      },
+      "required": ["id", "artistUid", "donorName", "message"]
+    },
+    "CommissionWork": {
+      "title": "Commission Work Progress",
+      "description": "A record of a commission's progress.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the work record." },
+        "artistUid": { "type": "string", "description": "The UID of the artist." },
+        "title": { "type": "string", "description": "The title of the commission work." },
+        "clientName": { "type": "string", "description": "The name of the client." },
+        "status": { "type": "string", "description": "The current status (e.g., 'Sketching')." },
+        "progress": { "type": "number", "description": "Progress percentage (0-100)." },
+        "order": { "type": "number", "description": "Display order." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "The last update date." }
+      },
+      "required": ["id", "artistUid", "title", "status", "progress"]
+    },
+    "Profile": {
+      "title": "Public Profile",
+      "description": "Publicly accessible information about a user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique ID of the user." },
+        "displayName": { "type": "string", "description": "The name of the user." },
+        "handle": { "type": "string", "description": "The unique handle of the user." },
+        "photoURL": { "type": "string", "description": "The profile picture URL." },
+        "bio": { "type": "string", "description": "The biography of the user." },
+        "role": { "type": "string", "description": "The role of the user." },
+        "donateInfo": { "type": "object" },
+        "commissionInfo": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid"]
     }
   },
   "firestore": {
@@ -144,9 +210,21 @@
       "schema": "User",
       "description": "The collection of user profiles."
     },
+    "/profiles/{uid}": {
+      "schema": "Profile",
+      "description": "Publicly accessible user profiles."
+    },
     "/users/{uid}/following/{id}": {
       "schema": "Following",
       "description": "The subcollection of following records for a specific user."
+    },
+    "/users/{uid}/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "The subcollection of notifications for a specific user."
+    },
+    "/users/{uid}/commissions/{id}": {
+      "schema": "CommissionWork",
+      "description": "The subcollection of commission work progress for an artist."
     },
     "/comics/{comicId}": {
       "schema": "Comic",
@@ -171,6 +249,10 @@
     "/posts/{postId}": {
       "schema": "Post",
       "description": "The collection of community posts."
+    },
+    "/donations/{donationId}": {
+      "schema": "Donation",
+      "description": "The collection of donation messages."
     }
   }
 }

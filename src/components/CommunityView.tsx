@@ -1,37 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Image as ImageIcon, Trash2, Heart, ArrowLeft, PenTool } from 'lucide-react';
+import { Send, Image as ImageIcon, Trash2, Heart, ArrowLeft, PenTool, Crown } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { Post, Comic } from '../types';
+import { View, Post, Comic } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLogin }: { user: any, comics: Comic[], lang: Language, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void }) {
+export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLogin, setView }: { user: any, comics: Comic[], lang: Language, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   const [topCreators, setTopCreators] = useState<{uid: string, name: string, photo: string, views: number}[]>([]);
+  const [topMonthCreators, setTopMonthCreators] = useState<{uid: string, name: string, photo: string, views: number}[]>([]);
+  const [rankingTab, setRankingTab] = useState<'month' | 'all'>('month');
 
   useEffect(() => {
     if (!comics || comics.length === 0) return;
 
-    const authorViews: Record<string, {name: string, views: number}> = {};
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const authorViewsAllTime: Record<string, {name: string, views: number}> = {};
+    const authorViewsMonth: Record<string, {name: string, views: number}> = {};
+
     comics.forEach(comic => {
-      if (!authorViews[comic.authorUid]) {
-        authorViews[comic.authorUid] = { name: comic.authorName, views: 0 };
+      // All Time
+      if (!authorViewsAllTime[comic.authorUid]) {
+        authorViewsAllTime[comic.authorUid] = { name: comic.authorName, views: 0 };
       }
-      authorViews[comic.authorUid].views += comic.views;
+      authorViewsAllTime[comic.authorUid].views += comic.views;
+
+      // Month (approximate by comic creation date)
+      const createdAt = comic.createdAt?.toDate ? comic.createdAt.toDate() : new Date(comic.createdAt);
+      if (createdAt > thirtyDaysAgo) {
+        if (!authorViewsMonth[comic.authorUid]) {
+          authorViewsMonth[comic.authorUid] = { name: comic.authorName, views: 0 };
+        }
+        authorViewsMonth[comic.authorUid].views += comic.views;
+      }
     });
 
-    const sortedAuthors = Object.entries(authorViews)
+    const sortedAllTime = Object.entries(authorViewsAllTime)
       .map(([uid, data]) => ({ uid, ...data }))
       .sort((a, b) => b.views - a.views)
       .slice(0, 5);
 
-    const fetchPhotos = async () => {
-      const creatorsWithPhotos = await Promise.all(sortedAuthors.map(async (author) => {
+    const sortedMonth = Object.entries(authorViewsMonth)
+      .map(([uid, data]) => ({ uid, ...data }))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 5);
+
+    const fetchPhotos = async (authors: any[]) => {
+      return await Promise.all(authors.map(async (author) => {
         try {
-          const userDoc = await getDoc(doc(db, 'users', author.uid));
+          const userDoc = await getDoc(doc(db, 'profiles', author.uid));
           if (userDoc.exists()) {
             return { ...author, photo: userDoc.data().photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${author.uid}` };
           }
@@ -40,10 +62,18 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
         }
         return { ...author, photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${author.uid}` };
       }));
-      setTopCreators(creatorsWithPhotos);
     };
 
-    fetchPhotos();
+    const loadAll = async () => {
+      const [allTime, month] = await Promise.all([
+        fetchPhotos(sortedAllTime),
+        fetchPhotos(sortedMonth)
+      ]);
+      setTopCreators(allTime);
+      setTopMonthCreators(month);
+    };
+
+    loadAll();
   }, [comics]);
 
   useEffect(() => {
@@ -85,19 +115,53 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
     }
   };
 
+  const getRankStyle = (index: number) => {
+    switch (index) {
+      case 0: return "bg-yellow-400 text-white shadow-yellow-400/50 scale-110 ring-2 ring-yellow-200";
+      case 1: return "bg-zinc-300 text-white shadow-zinc-300/50 scale-105 ring-2 ring-zinc-100";
+      case 2: return "bg-orange-400 text-white shadow-orange-400/50 ring-2 ring-orange-100";
+      default: return "bg-zinc-900 text-white border-2 border-white";
+    }
+  };
+
+  const getRankIcon = (index: number) => {
+    if (index === 0) return <Crown size={10} className="mb-0.5" />;
+    return null;
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      {/* Top Creators Section */}
-      {topCreators.length > 0 && (
+      {/* Ranking Tabs */}
+      <div className="grid grid-cols-2 gap-3 mb-8">
+        <button
+          onClick={() => setRankingTab('month')}
+          className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
+            rankingTab === 'month' 
+            ? 'bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20' 
+            : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'
+          }`}
+        >
+          {t('topMonth')}
+        </button>
+        <button
+          onClick={() => setRankingTab('all')}
+          className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
+            rankingTab === 'all' 
+            ? 'bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20' 
+            : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'
+          }`}
+        >
+          {t('topAllTime')}
+        </button>
+      </div>
+
+      {/* Top Creators Display */}
+      {(rankingTab === 'month' ? topMonthCreators : topCreators).length > 0 && (
         <div className="mb-10">
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 mb-6 flex items-center gap-2">
-            <div className="w-8 h-[1px] bg-zinc-200" />
-            {t('topCreators')}
-          </h3>
           <div className="flex items-center gap-4 overflow-x-auto pb-4 no-scrollbar">
-            {topCreators.map((creator, index) => (
+            {(rankingTab === 'month' ? topMonthCreators : topCreators).map((creator, index) => (
               <motion.button
-                key={creator.uid}
+                key={`${rankingTab}-${creator.uid}`}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.1 }}
@@ -105,15 +169,26 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
                 className="flex-shrink-0 group relative"
               >
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-500 rounded-[1.5rem] blur-lg opacity-0 group-hover:opacity-40 transition-opacity duration-500" />
-                  <div className="relative bg-white p-1 rounded-[1.5rem] border border-zinc-100 shadow-sm group-hover:shadow-xl transition-all duration-500">
+                  <div className={`absolute inset-0 rounded-[1.5rem] blur-lg opacity-0 group-hover:opacity-40 transition-opacity duration-500 bg-gradient-to-br ${
+                    index === 0 ? 'from-yellow-400 to-orange-500' : 
+                    index === 1 ? 'from-zinc-300 to-zinc-500' :
+                    index === 2 ? 'from-orange-400 to-orange-700' :
+                    'from-blue-500 to-purple-500'
+                  }`} />
+                  <div className={`relative bg-white p-1 rounded-[1.5rem] border transition-all duration-500 ${
+                    index === 0 ? 'border-yellow-100 shadow-yellow-100/50 group-hover:shadow-yellow-400/30' :
+                    index === 1 ? 'border-zinc-100 shadow-zinc-100/50 group-hover:shadow-zinc-300/30' :
+                    index === 2 ? 'border-orange-100 shadow-orange-100/50 group-hover:shadow-orange-400/30' :
+                    'border-zinc-100 shadow-sm group-hover:shadow-xl'
+                  }`}>
                     <img 
                       src={creator.photo} 
                       alt={creator.name} 
                       className="w-16 h-16 rounded-[1.25rem] object-cover"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-lg">
+                    <div className={`absolute -top-2 -right-2 w-6 h-6 text-[10px] font-black rounded-full flex flex-col items-center justify-center shadow-lg transition-transform duration-500 group-hover:scale-110 ${getRankStyle(index)}`}>
+                      {getRankIcon(index)}
                       {index + 1}
                     </div>
                   </div>
@@ -181,6 +256,27 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
                 <div className="text-zinc-700 text-[15px] leading-relaxed mb-5 font-medium whitespace-pre-wrap">
                   {post.content}
                 </div>
+
+                {post.type === 'commission' && (
+                  <div className="mb-5 bg-zinc-50 rounded-2xl p-5 border border-zinc-100">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h5 className="text-sm font-black text-zinc-900 tracking-tight">{post.commissionTitle}</h5>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="px-2 py-0.5 bg-zinc-200 text-zinc-600 rounded-md text-[10px] font-black uppercase tracking-widest">{post.commissionStatus}</span>
+                          <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">{post.commissionProgress}%</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-zinc-200 rounded-full overflow-hidden shadow-inner">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${post.commissionProgress}%` }}
+                        className="h-full bg-zinc-900"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {post.imageUrl && (
                   <div className="rounded-3xl overflow-hidden mb-5 border border-zinc-100 shadow-sm group/img relative">

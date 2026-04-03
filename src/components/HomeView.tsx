@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ArrowRight, Compass, Star, Clock, BookOpen, User, Library, Heart } from 'lucide-react';
+import { ArrowRight, Compass, BookOpen } from 'lucide-react';
 import { Comic, FeaturedItem, Chapter, Article } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -10,13 +10,10 @@ export function HomeView({
   featuredItems, 
   comics, 
   articles, 
-  followingFeed, 
-  user,
   lang, 
-  searchQuery, 
   onComicClick, 
   onArticleClick, 
-  onChapterClick 
+  onExploreClick,
 }: { 
   featuredItems: FeaturedItem[], 
   comics: Comic[], 
@@ -27,7 +24,8 @@ export function HomeView({
   searchQuery: string, 
   onComicClick: (comic: Comic) => void, 
   onArticleClick: (article: Article) => void, 
-  onChapterClick: (chapter: Chapter) => void 
+  onChapterClick: (chapter: Chapter) => void,
+  onExploreClick: () => void
 }) {
   const { t } = useTranslation(lang);
   const [heroIndex, setHeroIndex] = React.useState(0);
@@ -41,17 +39,10 @@ export function HomeView({
     return () => clearInterval(interval);
   }, [featuredItems.length]);
 
-  const filteredComics = comics.filter(comic => {
-    const matchesSearch = comic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         comic.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (comic.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesSearch;
-  });
-
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-24">
       {/* Hero Section */}
-      <div className="relative h-[250px] w-full overflow-hidden bg-zinc-900">
+      <div className="relative h-[400px] w-full overflow-hidden mb-8">
         <AnimatePresence mode="wait">
           {featuredItems.length > 0 ? (
             <motion.div
@@ -65,198 +56,139 @@ export function HomeView({
               <img 
                 src={featuredItems[heroIndex].banner} 
                 alt={featuredItems[heroIndex].title}
-                className="w-full h-full object-cover opacity-60"
+                className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-white via-white/10 to-black/30" />
-              <div className="absolute inset-0 container mx-auto px-4 flex flex-col justify-center">
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  className="max-w-2xl"
-                >
-                  <span className="px-3 py-1 bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-3 inline-block shadow-lg shadow-blue-500/20">
-                    {t('featured')}
-                  </span>
-                  <h2 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tighter leading-tight drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              
+              <div className="absolute bottom-12 left-0 right-0 px-6">
+                <div className="max-w-xl">
+                  <div className="inline-block px-3 py-1 bg-blue-600 text-white text-[10px] font-black rounded-md mb-4 tracking-widest">
+                    {t('featured').toUpperCase()}
+                  </div>
+                  <h2 className="text-4xl font-black text-white mb-2 tracking-tight leading-tight">
                     {featuredItems[heroIndex].title}
                   </h2>
-                  <p className="text-sm text-white/90 mb-4 line-clamp-1 font-medium drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">
+                  <p className="text-white/80 text-sm mb-6 line-clamp-2 font-medium">
                     {featuredItems[heroIndex].description}
                   </p>
                   <button 
                     onClick={() => {
-                      const item = featuredItems[heroIndex];
-                      if (item.type === 'comic' && item.targetId) {
-                        const comic = comics.find(c => c.id === item.targetId);
+                      if (featuredItems[heroIndex].type === 'comic') {
+                        const comic = comics.find(c => c.id === featuredItems[heroIndex].targetId);
                         if (comic) onComicClick(comic);
-                      } else if (item.type === 'article' && item.targetId) {
-                        const article = articles.find(a => a.id === item.targetId);
+                      } else if (featuredItems[heroIndex].type === 'article') {
+                        const article = articles.find(a => a.id === featuredItems[heroIndex].targetId);
                         if (article) onArticleClick(article);
                       }
                     }}
-                    className="group flex items-center gap-2 px-5 py-2 bg-white text-zinc-900 rounded-full font-black text-[10px] hover:bg-blue-500 hover:text-white transition-all shadow-xl"
+                    className="flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 rounded-full text-sm font-black hover:bg-zinc-100 transition-all group"
                   >
                     {t('readNow')}
-                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                   </button>
-                </motion.div>
+                </div>
               </div>
             </motion.div>
           ) : (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-900"
-            >
-              <div className="text-center px-4">
-                <BookOpen size={40} className="text-white/20 mx-auto mb-3" />
-                <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter mb-1 uppercase">
-                  Welcome to <span className="text-blue-400">Dream</span>Toon
-                </h2>
-                <p className="text-white/60 font-bold uppercase tracking-[0.3em] text-[10px]">
-                  Your portal to infinite stories
-                </p>
-              </div>
-            </motion.div>
+            <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
+              <div className="text-white/20 font-black text-4xl italic tracking-tighter">DREAMTOON</div>
+            </div>
           )}
         </AnimatePresence>
-        
-        {/* Hero Indicators */}
-        {featuredItems.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-            {featuredItems.map((_, idx) => (
-              <button 
-                key={idx}
-                onClick={() => setHeroIndex(idx)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${idx === heroIndex ? 'w-8 bg-blue-500' : 'w-2 bg-white/30 hover:bg-white/50'}`}
-              />
-            ))}
-          </div>
-        )}
+
+        {/* Pagination Dots */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+          {featuredItems.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setHeroIndex(i)}
+              className={`h-1.5 rounded-full transition-all ${i === heroIndex ? 'w-8 bg-blue-500' : 'w-2 bg-white/30'}`}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 mt-8 relative z-20">
-        <div className="grid lg:grid-cols-4 gap-8 md:gap-12">
-          {/* Left Column: Comics Grid */}
-          <div className="lg:col-span-3">
-            <div className="flex items-center justify-between mb-6 md:mb-10">
-              <h3 className="text-2xl md:text-4xl font-black text-zinc-900 tracking-tight">
-                {t('trending')}
-              </h3>
-              <div className="h-1 flex-1 mx-4 md:mx-8 bg-zinc-50 rounded-full" />
-              <button 
-                onClick={() => onComicClick(filteredComics[0])} // Placeholder for "See All"
-                className="text-xs font-black text-blue-500 uppercase tracking-widest hover:text-blue-600 transition-colors"
-              >
-                {t('readNow')}
-              </button>
-            </div>
+      {/* Section: Trending Now */}
+      <div className="px-6 mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-2xl font-black text-zinc-900 tracking-tight">
+            {t('trending')}
+          </h3>
+          <button 
+            onClick={onExploreClick}
+            className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
+          >
+            {t('viewAll')}
+          </button>
+        </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-12">
-              {filteredComics.slice(0, 6).map((comic) => (
-                <motion.div 
-                  layout
-                  key={comic.id}
-                  onClick={() => onComicClick(comic)}
-                  className="group cursor-pointer"
-                >
-                  <div className="relative aspect-[2/3] rounded-[20px] md:rounded-[24px] overflow-hidden mb-3 md:mb-4 shadow-lg group-hover:shadow-blue-500/20 transition-all group-hover:-translate-y-1">
-                    <img 
-                      src={comic.thumbnail} 
-                      alt={comic.title} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="flex items-center gap-1 text-white text-[8px] md:text-[10px] font-bold">
-                        <Star size={10} className="text-yellow-400 fill-yellow-400" />
-                        {comic.rating}
-                      </div>
-                      <div className="flex items-center gap-1 text-white text-[8px] md:text-[10px] font-bold">
-                        <Compass size={10} />
-                        {formatViews(comic.views)}
-                      </div>
-                    </div>
-                  </div>
-                  <h4 className="font-black text-zinc-900 text-sm md:text-base mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors truncate px-1">{comic.title}</h4>
-                  <div className="flex gap-1.5 md:gap-2 px-1">
-                    {comic.genre.slice(0, 2).map(g => (
-                      <span key={g} className="text-[8px] md:text-[10px] font-bold text-blue-500 uppercase tracking-widest">{t(g as any)}</span>
-                    ))}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right Column: Sidebar */}
-          <div className="space-y-12">
-            {/* Following Feed */}
-            {followingFeed.length > 0 && (
-              <div className="bg-zinc-900 rounded-[32px] p-8 text-white shadow-2xl">
-                <h3 className="text-xl font-black mb-6 flex items-center gap-3">
-                  <Heart size={20} className="text-red-500 fill-red-500" />
-                  {t('followingFeed')}
-                </h3>
-                <div className="space-y-6">
-                  {followingFeed.map(chapter => {
-                    const comic = comics.find(c => c.id === chapter.comicId);
-                    if (!comic) return null;
-                    return (
-                      <div 
-                        key={chapter.id} 
-                        onClick={() => onChapterClick(chapter)}
-                        className="flex gap-4 group cursor-pointer"
-                      >
-                        <img 
-                          src={comic.thumbnail} 
-                          className="w-14 h-14 rounded-xl object-cover shadow-lg group-hover:scale-105 transition-transform" 
-                          alt={comic.title}
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-sm truncate group-hover:text-blue-400 transition-colors">{comic.title}</h4>
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
-                            {t('chapter')} {chapter.number}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
+          {comics.slice(0, 6).map((comic) => (
+            <motion.div
+              key={comic.id}
+              onClick={() => onComicClick(comic)}
+              className="flex-shrink-0 w-[180px] group cursor-pointer"
+            >
+              <div className="relative aspect-[3/4] rounded-[2rem] overflow-hidden mb-3 shadow-lg shadow-zinc-200/50">
+                <img 
+                  src={comic.thumbnail} 
+                  alt={comic.title} 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-            )}
+              <h4 className="font-bold text-zinc-900 text-sm truncate mb-1 group-hover:text-blue-600 transition-colors">
+                {comic.title}
+              </h4>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
+                  {t(comic.genre[0] as any)}
+                </span>
+                <span className="w-1 h-1 bg-zinc-200 rounded-full" />
+                <span className="text-[10px] font-bold text-zinc-400">
+                  {formatViews(comic.views)}
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
 
-            {/* Articles */}
-            <div>
-              <h3 className="text-2xl font-black text-zinc-900 mb-8 tracking-tight">{t('latestArticles')}</h3>
-              <div className="space-y-6">
-                {articles.map(article => (
-                  <div 
-                    key={article.id} 
-                    onClick={() => onArticleClick(article)}
-                    className="group cursor-pointer"
-                  >
-                    <div className="relative aspect-video rounded-2xl overflow-hidden mb-3 shadow-lg">
-                      <img 
-                        src={article.banner} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                        alt={article.title}
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                    <h4 className="font-bold text-zinc-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">{article.title}</h4>
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-2">
-                      {article.createdAt?.toDate ? article.createdAt.toDate().toLocaleDateString() : '...'}
-                    </p>
-                  </div>
-                ))}
+      {/* Section: New Daily */}
+      <div className="px-6 mb-12">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-2xl font-black text-zinc-900 tracking-tight">
+            {t('newDaily')}
+          </h3>
+          <button 
+            onClick={onExploreClick}
+            className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
+          >
+            {t('viewAll')}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {comics.slice(6, 10).map((comic) => (
+            <div 
+              key={comic.id}
+              onClick={() => onComicClick(comic)}
+              className="flex gap-3 group cursor-pointer"
+            >
+              <img 
+                src={comic.thumbnail} 
+                alt={comic.title} 
+                className="w-16 h-20 object-cover rounded-xl shadow-sm"
+                referrerPolicy="no-referrer"
+              />
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <h4 className="font-bold text-zinc-900 text-xs truncate mb-1 group-hover:text-blue-600 transition-colors">{comic.title}</h4>
+                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{t(comic.genre[0] as any)}</p>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

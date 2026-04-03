@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Layout, Compass, Star, Plus, Trash2, Library, Heart, LogOut, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
 import { collection, query, where, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 import { db, handleFirestoreError, OperationType, auth } from '../firebase';
 import { Comic, Following } from '../types';
 import { Language, translations } from '../translations';
@@ -52,7 +53,12 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setPhotoURL(ev.target?.result as string);
+      const result = ev.target?.result as string;
+      if (result.length > 800 * 1024) { // ~800KB limit for base64
+        alert('Image is too large for an avatar. Please use a smaller image (under 800KB).');
+        return;
+      }
+      setPhotoURL(result);
     };
     reader.readAsDataURL(file);
   };
@@ -68,7 +74,7 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
     setHandleError(null);
     try {
       if (handle && handle !== profile?.handle) {
-        const q = query(collection(db, 'users'), where('handle', '==', handle));
+        const q = query(collection(db, 'profiles'), where('handle', '==', handle));
         const snap = await getDocs(q);
         if (!snap.empty) {
           setHandleError(t('handleTaken'));
@@ -77,12 +83,23 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
         }
       }
 
-      await setDoc(doc(db, 'users', user.uid), { 
+      const updateData = { 
         bio, 
         displayName, 
         handle: handle.toLowerCase(),
         photoURL
-      }, { merge: true });
+      };
+
+      await setDoc(doc(db, 'users', user.uid), updateData, { merge: true });
+      await setDoc(doc(db, 'profiles', user.uid), updateData, { merge: true });
+
+      // Update Firebase Auth profile as well
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: displayName,
+          photoURL: photoURL
+        });
+      }
 
       // Update all posts by this user to reflect the new name and photo
       const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', user.uid));

@@ -19,29 +19,33 @@ export function ExploreView({
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Compass size={24} className="text-white" />
-            </div>
-            <h2 className="text-4xl font-black tracking-tight text-zinc-900 uppercase">{t('originals')}</h2>
+      <div className="mb-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-end gap-6 mb-8">
+          <div className="flex items-center gap-2 bg-zinc-100 p-1 rounded-2xl">
+            <button className="px-6 py-2 bg-white text-blue-600 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2">
+              <TrendingUp size={16} /> {t('trending')}
+            </button>
+            <button className="px-6 py-2 text-zinc-500 hover:text-zinc-900 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
+              <Clock size={16} /> {t('new')}
+            </button>
+            <button className="px-6 py-2 text-zinc-500 hover:text-zinc-900 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
+              <Star size={16} /> {t('topRated')}
+            </button>
           </div>
-          <p className="text-zinc-500 font-medium max-w-xl leading-relaxed">
-            Discover the next generation of digital storytellers. From epic fantasies to heartwarming romances, find your next favorite series here.
-          </p>
         </div>
-        
-        <div className="flex items-center gap-2 bg-zinc-100 p-1 rounded-2xl">
-          <button className="px-6 py-2 bg-white text-blue-600 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2">
-            <TrendingUp size={16} /> {t('trending')}
+
+        <div className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar">
+          <button className="px-6 py-2 bg-zinc-900 text-white rounded-xl text-sm font-bold shadow-sm whitespace-nowrap">
+            {t('all')}
           </button>
-          <button className="px-6 py-2 text-zinc-500 hover:text-zinc-900 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
-            <Clock size={16} /> {t('new')}
-          </button>
-          <button className="px-6 py-2 text-zinc-500 hover:text-zinc-900 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
-            <Star size={16} /> {t('topRated')}
-          </button>
+          {genres.map((genre) => (
+            <button 
+              key={genre}
+              className="px-6 py-2 bg-zinc-100 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200 rounded-xl text-sm font-bold whitespace-nowrap transition-all"
+            >
+              {genre}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -60,14 +64,11 @@ export function ExploreView({
                 referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2">
                   <span className="px-2 py-1 bg-blue-500 text-white text-[10px] font-bold rounded-lg uppercase tracking-widest">
                     {comic.genre[0]}
                   </span>
                 </div>
-                <p className="text-white text-xs font-medium line-clamp-2 leading-relaxed">
-                  {comic.description}
-                </p>
               </div>
               <div className="absolute top-4 right-4 px-2 py-1 bg-white/90 backdrop-blur-md rounded-xl flex items-center gap-1 shadow-sm">
                 <Star size={10} className="text-yellow-500 fill-yellow-500" />

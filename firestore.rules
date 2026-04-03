@@ -157,6 +157,18 @@ service cloud.firestore {
              (!('commissionInfo' in data) || (data.commissionInfo is map || data.commissionInfo == null));
     }
 
+    function isValidProfile(data) {
+      return data.keys().hasAll(['uid']) &&
+             data.uid == request.auth.uid &&
+             (!('displayName' in data) || (data.displayName is string || data.displayName == null)) &&
+             (!('handle' in data) || (data.handle is string || data.handle == null)) &&
+             (!('photoURL' in data) || (data.photoURL is string || data.photoURL == null)) &&
+             (!('bio' in data) || (data.bio is string || data.bio == null)) &&
+             (!('role' in data) || data.role in ['dreamer', 'admin']) &&
+             (!('donateInfo' in data) || (data.donateInfo is map || data.donateInfo == null)) &&
+             (!('commissionInfo' in data) || (data.commissionInfo is map || data.commissionInfo == null));
+    }
+
     function isValidComic(data) {
       return data.keys().hasAll(['title', 'authorUid', 'createdAt']) &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
@@ -254,12 +266,52 @@ service cloud.firestore {
              (!('comments' in data) || (data.comments is number && data.comments >= 0));
     }
 
+    function isValidDonation(data) {
+      return data.keys().hasAll(['artistUid', 'donorName', 'message', 'createdAt']) &&
+             data.artistUid is string &&
+             data.donorName is string && data.donorName.size() > 0 && data.donorName.size() <= 100 &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 1000 &&
+             data.createdAt is timestamp &&
+             (!('donorUid' in data) || (data.donorUid is string || data.donorUid == null)) &&
+             (!('amount' in data) || (data.amount is number || data.amount == null));
+    }
+
+    function isValidNotification(data, userId) {
+      return data.keys().hasAll(['recipientId', 'senderId', 'type', 'read', 'createdAt']) &&
+             data.recipientId == userId &&
+             data.senderId == request.auth.uid &&
+             data.type in ['like', 'comment', 'follow', 'new_chapter'] &&
+             data.read is bool &&
+             data.createdAt is timestamp &&
+             (!('id' in data) || (data.id is string || data.id == null)) &&
+             (!('senderName' in data) || (data.senderName is string || data.senderName == null)) &&
+             (!('senderPhoto' in data) || (data.senderPhoto is string || data.senderPhoto == null)) &&
+             (!('targetId' in data) || (data.targetId is string || data.targetId == null)) &&
+             (!('targetTitle' in data) || (data.targetTitle is string || data.targetTitle == null));
+    }
+
+    function isValidCommissionWork(data, userId) {
+      return data.keys().hasAll(['artistUid', 'title', 'status', 'progress', 'updatedAt']) &&
+             data.artistUid == userId &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.status is string && data.status.size() > 0 && data.status.size() <= 50 &&
+             data.progress is number && data.progress >= 0 && data.progress <= 100 &&
+             data.updatedAt is timestamp &&
+             (!('clientName' in data) || (data.clientName is string || data.clientName == null)) &&
+             (!('order' in data) || (data.order is number || data.order == null));
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
+    match /users/{userId}/commissions/{id} {
+      allow read: if true;
+      allow create, update, delete: if isOwner(userId) && isValidCommissionWork(request.resource.data, userId);
+    }
+
     match /users/{userId} {
-      allow read: if isAuthenticated(); // Allow reading other users for profiles and handle checks
+      allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role != 'admin' || isAdmin());
       allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
 
@@ -270,6 +322,21 @@ service cloud.firestore {
           request.resource.data.type in ['artist', 'comic'];
         allow delete: if isOwner(userId);
       }
+
+      match /notifications/{id} {
+        allow read: if isOwner(userId);
+        allow create: if isAuthenticated() && isValidNotification(request.resource.data, userId);
+        allow update: if isOwner(userId) && 
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']) &&
+                         request.resource.data.read is bool;
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /profiles/{userId} {
+      allow read: if true;
+      allow create, update: if isOwner(userId) && isValidProfile(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /{path=**}/chapters/{chapterId} {
@@ -348,6 +415,12 @@ service cloud.firestore {
                        request.resource.data.authorUid == resource.data.authorUid &&
                        request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if request.auth.uid == resource.data.authorUid || isAdmin();
+    }
+
+    match /donations/{donationId} {
+      allow read: if true;
+      allow create: if isValidDonation(request.resource.data);
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.artistUid || isAdmin());
     }
   }
 }
