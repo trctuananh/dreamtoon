@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Facebook, Twitter, Share2 } from 'lucide-react';
+import { BookOpen, Facebook, Twitter, Share2, MessageSquare } from 'lucide-react';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 
@@ -22,14 +22,6 @@ export function Footer({ lang }: { lang: Language }) {
             </p>
           </div>
           <div>
-            <h4 className="font-bold mb-6 uppercase tracking-widest text-xs text-zinc-400">{t('explore')}</h4>
-            <ul className="space-y-4 text-sm font-bold">
-              <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">{t('originals')}</a></li>
-              <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">{t('trending')}</a></li>
-              <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">{t('genres')}</a></li>
-            </ul>
-          </div>
-          <div>
             <h4 className="font-bold mb-6 uppercase tracking-widest text-xs text-zinc-400">Connect</h4>
             <div className="flex gap-4">
               <a href="#" className="p-3 bg-zinc-900 rounded-2xl hover:bg-blue-600 transition-all group">
@@ -37,6 +29,9 @@ export function Footer({ lang }: { lang: Language }) {
               </a>
               <a href="#" className="p-3 bg-zinc-900 rounded-2xl hover:bg-zinc-800 transition-all group">
                 <Twitter size={20} className="group-hover:scale-110 transition-transform" />
+              </a>
+              <a href="#" className="p-3 bg-zinc-900 rounded-2xl hover:bg-[#5865F2] transition-all group">
+                <MessageSquare size={20} className="group-hover:scale-110 transition-transform" />
               </a>
               <a href="#" className="p-3 bg-zinc-900 rounded-2xl hover:bg-zinc-800 transition-all group">
                 <Share2 size={20} className="group-hover:scale-110 transition-transform" />

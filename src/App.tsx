@@ -83,7 +83,10 @@ export default function App() {
   const [likes, setLikes] = useState<Like[]>([]);
   const [following, setFollowing] = useState<Following[]>([]);
   const [followingFeed, setFollowingFeed] = useState<Chapter[]>([]);
-  const [lang, setLang] = useState<Language>('en');
+  const [lang, setLang] = useState<Language>(() => {
+    const browserLang = navigator.language.toLowerCase();
+    return browserLang.startsWith('vi') ? 'vi' : 'en';
+  });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('all');
