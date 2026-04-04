@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Tag, X } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
-import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Comic } from '../types';
 import { Language } from '../translations';
@@ -25,7 +25,6 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
   const [tagInput, setTagInput] = useState('');
   const [description, setDescription] = useState(initialData?.description || '');
   const [thumbnail, setThumbnail] = useState(initialData?.thumbnail || '');
-  const [banner, setBanner] = useState(initialData?.banner || '');
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -53,7 +52,7 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
     setTags(tags.filter(t => t !== tag));
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'banner') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -65,8 +64,7 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      if (type === 'thumbnail') setThumbnail(ev.target?.result as string);
-      else setBanner(ev.target?.result as string);
+      setThumbnail(ev.target?.result as string);
     };
     reader.readAsDataURL(file);
   };
@@ -77,20 +75,49 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
     setIsUploading(true);
     setError(null);
 
-    const comicData = {
-      title,
-      genre: selectedGenres,
-      tags,
-      description,
-      thumbnail,
-      banner,
-      authorUid: user.uid,
-      authorName: profile?.displayName || user.displayName,
-      authorPhoto: profile?.photoURL || user.photoURL || '',
-      updatedAt: serverTimestamp(),
-    };
-
     try {
+      let currentPioneerNumber = profile?.pioneerNumber;
+
+      // If user doesn't have a pioneer number, check if they should get one
+      if (!currentPioneerNumber && !initialData) {
+        const pioneersQuery = query(
+          collection(db, 'users'),
+          where('pioneerNumber', '>', 0),
+          orderBy('pioneerNumber', 'desc'),
+          limit(1)
+        );
+        const pioneersSnap = await getDocs(pioneersQuery);
+        let nextNumber = 1;
+        
+        if (!pioneersSnap.empty) {
+          const lastPioneer = pioneersSnap.docs[0].data();
+          nextNumber = (lastPioneer.pioneerNumber || 0) + 1;
+        }
+
+        if (nextNumber <= 100) {
+          await updateDoc(doc(db, 'users', user.uid), {
+            pioneerNumber: nextNumber
+          });
+          await updateDoc(doc(db, 'profiles', user.uid), {
+            pioneerNumber: nextNumber
+          });
+          currentPioneerNumber = nextNumber;
+        }
+      }
+
+      const comicData = {
+        title,
+        genre: selectedGenres,
+        tags,
+        description,
+        thumbnail,
+        authorUid: user.uid,
+        authorName: profile?.displayName || user.displayName,
+        authorPhoto: profile?.photoURL || user.photoURL || '',
+        authorPioneerNumber: currentPioneerNumber || null,
+        updatedAt: serverTimestamp(),
+      };
+
       if (initialData) {
         await updateDoc(doc(db, 'comics', initialData.id), comicData);
       } else {
@@ -113,30 +140,30 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="container mx-auto px-4 py-12 max-w-2xl"
+      className="container mx-auto px-4 py-3 max-w-2xl"
     >
-      <div className="bg-white rounded-3xl p-8 shadow-2xl border border-zinc-100">
-        <div className="flex items-center gap-4 mb-8">
+      <div className="bg-white rounded-3xl p-3 shadow-2xl border border-zinc-100">
+        <div className="flex items-center gap-4 mb-2">
           <h2 className="text-3xl font-black tracking-tight text-zinc-900">
             {initialData ? t('edit') : t('uploadYourWebtoon')} <span className="text-blue-600">{t('webtoon')}</span>
           </h2>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-2">
           <div>
-            <label className="block text-sm font-bold text-zinc-700 mb-2">{t('title')}</label>
+            <label className="block text-sm font-bold text-zinc-700 mb-1">{t('title')}</label>
             <input 
               required
               type="text" 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 focus:outline-none focus:border-blue-500 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-zinc-700 mb-1">{t('genres')}</label>
-            <p className="text-xs text-zinc-500 mb-3">{t('selectMax2')}</p>
+            <label className="block text-sm font-bold text-zinc-700 mb-0.5">{t('genres')}</label>
+            <p className="text-xs text-zinc-500 mb-1">{t('selectMax2')}</p>
             <div className="flex flex-wrap gap-2">
               {GENRES.map((genreKey) => (
                 <button
@@ -156,8 +183,8 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-zinc-700 mb-2">{t('tags')}</label>
-            <div className="flex flex-wrap gap-2 mb-3">
+            <label className="block text-sm font-bold text-zinc-700 mb-1">{t('tags')}</label>
+            <div className="flex flex-wrap gap-2 mb-1">
               {tags.map(tag => (
                 <span key={tag} className="flex items-center gap-1 px-3 py-1 bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full border border-zinc-200">
                   <Tag size={10} />
@@ -180,7 +207,7 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
                   }
                 }}
                 placeholder={t('tagsPlaceholder')}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 focus:outline-none focus:border-blue-500 transition-colors"
               />
               {tagInput && suggestedTags.length > 0 && (
                 <div className="absolute top-full left-0 w-full bg-white border border-zinc-100 rounded-xl mt-1 shadow-xl z-20 overflow-hidden">
@@ -201,36 +228,26 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-zinc-700 mb-2">{t('description')}</label>
+            <label className="block text-sm font-bold text-zinc-700 mb-1">{t('description')}</label>
             <textarea 
               required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 focus:outline-none focus:border-blue-500 transition-colors"
               rows={4}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-sm font-bold text-zinc-700 mb-2">{t('thumbnail')}</label>
+              <label className="block text-sm font-bold text-zinc-700 mb-1">{t('thumbnail')}</label>
               <input 
                 type="file" 
                 accept="image/*"
-                onChange={(e) => handleFileChange(e, 'thumbnail')}
+                onChange={(e) => handleFileChange(e)}
                 className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
               {thumbnail && <img src={thumbnail} className="mt-2 h-32 w-24 object-cover rounded-lg" />}
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-zinc-700 mb-2">{t('banner')}</label>
-              <input 
-                type="file" 
-                accept="image/*"
-                onChange={(e) => handleFileChange(e, 'banner')}
-                className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              {banner && <img src={banner} className="mt-2 h-20 w-full object-cover rounded-lg" />}
             </div>
           </div>
 
@@ -240,18 +257,18 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
             </div>
           )}
 
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-4 pt-1">
             <button 
               type="button"
               onClick={onCancel}
-              className="flex-1 py-4 rounded-full font-bold text-zinc-500 hover:bg-zinc-100 transition-colors"
+              className="flex-1 py-2 rounded-full font-bold text-zinc-500 hover:bg-zinc-100 transition-colors"
             >
               {t('cancel')}
             </button>
             <button 
               type="submit"
               disabled={isUploading}
-              className="flex-1 py-4 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 transition-colors shadow-xl shadow-blue-500/20 disabled:opacity-50"
+              className="flex-1 py-2 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 transition-colors shadow-xl shadow-blue-500/20 disabled:opacity-50"
             >
               {isUploading ? t('uploading') : (initialData ? t('saveChanges') : t('publishWebtoon'))}
             </button>

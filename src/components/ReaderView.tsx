@@ -60,7 +60,7 @@ export function ReaderView({
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white pb-20">
+    <div className="min-h-screen bg-zinc-950 text-white pb-4">
       {/* Top Controls */}
       <AnimatePresence>
         {showControls && (
@@ -68,7 +68,7 @@ export function ReaderView({
             initial={{ y: -100 }}
             animate={{ y: 0 }}
             exit={{ y: -100 }}
-            className="fixed top-0 left-0 right-0 z-50 bg-zinc-900/90 backdrop-blur-md border-b border-zinc-800 px-4 py-3 flex items-center justify-between"
+            className="fixed top-0 left-0 right-0 z-50 bg-zinc-900/90 backdrop-blur-md border-b border-zinc-800 px-4 py-1.5 flex items-center justify-between"
           >
             <div className="flex items-center gap-4">
               <button onClick={onBack} className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
@@ -99,7 +99,7 @@ export function ReaderView({
       </AnimatePresence>
 
       {/* Chapter Content */}
-      <div className="max-w-3xl mx-auto pt-20" onClick={() => setShowControls(!showControls)}>
+      <div className="max-w-3xl mx-auto pt-12" onClick={() => setShowControls(!showControls)}>
         {chapter.images.map((url, idx) => (
           <img 
             key={idx} 
@@ -113,27 +113,27 @@ export function ReaderView({
       </div>
 
       {/* Navigation & Sharing */}
-      <div className="max-w-3xl mx-auto px-4 py-12 border-t border-zinc-900 mt-8">
-        <div className="flex flex-col items-center gap-8">
+      <div className="max-w-3xl mx-auto px-4 py-4 border-t border-zinc-900 mt-2">
+        <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-4 w-full justify-center">
             <button 
               onClick={(e) => { e.stopPropagation(); onPrevChapter(); }}
               disabled={chapter.number <= 1}
-              className="flex-1 max-w-[160px] flex items-center justify-center gap-2 px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors disabled:opacity-30"
+              className="flex-1 max-w-[160px] flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors disabled:opacity-30"
             >
               <ArrowLeft size={18} />
               {t('previousChapter')}
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onBack(); }}
-              className="flex-1 max-w-[160px] flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors"
+              className="flex-1 max-w-[160px] flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-600 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors"
             >
               {t('backToSeries')}
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onNextChapter(); }}
               disabled={chapter.number >= chapters.length}
-              className="flex-1 max-w-[160px] flex items-center justify-center gap-2 px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors disabled:opacity-30"
+              className="flex-1 max-w-[160px] flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors disabled:opacity-30"
             >
               {t('nextChapter')}
               <ArrowRight size={18} />
@@ -163,8 +163,8 @@ export function ReaderView({
         </div>
 
         {/* Interaction Section */}
-        <div className="mt-16 bg-zinc-900/50 rounded-3xl p-8 border border-zinc-900">
-          <div className="flex items-center justify-between mb-8">
+        <div className="mt-4 bg-zinc-900/50 rounded-3xl p-3 border border-zinc-900">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-6">
               <button 
                 onClick={(e) => { e.stopPropagation(); onToggleLike(); }}
@@ -189,7 +189,7 @@ export function ReaderView({
               onAddComment(commentText);
               setCommentText('');
             }} 
-            className="mb-10"
+            className="mb-2"
           >
             <div className="relative">
               <textarea 
@@ -197,7 +197,7 @@ export function ReaderView({
                 onChange={(e) => setCommentText(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
                 placeholder={t('addComment')}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors resize-none"
                 rows={3}
               />
               <button 
@@ -211,9 +211,9 @@ export function ReaderView({
           </form>
 
           {/* Comments List */}
-          <div className="space-y-6">
+          <div className="space-y-2">
             {comments.filter(c => !c.parentId).map(comment => (
-              <div key={comment.id} className="space-y-4">
+              <div key={comment.id} className="space-y-1">
                 <div className="flex gap-4 group">
                   <img 
                     src={comment.userPhoto || ''} 
@@ -299,7 +299,7 @@ export function ReaderView({
                 </div>
 
                 {/* Replies */}
-                <div className="ml-14 space-y-4">
+                <div className="ml-14 space-y-1">
                   {comments.filter(r => r.parentId === comment.id).map(reply => (
                     <div key={reply.id} className="flex gap-3 group">
                       <img 

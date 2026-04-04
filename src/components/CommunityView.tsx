@@ -10,9 +10,9 @@ import { motion, AnimatePresence } from 'motion/react';
 export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLogin, setView }: { user: any, comics: Comic[], lang: Language, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [topCreators, setTopCreators] = useState<{uid: string, name: string, photo: string, views: number}[]>([]);
-  const [topMonthCreators, setTopMonthCreators] = useState<{uid: string, name: string, photo: string, views: number}[]>([]);
-  const [newCreators, setNewCreators] = useState<{uid: string, name: string, photo: string, views: number}[]>([]);
+  const [topCreators, setTopCreators] = useState<{uid: string, name: string, photo: string, views: number, pioneerNumber?: number}[]>([]);
+  const [topMonthCreators, setTopMonthCreators] = useState<{uid: string, name: string, photo: string, views: number, pioneerNumber?: number}[]>([]);
+  const [newCreators, setNewCreators] = useState<{uid: string, name: string, photo: string, views: number, pioneerNumber?: number}[]>([]);
   const [rankingTab, setRankingTab] = useState<'month' | 'all' | 'new'>('month');
 
   useEffect(() => {
@@ -70,7 +70,12 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
         try {
           const userDoc = await getDoc(doc(db, 'profiles', author.uid));
           if (userDoc.exists()) {
-            return { ...author, photo: userDoc.data().photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${author.uid}` };
+            const data = userDoc.data();
+            return { 
+              ...author, 
+              photo: data.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${author.uid}`,
+              pioneerNumber: data.pioneerNumber
+            };
           }
         } catch (e) {
           console.error("Error fetching user photo:", e);
@@ -214,6 +219,11 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
                       className="w-12 h-12 sm:w-16 sm:h-16 rounded-[1rem] sm:rounded-[1.25rem] object-cover"
                       referrerPolicy="no-referrer"
                     />
+                    {creator.pioneerNumber && (
+                      <div className="absolute top-0 left-0 bg-blue-600 text-white text-[8px] sm:text-[10px] font-black w-4 h-4 sm:w-6 sm:h-6 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                        {creator.pioneerNumber}
+                      </div>
+                    )}
                     <div className={`absolute -top-2 -right-2 sm:-top-3 sm:-right-3 min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 text-[9px] sm:text-[11px] font-black rounded-full flex flex-col items-center justify-center shadow-lg transition-transform duration-500 group-hover:scale-110 ${getRankStyle(index)}`}>
                       {getRankIcon(index)}
                       {index + 1}
@@ -261,6 +271,11 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
                         className="w-10 h-10 rounded-xl border-2 border-white shadow-md object-cover"
                         referrerPolicy="no-referrer"
                       />
+                      {post.authorPioneerNumber && (
+                        <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                          {post.authorPioneerNumber}
+                        </div>
+                      )}
                       <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                     </div>
                     <div>

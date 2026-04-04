@@ -98,8 +98,8 @@ export function NotificationsView({
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-2xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto px-4 py-3 max-w-2xl">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Bell size={24} className="text-white" />
@@ -118,7 +118,7 @@ export function NotificationsView({
         )}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-1">
         <AnimatePresence mode="popLayout">
           {notifications.map((notification) => (
             <motion.div
@@ -128,7 +128,7 @@ export function NotificationsView({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
               onClick={() => !notification.read && markAsRead(notification.id)}
-              className={`group relative p-4 rounded-3xl border transition-all duration-300 cursor-pointer ${
+              className={`group relative p-2 rounded-3xl border transition-all duration-300 cursor-pointer ${
                 notification.read 
                   ? 'bg-white border-zinc-100 opacity-75' 
                   : 'bg-blue-50/50 border-blue-100 shadow-sm'
@@ -179,8 +179,8 @@ export function NotificationsView({
         </AnimatePresence>
 
         {!loading && notifications.length === 0 && (
-          <div className="text-center py-20 bg-zinc-50 rounded-[40px] border-2 border-dashed border-zinc-200">
-            <div className="w-20 h-20 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="text-center py-4 bg-zinc-50 rounded-[40px] border-2 border-dashed border-zinc-200">
+            <div className="w-20 h-20 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-1">
               <Bell size={32} className="text-zinc-300" />
             </div>
             <p className="text-zinc-500 font-bold uppercase tracking-widest">{t('noNotifications')}</p>

@@ -151,7 +151,7 @@ export function Navbar({
                       <span className="w-2 h-2 bg-red-500 rounded-full" />
                     )}
                   </button>
-                  {user?.email === 'tr.c.tuananh@gmail.com' && (
+                  {(user?.email === 'tr.c.tuananh@gmail.com' || profile?.role === 'admin') && (
                     <>
                       <button 
                         onClick={() => setView('create-article')}
@@ -164,6 +164,12 @@ export function Navbar({
                         className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
                       >
                         Manage Featured
+                      </button>
+                      <button 
+                        onClick={() => setView('admin-users')}
+                        className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
+                      >
+                        Manage Users
                       </button>
                     </>
                   )}
@@ -298,7 +304,7 @@ export function Navbar({
 
             <div className="space-y-4">
               <button 
-                onClick={() => { window.open('https://discord.gg/', '_blank'); setIsMobileMenuOpen(false); }}
+                onClick={() => { window.open('https://discord.gg/S2pabzV6', '_blank'); setIsMobileMenuOpen(false); }}
                 className="w-full text-left py-3 text-lg font-black flex items-center gap-4 text-zinc-900"
               >
                 <MessageSquare size={24} className="text-indigo-500" />

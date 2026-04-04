@@ -16,11 +16,12 @@ export interface Comic {
   authorName: string;
   authorUid: string;
   authorPhoto?: string;
+  authorPioneerNumber?: number;
   genre: string[];
   tags: string[];
   description: string;
   thumbnail: string;
-  banner: string;
+  banner?: string;
   rating: number;
   ratingCount?: number;
   views: number;
@@ -28,7 +29,7 @@ export interface Comic {
   createdAt?: any;
 }
 
-export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'public-profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall' | 'notifications' | 'support';
+export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'public-profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall' | 'notifications' | 'support' | 'admin-users';
 
 export interface Notification {
   id: string;
@@ -50,7 +51,7 @@ export interface Article {
   authorName: string;
   authorUid: string;
   authorPhoto?: string;
-  banner: string;
+  banner?: string;
   views: number;
   createdAt: any;
 }
@@ -59,7 +60,7 @@ export interface FeaturedItem {
   id: string;
   title: string;
   description?: string;
-  banner: string;
+  banner?: string;
   type: 'comic' | 'article' | 'external';
   targetId?: string;
   externalUrl?: string;
@@ -77,6 +78,8 @@ export interface UserProfile {
   bio?: string;
   handle?: string;
   role?: 'admin' | 'user';
+  banned?: boolean;
+  pioneerNumber?: number;
   donateInfo?: { text: string; imageUrl: string };
   commissionInfo?: { text: string; imageUrl: string };
   commissionQuestions?: string[];
@@ -99,6 +102,7 @@ export interface Comment {
   uid: string; // Changed from userId to uid to match usage
   userName: string;
   userPhoto: string;
+  userPioneerNumber?: number;
   chapterId: string;
   comicId: string;
   content: string; // Changed from text to content to match usage
@@ -160,6 +164,7 @@ export interface PostComment {
   uid: string;
   userName: string;
   userPhoto: string;
+  userPioneerNumber?: number;
   content: string;
   createdAt: any;
 }
@@ -169,6 +174,7 @@ export interface Post {
   authorUid: string;
   authorName: string;
   authorPhoto: string;
+  authorPioneerNumber?: number;
   content: string;
   imageUrl?: string;
   type: 'twit' | 'sketch' | 'donate' | 'commission';

@@ -61,6 +61,7 @@ import { MyWallView } from './components/MyWallView';
 import { ArtistWallView } from './components/ArtistWallView';
 import { CommunityView } from './components/CommunityView';
 import { NotificationsView } from './components/NotificationsView';
+import { AdminUserManagementView } from './components/AdminUserManagementView';
 
 // Hooks & Utils
 import { useTranslation } from './hooks/useTranslation';
@@ -189,15 +190,12 @@ export default function App() {
           const userData = snapshot.data() as UserProfile;
           setProfile(userData);
 
-          // Ensure public profile exists
+          // Sync public profile
           try {
-            const profileSnap = await getDoc(doc(db, 'profiles', user.uid));
-            if (!profileSnap.exists()) {
-              const { email, ...publicProfile } = userData;
-              await setDoc(doc(db, 'profiles', user.uid), publicProfile);
-            }
+            const { email, ...publicProfile } = userData;
+            await setDoc(doc(db, 'profiles', user.uid), publicProfile, { merge: true });
           } catch (e) {
-            console.error("Error ensuring public profile:", e);
+            console.error("Error syncing public profile:", e);
           }
         } else {
           // Create initial profile if it doesn't exist
@@ -644,6 +642,28 @@ export default function App() {
     }
   };
 
+  if (profile?.banned) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6 text-center">
+        <div className="max-w-md">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ChevronUp size={40} className="text-red-500 rotate-180" />
+          </div>
+          <h1 className="text-3xl font-black text-white mb-4 uppercase tracking-tighter">Access Denied</h1>
+          <p className="text-zinc-400 font-medium mb-8 leading-relaxed">
+            Your account has been suspended for violating our community guidelines. If you believe this is a mistake, please contact support.
+          </p>
+          <button 
+            onClick={() => signOut(auth)}
+            className="px-8 py-4 bg-white text-zinc-950 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-zinc-200 transition-all"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-blue-100">
@@ -977,6 +997,7 @@ export default function App() {
             {view === 'artist-wall' && selectedArtist && (
               <ArtistWallView 
                 user={user}
+                profile={profile}
                 isAdmin={profile?.role === 'admin'}
                 artistUid={selectedArtist.uid}
                 artistProfile={selectedArtist.profile}
@@ -996,6 +1017,10 @@ export default function App() {
                 onLogin={() => setIsLoginModalOpen(true)}
                 setView={setView}
               />
+            )}
+
+            {view === 'admin-users' && (profile?.role === 'admin' || user?.email === 'tr.c.tuananh@gmail.com') && (
+              <AdminUserManagementView lang={lang} />
             )}
           </AnimatePresence>
 

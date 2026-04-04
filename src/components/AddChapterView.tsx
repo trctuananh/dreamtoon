@@ -95,27 +95,27 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="container mx-auto px-4 py-12 max-w-2xl"
+      className="container mx-auto px-4 py-3 max-w-2xl"
     >
-      <div className="bg-white rounded-3xl p-8 shadow-2xl border border-zinc-100">
-        <h2 className="text-3xl font-black mb-8 tracking-tight text-zinc-900">{t('addNewChapter')} <span className="text-blue-600">{t('chapter')}</span></h2>
+      <div className="bg-white rounded-3xl p-3 shadow-2xl border border-zinc-100">
+        <h2 className="text-3xl font-black mb-2 tracking-tight text-zinc-900">{t('addNewChapter')} <span className="text-blue-600">{t('chapter')}</span></h2>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-2">
           <div>
-            <label className="block text-sm font-bold text-zinc-700 mb-2">{t('chapterTitle')}</label>
+            <label className="block text-sm font-bold text-zinc-700 mb-1">{t('chapterTitle')}</label>
             <input 
               required
               type="text" 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('chapterTitle') + " (e.g. Chapter 1)"}
-              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 focus:outline-none focus:border-blue-500 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-zinc-700 mb-2">{t('chapterPages')}</label>
-            <div className="space-y-4">
+            <label className="block text-sm font-bold text-zinc-700 mb-1">{t('chapterPages')}</label>
+            <div className="space-y-1">
               <input 
                 type="file" 
                 multiple
@@ -150,18 +150,18 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
             </div>
           )}
 
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-4 pt-1">
             <button 
               type="button"
               onClick={onCancel}
-              className="flex-1 py-4 rounded-full font-bold text-zinc-500 hover:bg-zinc-100 transition-colors"
+              className="flex-1 py-2 rounded-full font-bold text-zinc-500 hover:bg-zinc-100 transition-colors"
             >
               {t('cancel')}
             </button>
             <button 
               type="submit"
               disabled={isUploading}
-              className="flex-1 py-4 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 transition-colors shadow-xl shadow-blue-500/20 disabled:opacity-50"
+              className="flex-1 py-2 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 transition-colors shadow-xl shadow-blue-500/20 disabled:opacity-50"
             >
               {isUploading ? t('uploading') : t('publishChapter')}
             </button>

@@ -106,7 +106,7 @@ export function HomeView({
               {filteredComics.length > 0 && (
                 <div>
                   <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{t('stories') || 'Stories'}</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
                     {filteredComics.map((comic) => (
                       <motion.div
                         key={comic.id}
@@ -155,6 +155,11 @@ export function HomeView({
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                             referrerPolicy="no-referrer"
                           />
+                          {artist.pioneerNumber && (
+                            <div className="absolute top-0 right-0 bg-blue-600 text-white text-[8px] sm:text-[10px] font-black w-5 h-5 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                              {artist.pioneerNumber}
+                            </div>
+                          )}
                         </div>
                         <h4 className="font-bold text-zinc-900 text-sm truncate mb-1 group-hover:text-blue-600 transition-colors">
                           {artist.displayName}
@@ -180,12 +185,18 @@ export function HomeView({
                         onClick={() => onArticleClick(article)}
                         className="flex gap-4 p-4 bg-zinc-50 rounded-2xl hover:bg-zinc-100 transition-colors cursor-pointer group"
                       >
-                        <img 
-                          src={article.banner} 
-                          className="w-24 h-24 object-cover rounded-xl shadow-sm" 
-                          alt={article.title}
-                          referrerPolicy="no-referrer"
-                        />
+                        {article.banner ? (
+                          <img 
+                            src={article.banner} 
+                            className="w-24 h-24 object-cover rounded-xl shadow-sm" 
+                            alt={article.title}
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 bg-zinc-200 rounded-xl flex items-center justify-center">
+                            <Compass size={24} className="text-zinc-400" />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                           <h4 className="font-bold text-zinc-900 text-sm mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">{article.title}</h4>
                           <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{article.authorName}</p>
@@ -216,12 +227,18 @@ export function HomeView({
               transition={{ duration: 0.8 }}
               className="absolute inset-0"
             >
-              <img 
-                src={featuredItems[heroIndex].banner} 
-                alt={featuredItems[heroIndex].title}
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              {featuredItems[heroIndex].banner ? (
+                <img 
+                  src={featuredItems[heroIndex].banner} 
+                  alt={featuredItems[heroIndex].title}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-indigo-600/20 flex items-center justify-center">
+                  <Compass size={48} className="text-zinc-300" />
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               
               <div className="absolute bottom-6 left-0 right-0 px-6">
@@ -303,7 +320,7 @@ export function HomeView({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-x-3 sm:gap-x-4 gap-y-8">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-3 sm:gap-x-4 gap-y-8">
           {(trendingTab === 'trending' ? comics.slice(0, 6) : [...comics].sort((a, b) => b.views - a.views).slice(0, 6)).map((comic, index) => (
             <motion.div
               key={comic.id}
@@ -353,22 +370,22 @@ export function HomeView({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {comics.slice(6, 10).map((comic) => (
+        <div className="grid grid-cols-3 gap-3">
+          {comics.slice(6, 12).map((comic) => (
             <div 
               key={comic.id}
               onClick={() => onComicClick(comic)}
-              className="flex gap-3 group cursor-pointer"
+              className="flex flex-col gap-2 group cursor-pointer"
             >
               <img 
                 src={comic.thumbnail} 
                 alt={comic.title} 
-                className="w-16 h-20 object-cover rounded-xl shadow-sm"
+                className="w-full aspect-[3/4] object-cover rounded-xl shadow-sm"
                 referrerPolicy="no-referrer"
               />
-              <div className="flex-1 min-w-0 flex flex-col justify-center">
-                <h4 className="font-bold text-zinc-900 text-xs truncate mb-1 group-hover:text-blue-600 transition-colors">{comic.title}</h4>
-                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{t(comic.genre[0] as any)}</p>
+              <div className="min-w-0">
+                <h4 className="font-bold text-zinc-900 text-[10px] truncate mb-0.5 group-hover:text-blue-600 transition-colors">{comic.title}</h4>
+                <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{t(comic.genre[0] as any)}</p>
               </div>
             </div>
           ))}
@@ -384,7 +401,7 @@ export function HomeView({
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {followingFeed.map((chapter) => {
               const comic = comics.find(c => c.id === chapter.comicId);
               if (!comic) return null;
@@ -393,20 +410,20 @@ export function HomeView({
                 <div 
                   key={chapter.id}
                   onClick={() => onChapterClick(chapter)}
-                  className="flex gap-3 group cursor-pointer bg-zinc-50 p-3 rounded-2xl hover:bg-zinc-100 transition-colors"
+                  className="flex gap-3 group cursor-pointer bg-zinc-50 p-2 rounded-2xl hover:bg-zinc-100 transition-colors"
                 >
                   <img 
                     src={comic.thumbnail} 
                     alt={comic.title} 
-                    className="w-16 h-20 object-cover rounded-xl shadow-sm"
+                    className="w-12 h-16 object-cover rounded-xl shadow-sm"
                     referrerPolicy="no-referrer"
                   />
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <h4 className="font-bold text-zinc-900 text-sm truncate mb-1 group-hover:text-blue-600 transition-colors">{comic.title}</h4>
-                    <p className="text-xs text-zinc-600 font-medium truncate mb-1">
-                      {t('chapter')} {chapter.number}: {chapter.title}
+                    <h4 className="font-bold text-zinc-900 text-xs truncate mb-0.5 group-hover:text-blue-600 transition-colors">{comic.title}</h4>
+                    <p className="text-[10px] text-zinc-600 font-medium truncate mb-0.5">
+                      {t('chapter')} {chapter.number}
                     </p>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">
+                    <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">
                       {new Date(chapter.uploadDate).toLocaleDateString()}
                     </p>
                   </div>

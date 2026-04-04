@@ -158,7 +158,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
          (request.auth.token.email == "tr.c.tuananh@gmail.com" && request.auth.token.email_verified == true));
     }
 
@@ -176,25 +176,27 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email']) &&
-             data.uid == request.auth.uid &&
              isValidEmail(data.email) &&
              (!('displayName' in data) || (data.displayName is string || data.displayName == null)) &&
              (!('handle' in data) || (data.handle is string || data.handle == null)) &&
              (!('photoURL' in data) || (data.photoURL is string || data.photoURL == null)) &&
              (!('bio' in data) || (data.bio is string || data.bio == null)) &&
+             (!('pioneerNumber' in data) || (data.pioneerNumber is number || data.pioneerNumber == null)) &&
              (!('role' in data) || data.role in ['dreamer', 'admin']) &&
+             (!('banned' in data) || (data.banned is bool || data.banned == null)) &&
              (!('donateInfo' in data) || (data.donateInfo is map || data.donateInfo == null)) &&
              (!('commissionInfo' in data) || (data.commissionInfo is map || data.commissionInfo == null));
     }
 
     function isValidProfile(data) {
       return data.keys().hasAll(['uid']) &&
-             data.uid == request.auth.uid &&
              (!('displayName' in data) || (data.displayName is string || data.displayName == null)) &&
              (!('handle' in data) || (data.handle is string || data.handle == null)) &&
              (!('photoURL' in data) || (data.photoURL is string || data.photoURL == null)) &&
              (!('bio' in data) || (data.bio is string || data.bio == null)) &&
+             (!('pioneerNumber' in data) || (data.pioneerNumber is number || data.pioneerNumber == null)) &&
              (!('role' in data) || data.role in ['dreamer', 'admin']) &&
+             (!('banned' in data) || (data.banned is bool || data.banned == null)) &&
              (!('donateInfo' in data) || (data.donateInfo is map || data.donateInfo == null)) &&
              (!('commissionInfo' in data) || (data.commissionInfo is map || data.commissionInfo == null));
     }
@@ -211,6 +213,7 @@ service cloud.firestore {
              (!('genre' in data) || (data.genre is list || data.genre == null)) &&
              (!('tags' in data) || (data.tags is list || data.tags == null)) &&
              (!('authorName' in data) || (data.authorName is string || data.authorName == null)) &&
+             (!('authorPioneerNumber' in data) || (data.authorPioneerNumber is number || data.authorPioneerNumber == null)) &&
              (!('views' in data) || (data.views is number || data.views == null)) &&
              (!('rating' in data) || (data.rating is number || data.rating == null)) &&
              (!('ratingCount' in data) || (data.ratingCount is number || data.ratingCount == null)) &&
@@ -239,6 +242,7 @@ service cloud.firestore {
              data.createdAt is timestamp &&
              (!('id' in data) || (data.id is string || data.id == null)) &&
              (!('userPhoto' in data) || (data.userPhoto is string || data.userPhoto == null)) &&
+             (!('userPioneerNumber' in data) || (data.userPioneerNumber is number || data.userPioneerNumber == null)) &&
              (!('parentId' in data) || (data.parentId is string || data.parentId == null)) &&
              (!('replyTo' in data) || (data.replyTo is string || data.replyTo == null));
     }
@@ -251,7 +255,8 @@ service cloud.firestore {
              data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
              data.createdAt is timestamp &&
              (!('id' in data) || (data.id is string || data.id == null)) &&
-             (!('userPhoto' in data) || (data.userPhoto is string || data.userPhoto == null));
+             (!('userPhoto' in data) || (data.userPhoto is string || data.userPhoto == null)) &&
+             (!('userPioneerNumber' in data) || (data.userPioneerNumber is number || data.userPioneerNumber == null));
     }
 
     function isValidLike(data, comicId, chapterId) {
@@ -304,6 +309,7 @@ service cloud.firestore {
              (!('id' in data) || (data.id is string || data.id == null)) &&
              (!('authorName' in data) || (data.authorName is string || data.authorName == null)) &&
              (!('authorPhoto' in data) || (data.authorPhoto is string || data.authorPhoto == null)) &&
+             (!('authorPioneerNumber' in data) || (data.authorPioneerNumber is number || data.authorPioneerNumber == null)) &&
              (!('imageUrl' in data) || (data.imageUrl is string || data.imageUrl == null)) &&
              (!('likes' in data) || (data.likes is number && data.likes >= 0)) &&
              (!('comments' in data) || (data.comments is number && data.comments >= 0));
@@ -357,13 +363,14 @@ service cloud.firestore {
 
     match /users/{userId}/commissions/{id} {
       allow read: if true;
-      allow create, update, delete: if isOwner(userId) && isValidCommissionWork(request.resource.data, userId);
+      allow create, update: if isOwner(userId) && isValidCommissionWork(request.resource.data, userId);
+      allow delete: if isOwner(userId);
     }
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role != 'admin' || isAdmin());
-      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == request.auth.uid && (request.resource.data.role != 'admin' || isAdmin());
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == request.auth.uid && request.resource.data.role == resource.data.role && !('banned' in request.resource.data)) || (isAdmin() && isValidUser(request.resource.data));
 
       match /following/{id} {
         allow read: if isOwner(userId);
@@ -391,7 +398,8 @@ service cloud.firestore {
 
     match /profiles/{userId} {
       allow read: if true;
-      allow create, update: if isOwner(userId) && isValidProfile(request.resource.data);
+      allow create: if isOwner(userId) && isValidProfile(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if (isOwner(userId) && isValidProfile(request.resource.data) && request.resource.data.uid == request.auth.uid && !('role' in request.resource.data) && !('banned' in request.resource.data)) || (isAdmin() && isValidProfile(request.resource.data));
       allow delete: if isOwner(userId) || isAdmin();
 
       match /followers/{id} {
@@ -469,7 +477,8 @@ service cloud.firestore {
 
     match /featured/{featuredId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin() && isValidFeatured(request.resource.data);
+      allow create, update: if isAdmin() && isValidFeatured(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /posts/{postId} {

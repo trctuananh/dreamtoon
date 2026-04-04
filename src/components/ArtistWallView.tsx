@@ -7,7 +7,7 @@ import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick }: { user: any, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void }) {
+export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   
@@ -304,8 +304,9 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
       const commentData = {
         postId,
         uid: user.uid,
-        userName: user.displayName || 'Anonymous',
-        userPhoto: user.photoURL || '',
+        userName: profile?.displayName || user.displayName || 'Anonymous',
+        userPhoto: profile?.photoURL || user.photoURL || '',
+        userPioneerNumber: profile?.pioneerNumber || null,
         content: newCommentText.trim(),
         createdAt: serverTimestamp()
       };
@@ -352,12 +353,19 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
     <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-8">
         <div className="flex items-center gap-2 sm:gap-3">
-          <img 
-            src={artistProfile.photoURL || ''} 
-            alt={artistProfile.displayName} 
-            className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl border-2 border-white shadow-md object-cover"
-            referrerPolicy="no-referrer"
-          />
+          <div className="relative">
+            <img 
+              src={artistProfile.photoURL || ''} 
+              alt={artistProfile.displayName} 
+              className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl border-2 border-white shadow-md object-cover"
+              referrerPolicy="no-referrer"
+            />
+            {artistProfile.pioneerNumber && (
+              <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] sm:text-[10px] font-black w-4 h-4 sm:w-6 sm:h-6 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                {artistProfile.pioneerNumber}
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <div>
               <h2 className="text-sm sm:text-xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
@@ -494,6 +502,11 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
                       className="w-10 h-10 rounded-xl border-2 border-white shadow-md object-cover"
                       referrerPolicy="no-referrer"
                     />
+                    {post.authorPioneerNumber && (
+                      <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                        {post.authorPioneerNumber}
+                      </div>
+                    )}
                     <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   </div>
                   <div>
@@ -578,12 +591,19 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
                       {/* Comment Input */}
                       {user ? (
                         <div className="flex items-center gap-3">
-                          <img 
-                            src={user.photoURL || ''} 
-                            alt={user.displayName} 
-                            className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
-                            referrerPolicy="no-referrer"
-                          />
+                          <div className="relative">
+                            <img 
+                              src={user.photoURL || ''} 
+                              alt={user.displayName} 
+                              className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
+                              referrerPolicy="no-referrer"
+                            />
+                            {profile?.pioneerNumber && (
+                              <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-lg z-10">
+                                {profile.pioneerNumber}
+                              </div>
+                            )}
+                          </div>
                           <div className="flex-1 relative">
                             <input
                               type="text"
@@ -612,12 +632,19 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
                       <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
                         {postComments.map((comment) => (
                           <div key={comment.id} className="flex gap-3 group">
-                            <img 
-                              src={comment.userPhoto} 
-                              alt={comment.userName} 
-                              className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
-                              referrerPolicy="no-referrer"
-                            />
+                            <div className="relative">
+                              <img 
+                                src={comment.userPhoto} 
+                                alt={comment.userName} 
+                                className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
+                                referrerPolicy="no-referrer"
+                              />
+                              {comment.userPioneerNumber && (
+                                <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-lg z-10">
+                                  {comment.userPioneerNumber}
+                                </div>
+                              )}
+                            </div>
                             <div className="flex-1 bg-zinc-50 rounded-2xl p-3 relative">
                               <div className="flex justify-between items-start mb-1">
                                 <span className="text-[10px] font-black text-zinc-900">{comment.userName}</span>

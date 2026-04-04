@@ -24,14 +24,20 @@ export function ArticleView({ article, lang, onBack }: { article: Article, lang:
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <div className="relative h-[500px] w-full overflow-hidden">
-        <img 
-          src={article.banner} 
-          alt={article.title} 
-          className="w-full h-full object-cover"
-          referrerPolicy="no-referrer"
-        />
+    <div className="min-h-screen bg-white pb-4">
+      <div className="relative h-[300px] w-full overflow-hidden bg-zinc-200">
+        {article.banner ? (
+          <img 
+            src={article.banner} 
+            alt={article.title} 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-indigo-600/20 flex items-center justify-center">
+            <Compass size={64} className="text-zinc-300" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
         <button 
           onClick={onBack}
@@ -41,16 +47,16 @@ export function ArticleView({ article, lang, onBack }: { article: Article, lang:
         </button>
       </div>
 
-      <div className="container mx-auto px-4 -mt-32 relative z-10 max-w-4xl">
-        <div className="bg-white rounded-[40px] p-12 shadow-2xl border border-zinc-100">
-          <div className="flex items-center gap-4 mb-8 text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-50 w-fit px-4 py-2 rounded-full">
+      <div className="container mx-auto px-4 -mt-16 relative z-10 max-w-4xl">
+        <div className="bg-white rounded-[40px] p-4 shadow-2xl border border-zinc-100">
+          <div className="flex items-center gap-4 mb-2 text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-50 w-fit px-4 py-2 rounded-full">
             <Clock size={14} />
             {article.createdAt?.toDate ? article.createdAt.toDate().toLocaleDateString() : '...'}
           </div>
           
-          <h1 className="text-5xl font-black text-zinc-900 mb-8 tracking-tight leading-tight">{article.title}</h1>
+          <h1 className="text-5xl font-black text-zinc-900 mb-2 tracking-tight leading-tight">{article.title}</h1>
           
-          <div className="flex items-center justify-between mb-12 pb-8 border-b border-zinc-100">
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-100">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold">
                 {article.authorName?.[0] || 'A'}

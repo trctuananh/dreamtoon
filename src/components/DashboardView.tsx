@@ -100,8 +100,8 @@ export function DashboardView({
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-6xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+    <div className="container mx-auto px-4 py-3 max-w-6xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-3">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center">
@@ -133,14 +133,14 @@ export function DashboardView({
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         {stats.map((stat, idx) => (
           <motion.div
             key={idx}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.1 }}
-            className="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm hover:shadow-md transition-all"
+            className="bg-white p-3 rounded-[24px] border border-zinc-100 shadow-sm hover:shadow-md transition-all"
           >
             <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center mb-4 text-white shadow-lg shadow-current/10`}>
               {stat.icon}
@@ -151,9 +151,9 @@ export function DashboardView({
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-6">
         {/* My Comics List */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-2">
               <BarChart3 size={20} className="text-blue-500" />
@@ -161,13 +161,13 @@ export function DashboardView({
             </h3>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
             {myComics.length > 0 ? (
               myComics.map((comic) => (
                 <div 
                   key={comic.id}
                   onClick={() => onComicClick(comic)}
-                  className="group bg-white p-4 rounded-3xl border border-zinc-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all cursor-pointer flex items-center gap-4"
+                  className="group bg-white p-2 rounded-2xl border border-zinc-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all cursor-pointer flex items-center gap-4"
                 >
                   <img 
                     src={comic.thumbnail} 
@@ -207,11 +207,11 @@ export function DashboardView({
         </div>
 
         {/* Sidebar / Quick Tips */}
-        <div className="space-y-6">
-          <div className="bg-zinc-900 rounded-[40px] p-8 text-white relative overflow-hidden">
+        <div className="space-y-3">
+          <div className="bg-zinc-900 rounded-[32px] p-4 text-white relative overflow-hidden">
             <div className="relative z-10">
-              <h3 className="text-xl font-black uppercase tracking-tight mb-4">Creator Tips</h3>
-              <div className="space-y-4">
+              <h3 className="text-xl font-black uppercase tracking-tight mb-2">Creator Tips</h3>
+              <div className="space-y-2">
                 <div className="flex gap-3">
                   <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                     <TrendingUp size={12} />
@@ -233,12 +233,20 @@ export function DashboardView({
             <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
           </div>
 
-          <div className="bg-blue-50 rounded-[40px] p-8 border border-blue-100">
-            <h3 className="text-xl font-black uppercase tracking-tight text-blue-900 mb-4">Need Help?</h3>
-            <p className="text-sm text-blue-700/70 mb-6 font-medium">Check out our creator guide or join the Discord community for support.</p>
-            <button className="w-full py-4 bg-white text-blue-600 rounded-2xl font-black uppercase tracking-widest text-xs shadow-sm hover:shadow-md transition-all">
-              Creator Guide
-            </button>
+          <div className="bg-blue-50 rounded-[32px] p-4 border border-blue-100">
+            <h3 className="text-xl font-black uppercase tracking-tight text-blue-900 mb-2">{t('needHelp')}</h3>
+            <p className="text-sm text-blue-700/70 mb-3 font-medium">{t('creatorHelpText')}</p>
+            <div className="flex flex-col gap-2">
+              <button className="w-full py-3 bg-white text-blue-600 rounded-2xl font-black uppercase tracking-widest text-xs shadow-sm hover:shadow-md transition-all">
+                {t('creatorGuide')}
+              </button>
+              <button 
+                onClick={() => window.open('https://discord.gg/S2pabzV6', '_blank')}
+                className="w-full py-3 bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-indigo-500/20 hover:bg-indigo-600 transition-all"
+              >
+                {t('joinDiscord')}
+              </button>
+            </div>
           </div>
         </div>
       </div>

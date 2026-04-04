@@ -165,6 +165,11 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   className="w-12 h-12 md:w-32 md:h-32 rounded-[1rem] md:rounded-[2.5rem] border-2 md:border-4 border-white shadow-2xl object-cover"
                   referrerPolicy="no-referrer"
                 />
+                {profile?.pioneerNumber && (
+                  <div className="absolute -top-1 -left-1 md:-top-2 md:-left-2 bg-blue-600 text-white text-[8px] md:text-xs font-black w-5 h-5 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 md:border-4 border-white shadow-xl z-20">
+                    {profile.pioneerNumber}
+                  </div>
+                )}
                 {isEditing && (
                   <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[1rem] md:rounded-[2.5rem] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
                     <Camera className="text-white w-4 h-4 md:w-8 md:h-8" />
@@ -273,16 +278,6 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   <p className="text-[7px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('role')}</p>
                 </div>
               </div>
-
-              {!isGuest && (
-                <button
-                  onClick={onLogout}
-                  className="mt-4 md:mt-8 w-full flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-3 bg-zinc-100 text-zinc-600 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-600 transition-all"
-                >
-                  <LogOut size={14} className="md:w-4 md:h-4" />
-                  {t('logout')}
-                </button>
-              )}
             </div>
           </div>
         </div>

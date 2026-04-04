@@ -171,6 +171,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
         authorUid: user.uid,
         authorName: profile?.displayName || user.displayName,
         authorPhoto: profile?.photoURL || user.photoURL,
+        authorPioneerNumber: profile?.pioneerNumber || null,
         content: content.trim(),
         imageUrl: selectedImage,
         type: 'twit',
@@ -317,6 +318,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
         uid: user.uid,
         userName: profile?.displayName || user.displayName || 'Anonymous',
         userPhoto: profile?.photoURL || user.photoURL || '',
+        userPioneerNumber: profile?.pioneerNumber || null,
         content: newCommentText.trim(),
         createdAt: serverTimestamp()
       };
@@ -601,12 +603,19 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
       <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-zinc-100 shadow-sm mb-6 sm:mb-8">
         <form onSubmit={handlePost}>
           <div className="flex gap-4 mb-4">
-            <img 
-              src={profile?.photoURL || user.photoURL || ''} 
-              alt={user.displayName || ''} 
-              className="w-12 h-12 rounded-full border-2 border-blue-500"
-              referrerPolicy="no-referrer"
-            />
+            <div className="relative">
+              <img 
+                src={profile?.photoURL || user.photoURL || ''} 
+                alt={user.displayName || ''} 
+                className="w-12 h-12 rounded-full border-2 border-blue-500"
+                referrerPolicy="no-referrer"
+              />
+              {profile?.pioneerNumber && (
+                <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                  {profile.pioneerNumber}
+                </div>
+              )}
+            </div>
             <div className="flex-1">
               <textarea
                 value={content}
@@ -682,6 +691,11 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                       className="w-10 h-10 rounded-xl border-2 border-white shadow-md object-cover"
                       referrerPolicy="no-referrer"
                     />
+                    {post.authorPioneerNumber && (
+                      <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                        {post.authorPioneerNumber}
+                      </div>
+                    )}
                     <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   </div>
                   <div>
@@ -771,12 +785,19 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                     <div className="pt-6 space-y-4">
                       {/* Comment Input */}
                       <div className="flex items-center gap-3">
-                        <img 
-                          src={profile?.photoURL || user.photoURL || ''} 
-                          alt={profile?.displayName || user.displayName} 
-                          className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
-                          referrerPolicy="no-referrer"
-                        />
+                        <div className="relative">
+                          <img 
+                            src={profile?.photoURL || user.photoURL || ''} 
+                            alt={profile?.displayName || user.displayName} 
+                            className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
+                            referrerPolicy="no-referrer"
+                          />
+                          {profile?.pioneerNumber && (
+                            <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-lg z-10">
+                              {profile.pioneerNumber}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 relative">
                           <input
                             type="text"

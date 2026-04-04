@@ -130,6 +130,11 @@ export function ExploreView({
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
+                  {artist.pioneerNumber && (
+                    <div className="absolute top-0 right-0 bg-blue-600 text-white text-[8px] sm:text-[10px] font-black w-5 h-5 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                      {artist.pioneerNumber}
+                    </div>
+                  )}
                 </div>
                 <h4 className="sm:text-lg font-black text-zinc-900 leading-tight mb-1 group-hover:text-blue-500 transition-colors uppercase tracking-tight">
                   {artist.displayName}

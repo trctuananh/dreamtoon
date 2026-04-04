@@ -127,7 +127,13 @@ export function FeaturedManager({
               {articles.map(article => (
                 <div key={article.id} className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl group">
                   <div className="flex items-center gap-3 min-w-0">
-                    <img src={article.banner} className="w-14 h-10 object-cover rounded-lg" alt="" />
+                    {article.banner ? (
+                      <img src={article.banner} className="w-14 h-10 object-cover rounded-lg" alt="" />
+                    ) : (
+                      <div className="w-14 h-10 bg-zinc-200 rounded-lg flex items-center justify-center">
+                        <Compass size={16} className="text-zinc-400" />
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <p className="font-bold text-sm truncate">{article.title}</p>
                       <p className="text-[10px] text-zinc-400 font-bold uppercase">{formatViews(article.views || 0)} views</p>
@@ -149,8 +155,14 @@ export function FeaturedManager({
       <div className="grid gap-4">
         {featuredItems.map(item => (
           <div key={item.id} className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-6 group">
+          {item.banner ? (
             <img src={item.banner} className="w-40 h-24 object-cover rounded-2xl shadow-md" alt="" />
-            <div className="flex-1 min-w-0">
+          ) : (
+            <div className="w-40 h-24 bg-zinc-200 rounded-2xl flex items-center justify-center">
+              <Compass size={32} className="text-zinc-400" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${item.type === 'comic' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
                   {item.type}
