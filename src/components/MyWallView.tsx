@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Image as ImageIcon, Trash2, Heart, ArrowLeft, PenTool, X, Save, DollarSign, Briefcase, Upload, Camera, Share2, Copy, Check, MessageCircle, Plus, Layout } from 'lucide-react';
 import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, serverTimestamp, updateDoc, increment, arrayUnion, arrayRemove, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { View, Post, UserProfile, Donation, CommissionWork } from '../types';
+import { View, Post, UserProfile, Donation, CommissionWork, PostComment } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
@@ -36,6 +36,12 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
   // Share State
   const [showShareModal, setShowShareModal] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Comment State
+  const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [postComments, setPostComments] = useState<PostComment[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -98,6 +104,30 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
 
     return () => unsubscribe();
   }, [user]);
+
+  useEffect(() => {
+    if (!activePostId) {
+      setPostComments([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'posts', activePostId, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newComments = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as PostComment[];
+      setPostComments(newComments);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
+    });
+
+    return () => unsubscribe();
+  }, [activePostId]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, target: 'post' | 'info' | 'work') => {
     const file = e.target.files?.[0];
@@ -275,6 +305,47 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
+    }
+  };
+
+  const handleAddComment = async (postId: string) => {
+    if (!user || !newCommentText.trim()) return;
+    setIsPostingComment(true);
+    try {
+      const commentData = {
+        postId,
+        uid: user.uid,
+        userName: profile?.displayName || user.displayName || 'Anonymous',
+        userPhoto: profile?.photoURL || user.photoURL || '',
+        content: newCommentText.trim(),
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'posts', postId, 'comments'), commentData);
+      await updateDoc(doc(db, 'posts', postId), {
+        comments: increment(1)
+      });
+      
+      // No notification if artist comments on their own post
+      // But if it's someone else's post (not applicable here in MyWallView)
+
+      setNewCommentText('');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `posts/${postId}/comments`);
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    if (!window.confirm(t('confirmDeleteComment'))) return;
+    try {
+      await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+      await updateDoc(doc(db, 'posts', postId), {
+        comments: increment(-1)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `posts/${postId}/comments/${commentId}`);
     }
   };
 
@@ -591,7 +662,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
       </div>
 
       {/* Posts List */}
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-3 sm:space-y-4">
         <AnimatePresence mode="popLayout">
           {posts.map((post) => (
             <motion.div
@@ -600,18 +671,18 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
+              className="bg-white rounded-2xl sm:rounded-[1.5rem] p-3 sm:px-4 sm:py-3 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <img 
                       src={post.authorPhoto} 
                       alt={post.authorName} 
-                      className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover"
+                      className="w-10 h-10 rounded-xl border-2 border-white shadow-md object-cover"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   </div>
                   <div>
                     <h4 className="font-black text-zinc-900 text-sm tracking-tight">{post.authorName}</h4>
@@ -624,26 +695,26 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                   onClick={() => handleDelete(post.id)}
                   className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={16} />
                 </button>
               </div>
 
-              <div className="text-zinc-700 text-[15px] leading-relaxed mb-5 font-medium whitespace-pre-wrap">
+              <div className="text-zinc-700 text-sm leading-relaxed mb-2 font-medium whitespace-pre-wrap">
                 {post.content}
               </div>
 
               {post.type === 'commission' && (
-                <div className="mb-5 bg-zinc-50 rounded-2xl p-5 border border-zinc-100">
-                  <div className="flex justify-between items-start mb-3">
+                <div className="mb-2 bg-zinc-50 rounded-xl p-2 border border-zinc-100">
+                  <div className="flex justify-between items-start mb-1.5">
                     <div>
                       <h5 className="text-sm font-black text-zinc-900 tracking-tight">{post.commissionTitle}</h5>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-0.5">
                         <span className="px-2 py-0.5 bg-zinc-200 text-zinc-600 rounded-md text-[10px] font-black uppercase tracking-widest">{post.commissionStatus}</span>
                         <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">{post.commissionProgress}%</span>
                       </div>
                     </div>
                   </div>
-                  <div className="h-2 bg-zinc-200 rounded-full overflow-hidden shadow-inner">
+                  <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden shadow-inner">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${post.commissionProgress}%` }}
@@ -654,18 +725,18 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
               )}
 
               {post.imageUrl && (
-                <div className="rounded-3xl overflow-hidden mb-5 border border-zinc-100 shadow-sm group/img relative">
+                <div className="rounded-2xl overflow-hidden mb-2 border border-zinc-100 shadow-sm group/img relative">
                   <img 
                     src={post.imageUrl} 
                     alt="Post content" 
-                    className="w-full h-auto max-h-[600px] object-cover group-hover/img:scale-105 transition-transform duration-700"
+                    className="w-full h-auto max-h-[400px] object-cover group-hover/img:scale-105 transition-transform duration-700"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/5 transition-colors duration-700" />
                 </div>
               )}
 
-              <div className="flex items-center gap-6 pt-5 border-t border-zinc-50">
+              <div className="flex items-center gap-6 pt-2 border-t border-zinc-50">
                 <button 
                   onClick={() => handleLike(post)}
                   onDoubleClick={() => handleUnlike(post)}
@@ -676,7 +747,92 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                   </div>
                   {post.likes || 0}
                 </button>
+
+                <button 
+                  onClick={() => setActivePostId(activePostId === post.id ? null : post.id)}
+                  className={`flex items-center gap-2 transition-all text-xs font-black uppercase tracking-wider ${activePostId === post.id ? 'text-blue-500' : 'text-zinc-400 hover:text-blue-500'}`}
+                >
+                  <div className={`p-2 rounded-full transition-colors ${activePostId === post.id ? 'bg-blue-50' : 'hover:bg-blue-50'}`}>
+                    <MessageCircle size={18} />
+                  </div>
+                  {post.comments || 0}
+                </button>
               </div>
+
+              {/* Comments Section */}
+              <AnimatePresence>
+                {activePostId === post.id && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-6 space-y-4">
+                      {/* Comment Input */}
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={profile?.photoURL || user.photoURL || ''} 
+                          alt={profile?.displayName || user.displayName} 
+                          className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            value={newCommentText}
+                            onChange={(e) => setNewCommentText(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
+                            placeholder={t('addComment')}
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors"
+                          />
+                          <button
+                            onClick={() => handleAddComment(post.id)}
+                            disabled={isPostingComment || !newCommentText.trim()}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                          >
+                            <Send size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Comments List */}
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
+                        {postComments.map((comment) => (
+                          <div key={comment.id} className="flex gap-3 group">
+                            <img 
+                              src={comment.userPhoto} 
+                              alt={comment.userName} 
+                              className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="flex-1 bg-zinc-50 rounded-2xl p-3 relative">
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="text-[10px] font-black text-zinc-900">{comment.userName}</span>
+                                <span className="text-[8px] font-black text-zinc-300 uppercase">
+                                  {comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleDateString() : '...'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-zinc-600 leading-relaxed">{comment.content}</p>
+                              {(user?.uid === comment.uid || user?.uid === post.authorUid) && (
+                                <button 
+                                  onClick={() => handleDeleteComment(post.id, comment.id)}
+                                  className="absolute top-2 right-2 p-1 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {postComments.length === 0 && (
+                          <p className="text-center py-4 text-[10px] font-black text-zinc-300 uppercase tracking-widest">{t('noCommentsYet')}</p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           ))}
         </AnimatePresence>

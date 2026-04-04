@@ -18,6 +18,36 @@ service cloud.firestore {
     //   - donateInfo: map (optional, {text: string, imageUrl: string})
     //   - commissionInfo: map (optional, {text: string, imageUrl: string})
     //
+    // Collection: users/{userId}/following
+    // Document ID: type_targetId
+    // Fields:
+    //   - userId: string (required)
+    //   - targetId: string (required)
+    //   - type: string (required, enum: ['artist', 'comic'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users/{userId}/history
+    // Document ID: comicId
+    // Fields:
+    //   - lastRead: timestamp (required)
+    //   - chapterId: string (required)
+    //   - chapterNumber: number (required)
+    //
+    // Collection: profiles/{userId}/followers
+    // Document ID: followerUid
+    // Fields:
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: chapters (Top-level or Collection Group)
+    // Document ID: chapterId
+    // Fields:
+    //   - comicId: string (required)
+    //   - authorUid: string (required)
+    //   - title: string (optional)
+    //   - number: number (required)
+    //   - images: list (required)
+    //   - createdAt: timestamp (required)
+    //
     // Collection: comics
     // Document ID: comicId
     // Fields:
@@ -201,11 +231,24 @@ service cloud.firestore {
     }
 
     function isValidComment(data, comicId, chapterId) {
-      return data.keys().hasAll(['userId', 'userName', 'chapterId', 'comicId', 'text', 'createdAt']) &&
-             data.userId == request.auth.uid &&
+      return data.keys().hasAll(['uid', 'userName', 'chapterId', 'comicId', 'content', 'createdAt']) &&
+             data.uid == request.auth.uid &&
              data.userName is string && data.userName.size() > 0 &&
              data.chapterId == chapterId && data.comicId == comicId &&
-             data.text is string && data.text.size() > 0 && data.text.size() <= 1000 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 1000 &&
+             data.createdAt is timestamp &&
+             (!('id' in data) || (data.id is string || data.id == null)) &&
+             (!('userPhoto' in data) || (data.userPhoto is string || data.userPhoto == null)) &&
+             (!('parentId' in data) || (data.parentId is string || data.parentId == null)) &&
+             (!('replyTo' in data) || (data.replyTo is string || data.replyTo == null));
+    }
+
+    function isValidPostComment(data, postId) {
+      return data.keys().hasAll(['uid', 'userName', 'postId', 'content', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.userName is string && data.userName.size() > 0 &&
+             data.postId == postId &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
              data.createdAt is timestamp &&
              (!('id' in data) || (data.id is string || data.id == null)) &&
              (!('userPhoto' in data) || (data.userPhoto is string || data.userPhoto == null));
@@ -301,6 +344,13 @@ service cloud.firestore {
              (!('order' in data) || (data.order is number || data.order == null));
     }
 
+    function isValidHistory(data) {
+      return data.keys().hasAll(['lastRead', 'chapterId', 'chapterNumber']) &&
+             data.lastRead is timestamp &&
+             data.chapterId is string &&
+             data.chapterNumber is number;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -323,6 +373,12 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
 
+      match /history/{id} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidHistory(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
       match /notifications/{id} {
         allow read: if isOwner(userId);
         allow create: if isAuthenticated() && isValidNotification(request.resource.data, userId);
@@ -337,6 +393,15 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isOwner(userId) && isValidProfile(request.resource.data);
       allow delete: if isOwner(userId) || isAdmin();
+
+      match /followers/{id} {
+        allow read: if true;
+        allow create, delete: if isAuthenticated() && id == request.auth.uid;
+      }
+    }
+
+    match /chapters/{chapterId} {
+      allow read: if true;
     }
 
     match /{path=**}/chapters/{chapterId} {
@@ -371,11 +436,11 @@ service cloud.firestore {
         match /comments/{commentId} {
           allow read: if true;
           allow create: if isAuthenticated() && isValidComment(request.resource.data, comicId, chapterId);
-          allow update: if (request.auth.uid == resource.data.userId || isAdmin()) && 
+          allow update: if (request.auth.uid == resource.data.uid || isAdmin()) && 
                            isValidComment(request.resource.data, comicId, chapterId) &&
-                           request.resource.data.userId == resource.data.userId &&
+                           request.resource.data.uid == resource.data.uid &&
                            request.resource.data.createdAt == resource.data.createdAt;
-          allow delete: if request.auth.uid == resource.data.userId || isAdmin();
+          allow delete: if request.auth.uid == resource.data.uid || isAdmin();
         }
 
         match /likes/{likeId} {
@@ -415,6 +480,18 @@ service cloud.firestore {
                        request.resource.data.authorUid == resource.data.authorUid &&
                        request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if request.auth.uid == resource.data.authorUid || isAdmin();
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && isValidPostComment(request.resource.data, postId);
+        allow update: if (request.auth.uid == resource.data.uid || isAdmin()) && 
+                         isValidPostComment(request.resource.data, postId) &&
+                         request.resource.data.uid == resource.data.uid &&
+                         request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if request.auth.uid == resource.data.uid || 
+                         request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.authorUid || 
+                         isAdmin();
+      }
     }
 
     match /donations/{donationId} {

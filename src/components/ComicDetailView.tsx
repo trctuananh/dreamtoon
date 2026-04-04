@@ -22,7 +22,6 @@ export function ComicDetailView({
   onAddChapter,
   onEditChapter,
   onEditComic,
-  onMoveChapter,
   onArtistClick,
   onBack
 }: { 
@@ -40,7 +39,6 @@ export function ComicDetailView({
   onAddChapter: () => void,
   onEditChapter: (chapter: Chapter) => void,
   onEditComic: (comic: Comic) => void,
-  onMoveChapter: (chapter: Chapter, direction: 'up' | 'down') => void,
   onArtistClick: (uid: string) => void,
   onBack: () => void
 }) {
@@ -48,6 +46,31 @@ export function ComicDetailView({
   const isFollowingComic = following.some(f => f.targetId === comic.id && f.type === 'comic');
   const isFollowingArtist = following.some(f => f.targetId === comic.authorUid && f.type === 'artist');
   const isAuthor = user && user.uid === comic.authorUid;
+
+  const handleMoveChapter = async (chapter: Chapter, direction: 'up' | 'down') => {
+    const idx = chapters.findIndex(c => c.id === chapter.id);
+    if (idx === -1) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === chapters.length - 1) return;
+
+    const otherIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const otherChapter = chapters[otherIdx];
+
+    try {
+      const { runTransaction, doc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      
+      await runTransaction(db, async (transaction) => {
+        const ch1Ref = doc(db, 'comics', comic.id, 'chapters', chapter.id);
+        const ch2Ref = doc(db, 'comics', comic.id, 'chapters', otherChapter.id);
+        
+        transaction.update(ch1Ref, { number: otherChapter.number });
+        transaction.update(ch2Ref, { number: chapter.number });
+      });
+    } catch (error) {
+      console.error("Error moving chapter:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-20">
@@ -233,7 +256,7 @@ export function ComicDetailView({
                     <div className="flex flex-col gap-1">
                       <button 
                         disabled={idx === 0}
-                        onClick={() => onMoveChapter(ch, 'up')}
+                        onClick={() => handleMoveChapter(ch, 'up')}
                         className="p-2 bg-white border border-zinc-100 rounded-lg text-zinc-400 hover:text-blue-500 hover:border-blue-500 disabled:opacity-30 transition-all"
                       >
                         <ChevronUp size={14} />
@@ -246,7 +269,7 @@ export function ComicDetailView({
                       </button>
                       <button 
                         disabled={idx === chapters.length - 1}
-                        onClick={() => onMoveChapter(ch, 'down')}
+                        onClick={() => handleMoveChapter(ch, 'down')}
                         className="p-2 bg-white border border-zinc-100 rounded-lg text-zinc-400 hover:text-blue-500 hover:border-blue-500 disabled:opacity-30 transition-all"
                       >
                         <ChevronDown size={14} />

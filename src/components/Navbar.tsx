@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown, Star, LayoutDashboard, HelpCircle } from 'lucide-react';
+import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown, Star, LayoutDashboard, HelpCircle, Upload } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { View, UserProfile } from '../types';
 import { Language } from '../translations';
@@ -38,7 +38,7 @@ export function Navbar({
 
   return (
     <>
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-zinc-100 px-4 py-2 sm:py-3 flex flex-col gap-2">
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-zinc-100 px-4 py-1.5 sm:py-2.5 flex flex-col gap-1 sm:gap-2">
         {/* Row 1: Logo, Search, Profile, Menu */}
         <div className="flex items-center justify-between gap-2 sm:gap-4">
           {/* Logo / Back Button */}
@@ -61,7 +61,7 @@ export function Navbar({
           </div>
 
           {/* Search Bar - Flexible in middle on mobile, fixed max-width on desktop */}
-          {view === 'home' && (
+          {(view === 'home' || view === 'explore') && (
             <div className="flex-1 max-w-md relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
               <input 
@@ -129,9 +129,17 @@ export function Navbar({
                     <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
                   </div>
                   <button 
-                    onClick={() => setView('profile')}
-                    className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
+                    onClick={() => setView('upload')}
+                    className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 flex items-center gap-2"
                   >
+                    <Upload size={14} className="text-blue-500" />
+                    {t('upload')}
+                  </button>
+                  <button 
+                    onClick={() => setView('profile')}
+                    className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 flex items-center gap-2"
+                  >
+                    <User size={14} />
                     {t('profile')}
                   </button>
                   <button 
@@ -257,6 +265,13 @@ export function Navbar({
           <div className="p-6 space-y-8">
             {user && (
               <div className="space-y-4">
+                <button 
+                  onClick={() => { setView('upload'); setIsMobileMenuOpen(false); }}
+                  className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'upload' ? 'text-blue-500' : 'text-zinc-900'}`}
+                >
+                  <Upload size={24} className="text-blue-500" />
+                  {t('upload')}
+                </button>
                 <button 
                   onClick={() => { setView('profile'); setIsMobileMenuOpen(false); }}
                   className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'profile' ? 'text-blue-500' : 'text-zinc-900'}`}

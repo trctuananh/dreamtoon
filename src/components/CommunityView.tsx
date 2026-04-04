@@ -149,10 +149,10 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       {/* Ranking Tabs */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-3 gap-3 mb-4">
         <button
           onClick={() => setRankingTab('month')}
-          className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
+          className={`py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
             rankingTab === 'month' 
             ? 'bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20' 
             : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'
@@ -162,7 +162,7 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
         </button>
         <button
           onClick={() => setRankingTab('all')}
-          className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
+          className={`py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
             rankingTab === 'all' 
             ? 'bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20' 
             : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'
@@ -172,7 +172,7 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
         </button>
         <button
           onClick={() => setRankingTab('new')}
-          className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
+          className={`py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
             rankingTab === 'new' 
             ? 'bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20' 
             : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'
@@ -184,8 +184,8 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
 
       {/* Top Creators Display */}
       {(rankingTab === 'month' ? topMonthCreators : rankingTab === 'all' ? topCreators : newCreators).length > 0 && (
-        <div className="mb-10">
-          <div className="flex items-center gap-4 overflow-x-auto pb-4 no-scrollbar">
+        <div className="mb-2">
+          <div className="flex items-center gap-6 overflow-x-auto pt-3 pb-2 no-scrollbar">
             {(rankingTab === 'month' ? topMonthCreators : rankingTab === 'all' ? topCreators : newCreators).map((creator, index) => (
               <motion.button
                 key={`${rankingTab}-${creator.uid}`}
@@ -211,20 +211,20 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
                     <img 
                       src={creator.photo} 
                       alt={creator.name} 
-                      className="w-16 h-16 rounded-[1.25rem] object-cover"
+                      className="w-12 h-12 sm:w-16 sm:h-16 rounded-[1rem] sm:rounded-[1.25rem] object-cover"
                       referrerPolicy="no-referrer"
                     />
-                    <div className={`absolute -top-2 -right-2 w-6 h-6 text-[10px] font-black rounded-full flex flex-col items-center justify-center shadow-lg transition-transform duration-500 group-hover:scale-110 ${getRankStyle(index)}`}>
+                    <div className={`absolute -top-2 -right-2 sm:-top-3 sm:-right-3 min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 text-[9px] sm:text-[11px] font-black rounded-full flex flex-col items-center justify-center shadow-lg transition-transform duration-500 group-hover:scale-110 ${getRankStyle(index)}`}>
                       {getRankIcon(index)}
                       {index + 1}
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 text-center">
-                  <p className="text-[11px] font-black text-zinc-900 truncate w-20 tracking-tight group-hover:text-blue-500 transition-colors">
+                <div className="mt-2 text-center">
+                  <p className="text-[9px] sm:text-[11px] font-black text-zinc-900 truncate w-16 sm:w-20 tracking-tight group-hover:text-blue-500 transition-colors">
                     {creator.name}
                   </p>
-                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-0.5">
+                  <p className="text-[8px] sm:text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-0.5">
                     {creator.views.toLocaleString()}
                   </p>
                 </div>
@@ -235,9 +235,9 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
       )}
 
       {/* Dream World Section */}
-      <div className="mb-8">
-        <h2 className="text-3xl font-black tracking-tight text-zinc-900 mb-2">{t('dreamWorld')}</h2>
-        <div className="w-12 h-1.5 bg-blue-500 rounded-full" />
+      <div className="mb-4">
+        <h2 className="text-xl sm:text-3xl font-black tracking-tight text-zinc-900 mb-1 sm:mb-2">{t('dreamWorld')}</h2>
+        <div className="w-12 h-1 bg-blue-500 rounded-full" />
       </div>
 
       {/* Posts List */}
@@ -250,18 +250,18 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-[2rem] p-6 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
+                className="bg-white rounded-[1.5rem] p-3 sm:px-4 sm:py-3 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
               >
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-3 cursor-pointer" onClick={() => onArtistClick(post.authorUid)}>
                     <div className="relative">
                       <img 
                         src={post.authorPhoto} 
                         alt={post.authorName} 
-                        className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover"
+                        className="w-10 h-10 rounded-xl border-2 border-white shadow-md object-cover"
                         referrerPolicy="no-referrer"
                       />
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                     </div>
                     <div>
                       <h4 className="font-black text-zinc-900 text-sm tracking-tight hover:text-blue-500 transition-colors">{post.authorName}</h4>
@@ -275,27 +275,27 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
                       onClick={() => handleDelete(post.id)}
                       className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={16} />
                     </button>
                   )}
                 </div>
 
-                <div className="text-zinc-700 text-[15px] leading-relaxed mb-5 font-medium whitespace-pre-wrap">
+                <div className="text-zinc-700 text-sm leading-relaxed mb-2 font-medium whitespace-pre-wrap">
                   {post.content}
                 </div>
 
                 {post.type === 'commission' && (
-                  <div className="mb-5 bg-zinc-50 rounded-2xl p-5 border border-zinc-100">
-                    <div className="flex justify-between items-start mb-3">
+                  <div className="mb-2 bg-zinc-50 rounded-xl p-2 border border-zinc-100">
+                    <div className="flex justify-between items-start mb-1.5">
                       <div>
                         <h5 className="text-sm font-black text-zinc-900 tracking-tight">{post.commissionTitle}</h5>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-0.5">
                           <span className="px-2 py-0.5 bg-zinc-200 text-zinc-600 rounded-md text-[10px] font-black uppercase tracking-widest">{post.commissionStatus}</span>
                           <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">{post.commissionProgress}%</span>
                         </div>
                       </div>
                     </div>
-                    <div className="h-2 bg-zinc-200 rounded-full overflow-hidden shadow-inner">
+                    <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden shadow-inner">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${post.commissionProgress}%` }}
@@ -306,18 +306,18 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
                 )}
 
                 {post.imageUrl && (
-                  <div className="rounded-3xl overflow-hidden mb-5 border border-zinc-100 shadow-sm group/img relative">
+                  <div className="rounded-2xl overflow-hidden mb-2 border border-zinc-100 shadow-sm group/img relative">
                     <img 
                       src={post.imageUrl} 
                       alt="Post content" 
-                      className="w-full h-auto max-h-[600px] object-cover group-hover/img:scale-105 transition-transform duration-700"
+                      className="w-full h-auto max-h-[400px] object-cover group-hover/img:scale-105 transition-transform duration-700"
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/5 transition-colors duration-700" />
                   </div>
                 )}
 
-                <div className="flex items-center gap-6 pt-5 border-t border-zinc-50">
+                <div className="flex items-center gap-6 pt-2 border-t border-zinc-50">
                   <button 
                     onClick={() => handleLike(post.id)}
                     className="flex items-center gap-2 text-zinc-400 hover:text-red-500 transition-all text-xs font-black uppercase tracking-wider"

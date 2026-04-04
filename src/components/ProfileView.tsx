@@ -152,40 +152,33 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center gap-4 mb-12">
-        <button onClick={onBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-900">
-          <ArrowLeft size={24} />
-        </button>
-        <h2 className="text-3xl font-black tracking-tight text-zinc-900">{t('profile')}</h2>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-8">
+    <div className="container mx-auto px-2 py-2 md:px-4 md:py-8 max-w-6xl">
+      <div className="grid md:grid-cols-3 gap-4 md:gap-8">
         <div className="md:col-span-1">
-          <div className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm sticky top-24 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-blue-500 to-indigo-600" />
+          <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-8 border border-zinc-100 shadow-sm sticky top-24 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-12 md:h-32 bg-gradient-to-br from-blue-500 to-indigo-600" />
             <div className="flex flex-col items-center text-center relative z-10">
-              <div className="relative mb-4 group">
+              <div className="relative mb-1 md:mb-4 group">
                 <img 
                   src={photoURL || user.photoURL || ''} 
                   alt={displayName || user.displayName || ''} 
-                  className="w-32 h-32 rounded-[2.5rem] border-4 border-white shadow-2xl object-cover"
+                  className="w-12 h-12 md:w-32 md:h-32 rounded-[1rem] md:rounded-[2.5rem] border-2 md:border-4 border-white shadow-2xl object-cover"
                   referrerPolicy="no-referrer"
                 />
                 {isEditing && (
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[2.5rem] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="text-white" size={32} />
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[1rem] md:rounded-[2.5rem] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="text-white w-4 h-4 md:w-8 md:h-8" />
                     <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                   </label>
                 )}
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 border-4 border-white rounded-full shadow-lg" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 md:w-8 md:h-8 bg-green-500 border-2 md:border-4 border-white rounded-full shadow-lg" />
               </div>
-              <h3 className="text-2xl font-black text-zinc-900 tracking-tight">{displayName || profile?.displayName || user.displayName}</h3>
+              <h3 className="text-base md:text-2xl font-black text-zinc-900 tracking-tight leading-tight">{displayName || profile?.displayName || user.displayName}</h3>
               {profile?.handle && (
-                <p className="text-blue-500 font-black text-sm mb-1 tracking-tight">@{profile.handle}</p>
+                <p className="text-blue-500 font-black text-[10px] md:text-sm mb-0.5 md:mb-1 tracking-tight">@{profile.handle}</p>
               )}
-              {!isGuest && <p className="text-zinc-400 text-xs font-bold mb-2">{user.email}</p>}
-              <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] mb-6">{t('joined')}: {joinedDate}</p>
+              {!isGuest && <p className="text-zinc-400 text-[8px] md:text-xs font-bold mb-0.5 md:mb-2">{user.email}</p>}
+              <p className="text-[7px] md:text-[10px] text-zinc-400 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] mb-2 md:mb-6">{t('joined')}: {joinedDate}</p>
 
               {isEditing ? (
                 <div className="w-full mb-6 space-y-4">
@@ -246,47 +239,47 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   </div>
                 </div>
               ) : (
-                <div className="w-full mb-6">
-                  <p className="text-sm text-zinc-600 mb-4 italic">
+                <div className="w-full mb-3 md:mb-6">
+                  <p className="text-xs md:text-sm text-zinc-600 mb-2 md:mb-4 italic line-clamp-2 md:line-clamp-none">
                     {profile?.bio || t('noBio')}
                   </p>
                   {!isGuest && (
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="text-blue-500 text-xs font-bold hover:underline flex items-center gap-1 mx-auto"
+                      className="text-blue-500 text-[10px] md:text-xs font-bold hover:underline flex items-center gap-1 mx-auto"
                     >
-                      <Layout size={12} />
+                      <Layout size={10} className="md:w-3 md:h-3" />
                       {t('editProfile')}
                     </button>
                   )}
                 </div>
               )}
               
-              <div className="grid grid-cols-2 gap-4 w-full pt-6 border-t border-zinc-50">
+              <div className="grid grid-cols-2 gap-1.5 md:gap-4 w-full pt-2 md:pt-6 border-t border-zinc-50">
                 <div className="text-center">
-                  <p className="text-2xl font-black text-blue-600">{myComics.length}</p>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('comic')}</p>
+                  <p className="text-base md:text-2xl font-black text-blue-600">{myComics.length}</p>
+                  <p className="text-[7px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('comic')}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-black text-blue-600">{formatViews(totalViews)}</p>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('views')}</p>
+                  <p className="text-base md:text-2xl font-black text-blue-600">{formatViews(totalViews)}</p>
+                  <p className="text-[7px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('views')}</p>
                 </div>
-                <div className="text-center pt-4">
-                  <p className="text-2xl font-black text-yellow-500">{avgRating}</p>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('avgRating')}</p>
+                <div className="text-center pt-1.5 md:pt-4">
+                  <p className="text-base md:text-2xl font-black text-yellow-500">{avgRating}</p>
+                  <p className="text-[7px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('avgRating')}</p>
                 </div>
-                <div className="text-center pt-4">
-                  <p className="text-2xl font-black text-zinc-900">{t((profile?.role || 'dreamer') as any)}</p>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('role')}</p>
+                <div className="text-center pt-1.5 md:pt-4">
+                  <p className="text-base md:text-2xl font-black text-zinc-900">{t((profile?.role || 'dreamer') as any)}</p>
+                  <p className="text-[7px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('role')}</p>
                 </div>
               </div>
 
               {!isGuest && (
                 <button
                   onClick={onLogout}
-                  className="mt-8 w-full flex items-center justify-center gap-2 px-4 py-3 bg-zinc-100 text-zinc-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-600 transition-all"
+                  className="mt-4 md:mt-8 w-full flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-3 bg-zinc-100 text-zinc-600 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-600 transition-all"
                 >
-                  <LogOut size={16} />
+                  <LogOut size={14} className="md:w-4 md:h-4" />
                   {t('logout')}
                 </button>
               )}

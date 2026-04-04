@@ -102,6 +102,8 @@ export interface Comment {
   chapterId: string;
   comicId: string;
   content: string; // Changed from text to content to match usage
+  parentId?: string;
+  replyTo?: string;
   createdAt: any;
 }
 
@@ -150,6 +152,16 @@ export interface CommissionWork {
   order: number;
   imageUrl?: string;
   updatedAt: any;
+}
+
+export interface PostComment {
+  id: string;
+  postId: string;
+  uid: string;
+  userName: string;
+  userPhoto: string;
+  content: string;
+  createdAt: any;
 }
 
 export interface Post {

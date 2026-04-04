@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, Trash2, MessageCircle, Layout } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { Post, UserProfile, Donation, CommissionWork, Following } from '../types';
+import { Post, UserProfile, Donation, CommissionWork, Following, PostComment } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
@@ -34,6 +34,12 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
   const [isFollowing, setIsFollowing] = useState(false);
   const [viewingWorkImage, setViewingWorkImage] = useState<string | null>(null);
 
+  // Comment State
+  const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [postComments, setPostComments] = useState<PostComment[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
+
   useEffect(() => {
     if (user) {
       const q = query(
@@ -62,12 +68,14 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
       
       // Add notification for artist
       await addDoc(collection(db, 'users', artistUid, 'notifications'), {
+        recipientId: artistUid,
+        senderId: user.uid,
+        senderName: user.displayName || 'Anonymous',
+        senderPhoto: user.photoURL || '',
         type: 'follow',
-        fromUid: user.uid,
-        fromName: user.displayName || 'Anonymous',
-        fromPhoto: user.photoURL || '',
-        createdAt: serverTimestamp(),
-        read: false
+        targetId: user.uid,
+        read: false,
+        createdAt: serverTimestamp()
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/following`);
@@ -141,6 +149,30 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
 
     return () => unsubscribe();
   }, [artistUid]);
+
+  useEffect(() => {
+    if (!activePostId) {
+      setPostComments([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'posts', activePostId, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newComments = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as PostComment[];
+      setPostComments(newComments);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
+    });
+
+    return () => unsubscribe();
+  }, [activePostId]);
 
   const handleLike = async (post: Post) => {
     if (!user || post.likedBy?.includes(user.uid)) return;
@@ -265,49 +297,100 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
     }
   };
 
+  const handleAddComment = async (postId: string) => {
+    if (!user || !newCommentText.trim()) return;
+    setIsPostingComment(true);
+    try {
+      const commentData = {
+        postId,
+        uid: user.uid,
+        userName: user.displayName || 'Anonymous',
+        userPhoto: user.photoURL || '',
+        content: newCommentText.trim(),
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'posts', postId, 'comments'), commentData);
+      await updateDoc(doc(db, 'posts', postId), {
+        comments: increment(1)
+      });
+      
+      // Add notification for post author
+      if (user.uid !== artistUid) {
+        await addDoc(collection(db, 'users', artistUid, 'notifications'), {
+          type: 'comment',
+          fromUid: user.uid,
+          fromName: user.displayName || 'Anonymous',
+          fromPhoto: user.photoURL || '',
+          targetId: postId,
+          createdAt: serverTimestamp(),
+          read: false
+        });
+      }
+
+      setNewCommentText('');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `posts/${postId}/comments`);
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    if (!window.confirm(t('confirmDeleteComment'))) return;
+    try {
+      await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+      await updateDoc(doc(db, 'posts', postId), {
+        comments: increment(-1)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `posts/${postId}/comments/${commentId}`);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-8">
+        <div className="flex items-center gap-2 sm:gap-3">
           <img 
             src={artistProfile.photoURL || ''} 
             alt={artistProfile.displayName} 
-            className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover"
+            className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl border-2 border-white shadow-md object-cover"
             referrerPolicy="no-referrer"
           />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div>
-              <h2 className="text-xl font-black tracking-tight text-zinc-900">{artistProfile.displayName}</h2>
-              <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
+              <h2 className="text-sm sm:text-xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
+              <p className="text-[8px] sm:text-[10px] font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
             </div>
             <button 
               onClick={() => onProfileClick(artistUid)}
-              className="px-3 py-1 border-2 border-red-500 text-red-500 rounded-md font-black uppercase tracking-widest text-xs hover:bg-red-50 transition-colors"
+              className="px-2 py-0.5 sm:px-3 sm:py-1 border border-red-500 text-red-500 rounded-md font-black uppercase tracking-widest text-[8px] sm:text-xs hover:bg-red-50 transition-colors whitespace-nowrap"
             >
               {t('viewProfilesAndArtworks')}
             </button>
           </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <button 
             onClick={() => setActiveInfoModal('donate')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
+            className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-4 sm:py-2 bg-green-500 text-white rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
           >
-            <DollarSign size={14} />
+            <DollarSign size={10} className="sm:w-[14px] sm:h-[14px]" />
             {t('donate')}
           </button>
           <button 
             onClick={() => setActiveInfoModal('commission')}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
+            className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-4 sm:py-2 bg-orange-500 text-white rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
           >
-            <Briefcase size={14} />
+            <Briefcase size={10} className="sm:w-[14px] sm:h-[14px]" />
             {t('commission')}
           </button>
           {user && user.uid !== artistUid && (
             <button 
               onClick={isFollowing ? handleUnfollow : handleFollow}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
+              className={`px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
                 isFollowing 
                 ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
                 : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
@@ -318,9 +401,9 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
           )}
           <button 
             onClick={() => setShowShareModal(true)}
-            className="p-2 bg-zinc-100 text-zinc-600 rounded-xl hover:bg-zinc-200 transition-all"
+            className="p-1.5 sm:p-2 bg-zinc-100 text-zinc-600 rounded-lg sm:rounded-xl hover:bg-zinc-200 transition-all"
           >
-            <Share2 size={18} />
+            <Share2 size={14} className="sm:w-[18px] sm:h-[18px]" />
           </button>
         </div>
       </div>
@@ -391,7 +474,7 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
       )}
 
       {/* Posts List */}
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-3 sm:space-y-4">
         <AnimatePresence mode="popLayout">
           {posts.map((post) => (
             <motion.div
@@ -400,18 +483,18 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
+              className="bg-white rounded-2xl sm:rounded-[1.5rem] p-3 sm:px-4 sm:py-3 border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-500 group"
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <img 
                       src={post.authorPhoto} 
                       alt={post.authorName} 
-                      className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover"
+                      className="w-10 h-10 rounded-xl border-2 border-white shadow-md object-cover"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   </div>
                   <div>
                     <h4 className="font-black text-zinc-900 text-sm tracking-tight">{post.authorName}</h4>
@@ -422,22 +505,22 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
                 </div>
               </div>
 
-              <div className="text-zinc-700 text-[15px] leading-relaxed mb-5 font-medium whitespace-pre-wrap">
+              <div className="text-zinc-700 text-sm leading-relaxed mb-2 font-medium whitespace-pre-wrap">
                 {post.content}
               </div>
 
               {post.type === 'commission' && (
-                <div className="mb-5 bg-zinc-50 rounded-2xl p-5 border border-zinc-100">
-                  <div className="flex justify-between items-start mb-3">
+                <div className="mb-2 bg-zinc-50 rounded-xl p-2 border border-zinc-100">
+                  <div className="flex justify-between items-start mb-1.5">
                     <div>
                       <h5 className="text-sm font-black text-zinc-900 tracking-tight">{post.commissionTitle}</h5>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-0.5">
                         <span className="px-2 py-0.5 bg-zinc-200 text-zinc-600 rounded-md text-[10px] font-black uppercase tracking-widest">{post.commissionStatus}</span>
                         <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">{post.commissionProgress}%</span>
                       </div>
                     </div>
                   </div>
-                  <div className="h-2 bg-zinc-200 rounded-full overflow-hidden shadow-inner">
+                  <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden shadow-inner">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${post.commissionProgress}%` }}
@@ -448,18 +531,18 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
               )}
 
               {post.imageUrl && (
-                <div className="rounded-3xl overflow-hidden mb-5 border border-zinc-100 shadow-sm group/img relative">
+                <div className="rounded-2xl overflow-hidden mb-2 border border-zinc-100 shadow-sm group/img relative">
                   <img 
                     src={post.imageUrl} 
                     alt="Post content" 
-                    className="w-full h-auto max-h-[600px] object-cover group-hover/img:scale-105 transition-transform duration-700"
+                    className="w-full h-auto max-h-[400px] object-cover group-hover/img:scale-105 transition-transform duration-700"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/5 transition-colors duration-700" />
                 </div>
               )}
 
-              <div className="flex items-center gap-6 pt-5 border-t border-zinc-50">
+              <div className="flex items-center gap-6 pt-2 border-t border-zinc-50">
                 <button 
                   onClick={() => handleLike(post)}
                   onDoubleClick={() => handleUnlike(post)}
@@ -470,7 +553,98 @@ export function ArtistWallView({ user, isAdmin, artistUid, artistProfile, lang, 
                   </div>
                   {post.likes || 0}
                 </button>
+
+                <button 
+                  onClick={() => setActivePostId(activePostId === post.id ? null : post.id)}
+                  className={`flex items-center gap-2 transition-all text-xs font-black uppercase tracking-wider ${activePostId === post.id ? 'text-blue-500' : 'text-zinc-400 hover:text-blue-500'}`}
+                >
+                  <div className={`p-2 rounded-full transition-colors ${activePostId === post.id ? 'bg-blue-50' : 'hover:bg-blue-50'}`}>
+                    <MessageCircle size={18} />
+                  </div>
+                  {post.comments || 0}
+                </button>
               </div>
+
+              {/* Comments Section */}
+              <AnimatePresence>
+                {activePostId === post.id && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-6 space-y-4">
+                      {/* Comment Input */}
+                      {user ? (
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={user.photoURL || ''} 
+                            alt={user.displayName} 
+                            className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="flex-1 relative">
+                            <input
+                              type="text"
+                              value={newCommentText}
+                              onChange={(e) => setNewCommentText(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
+                              placeholder={t('addComment')}
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors"
+                            />
+                            <button
+                              onClick={() => handleAddComment(post.id)}
+                              disabled={isPostingComment || !newCommentText.trim()}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                            >
+                              <Send size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-zinc-50 rounded-xl p-4 text-center">
+                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t('loginToComment')}</p>
+                        </div>
+                      )}
+
+                      {/* Comments List */}
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
+                        {postComments.map((comment) => (
+                          <div key={comment.id} className="flex gap-3 group">
+                            <img 
+                              src={comment.userPhoto} 
+                              alt={comment.userName} 
+                              className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="flex-1 bg-zinc-50 rounded-2xl p-3 relative">
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="text-[10px] font-black text-zinc-900">{comment.userName}</span>
+                                <span className="text-[8px] font-black text-zinc-300 uppercase">
+                                  {comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleDateString() : '...'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-zinc-600 leading-relaxed">{comment.content}</p>
+                              {(user?.uid === comment.uid || user?.uid === artistUid || isAdmin) && (
+                                <button 
+                                  onClick={() => handleDeleteComment(post.id, comment.id)}
+                                  className="absolute top-2 right-2 p-1 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {postComments.length === 0 && (
+                          <p className="text-center py-4 text-[10px] font-black text-zinc-300 uppercase tracking-widest">{t('noCommentsYet')}</p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           ))}
         </AnimatePresence>

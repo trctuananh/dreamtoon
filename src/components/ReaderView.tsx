@@ -31,7 +31,7 @@ export function ReaderView({
   likes: Like[], 
   comments: Comment[], 
   onToggleLike: () => void, 
-  onAddComment: (text: string) => void, 
+  onAddComment: (text: string, parentId?: string, replyTo?: string) => void, 
   onDeleteComment: (commentId: string) => void, 
   onChapterClick: (chapter: Chapter) => void, 
   onNextChapter: () => void, 
@@ -42,6 +42,8 @@ export function ReaderView({
   const [showControls, setShowControls] = useState(true);
   const [shareSuccess, setShareSuccess] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
   const isLiked = user && likes.some(l => l.userId === user.uid && l.targetId === chapter.id);
 
   const handleShare = (platform: 'fb' | 'x' | 'copy') => {
@@ -210,32 +212,128 @@ export function ReaderView({
 
           {/* Comments List */}
           <div className="space-y-6">
-            {comments.map(comment => (
-              <div key={comment.id} className="flex gap-4 group">
-                <img 
-                  src={comment.userPhoto || ''} 
-                  alt={comment.userName} 
-                  className="w-10 h-10 rounded-full border-2 border-zinc-800"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-bold text-sm text-zinc-200">{comment.userName}</h4>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                        {comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleDateString() : '...'}
-                      </span>
-                      {user && (user.uid === comment.uid || user.uid === comic.authorUid) && (
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); onDeleteComment(comment.id); }}
-                          className="p-1 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+            {comments.filter(c => !c.parentId).map(comment => (
+              <div key={comment.id} className="space-y-4">
+                <div className="flex gap-4 group">
+                  <img 
+                    src={comment.userPhoto || ''} 
+                    alt={comment.userName} 
+                    className="w-10 h-10 rounded-full border-2 border-zinc-800 object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="font-bold text-sm text-zinc-200">{comment.userName}</h4>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                          {comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleDateString() : '...'}
+                        </span>
+                        {user && (user.uid === comment.uid || user.uid === comic.authorUid) && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onDeleteComment(comment.id); }}
+                            className="p-1 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    <p className="text-sm text-zinc-400 leading-relaxed mb-2">{comment.content}</p>
+                    
+                    {user && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                          setReplyText('');
+                        }}
+                        className="text-[10px] font-bold text-zinc-500 hover:text-blue-500 uppercase tracking-widest transition-colors"
+                      >
+                        {t('reply')}
+                      </button>
+                    )}
+
+                    {/* Reply Form */}
+                    <AnimatePresence>
+                      {replyingTo === comment.id && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-4 overflow-hidden"
+                        >
+                          <div className="relative">
+                            <textarea 
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder={`${t('reply')} to ${comment.userName}...`}
+                              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                              rows={2}
+                            />
+                            <div className="flex justify-end gap-2 mt-2">
+                              <button 
+                                onClick={() => setReplyingTo(null)}
+                                className="px-4 py-1.5 text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors"
+                              >
+                                {t('cancel')}
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  if (!replyText.trim()) return;
+                                  onAddComment(replyText, comment.id, comment.userName);
+                                  setReplyText('');
+                                  setReplyingTo(null);
+                                }}
+                                disabled={!replyText.trim()}
+                                className="px-4 py-1.5 bg-blue-600 rounded-lg text-[10px] font-bold text-white uppercase tracking-widest hover:bg-blue-700 transition-colors disabled:opacity-50"
+                              >
+                                {t('reply')}
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <p className="text-sm text-zinc-400 leading-relaxed">{comment.content}</p>
+                </div>
+
+                {/* Replies */}
+                <div className="ml-14 space-y-4">
+                  {comments.filter(r => r.parentId === comment.id).map(reply => (
+                    <div key={reply.id} className="flex gap-3 group">
+                      <img 
+                        src={reply.userPhoto || ''} 
+                        alt={reply.userName} 
+                        className="w-8 h-8 rounded-full border border-zinc-800 object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-xs text-zinc-200">{reply.userName}</h4>
+                            {reply.replyTo && (
+                              <span className="text-[10px] text-blue-500 font-bold">@{reply.replyTo}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
+                              {reply.createdAt?.toDate ? reply.createdAt.toDate().toLocaleDateString() : '...'}
+                            </span>
+                            {user && (user.uid === reply.uid || user.uid === comic.authorUid) && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); onDeleteComment(reply.id); }}
+                                className="p-1 text-zinc-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-zinc-400 leading-relaxed">{reply.content}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}

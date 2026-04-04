@@ -94,6 +94,8 @@ export default function App() {
   const [editingComic, setEditingComic] = useState<Comic | null>(null);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [history, setHistory] = useState<string[]>([]);
+  const [artists, setArtists] = useState<UserProfile[]>([]);
 
   const { t } = useTranslation(lang);
 
@@ -344,6 +346,15 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Artists Listener
+  useEffect(() => {
+    const q = query(collection(db, 'profiles'), where('role', '==', 'artist'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setArtists(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Handlers
   const handleLogin = async (providerType: 'google' | 'facebook' = 'google') => {
     try {
@@ -444,6 +455,19 @@ export default function App() {
     }
   };
 
+  // History Listener
+  useEffect(() => {
+    if (user) {
+      const unsubscribe = onSnapshot(collection(db, 'users', user.uid, 'history'), (snapshot) => {
+        const historyIds = snapshot.docs
+          .sort((a, b) => (b.data().lastRead?.seconds || 0) - (a.data().lastRead?.seconds || 0))
+          .map(doc => doc.id);
+        setHistory(historyIds);
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
   const handleChapterClick = async (chapter: Chapter) => {
     setSelectedChapter(chapter);
     setView('reader');
@@ -456,6 +480,14 @@ export default function App() {
       await updateDoc(doc(db, 'comics', chapter.comicId), {
         views: increment(1)
       });
+
+      if (user) {
+        await setDoc(doc(db, 'users', user.uid, 'history', chapter.comicId), {
+          lastRead: serverTimestamp(),
+          chapterId: chapter.id,
+          chapterNumber: chapter.number
+        });
+      }
     } catch (error) {
       console.error("Error incrementing views:", error);
     }
@@ -612,29 +644,6 @@ export default function App() {
     }
   };
 
-  const handleMoveChapter = async (chapter: Chapter, direction: 'up' | 'down') => {
-    if (!selectedComic) return;
-    const idx = chapters.findIndex(c => c.id === chapter.id);
-    if (idx === -1) return;
-    if (direction === 'up' && idx === 0) return;
-    if (direction === 'down' && idx === chapters.length - 1) return;
-
-    const otherIdx = direction === 'up' ? idx - 1 : idx + 1;
-    const otherChapter = chapters[otherIdx];
-
-    try {
-      await runTransaction(db, async (transaction) => {
-        const ch1Ref = doc(db, 'comics', selectedComic.id, 'chapters', chapter.id);
-        const ch2Ref = doc(db, 'comics', selectedComic.id, 'chapters', otherChapter.id);
-        
-        transaction.update(ch1Ref, { number: otherChapter.number });
-        transaction.update(ch2Ref, { number: chapter.number });
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `comics/${selectedComic.id}/chapters`);
-    }
-  };
-
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-blue-100">
@@ -659,9 +668,11 @@ export default function App() {
               <HomeView 
                 comics={comics}
                 articles={articles}
+                artists={artists}
                 featuredItems={featuredItems}
                 followingFeed={followingFeed}
                 following={following}
+                history={history}
                 user={user}
                 searchQuery={searchQuery}
                 onComicClick={handleComicClick}
@@ -679,6 +690,10 @@ export default function App() {
                   setView('explore');
                   window.scrollTo(0, 0);
                 }}
+                onArtistClick={(artist) => {
+                  setSelectedArtist({ uid: artist.uid, profile: artist });
+                  setView('artist-wall');
+                }}
                 lang={lang}
               />
             )}
@@ -686,8 +701,14 @@ export default function App() {
             {view === 'explore' && (
               <ExploreView 
                 comics={comics}
+                artists={artists}
                 onComicClick={handleComicClick}
+                onArtistClick={(artist) => {
+                  setSelectedArtist({ uid: artist.uid, profile: artist });
+                  setView('artist-wall');
+                }}
                 lang={lang}
+                searchQuery={searchQuery}
               />
             )}
 
@@ -713,7 +734,6 @@ export default function App() {
                   setView('edit-comic');
                   window.scrollTo(0, 0);
                 }}
-                onMoveChapter={handleMoveChapter}
                 onArtistClick={handleArtistClick}
                 onBack={handleBack}
                 lang={lang}
@@ -753,7 +773,7 @@ export default function App() {
                     handleFirestoreError(error, OperationType.WRITE, `likes/${user.uid}`);
                   }
                 }}
-                onAddComment={async (text) => {
+                onAddComment={async (text, parentId, replyTo) => {
                   if (!user || !selectedChapter || !selectedComic || !text.trim()) return;
                   try {
                     await addDoc(collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'comments'), {
@@ -763,6 +783,8 @@ export default function App() {
                       chapterId: selectedChapter.id,
                       comicId: selectedComic.id,
                       content: text,
+                      parentId: parentId || null,
+                      replyTo: replyTo || null,
                       createdAt: serverTimestamp()
                     });
                     
