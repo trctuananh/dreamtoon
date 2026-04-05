@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Plus, Trash2, Layout, Compass, Star } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Layout, Compass, Star, Edit } from 'lucide-react';
 import { collection, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Comic, Article, FeaturedItem } from '../types';
@@ -12,13 +12,15 @@ export function FeaturedManager({
   articles, 
   featuredItems, 
   lang, 
-  onBack 
+  onBack,
+  onEditArticle
 }: { 
   comics: Comic[], 
   articles: Article[], 
   featuredItems: FeaturedItem[], 
   lang: Language, 
-  onBack: () => void 
+  onBack: () => void,
+  onEditArticle?: (article: Article) => void
 }) {
   const { t } = useTranslation(lang);
   const [isAdding, setIsAdding] = useState(false);
@@ -48,30 +50,6 @@ export function FeaturedManager({
     }
   };
 
-  const seedSampleData = async () => {
-    const samples = [
-      { title: "Midnight Chronicles", banner: "https://picsum.photos/seed/midnight/1920/1080", description: "A dark mystery unfolding in the heart of a neon city.", type: 'comic' },
-      { title: "Skyward Bound", banner: "https://picsum.photos/seed/sky/1920/1080", description: "Soar through the clouds in this epic adventure of freedom.", type: 'comic' },
-      { title: "The Last Alchemist", banner: "https://picsum.photos/seed/alchemist/1920/1080", description: "Magic has a price, and he's about to pay it all.", type: 'comic' },
-      { title: "Neon Pulse", banner: "https://picsum.photos/seed/pulse/1920/1080", description: "The rhythm of the city is the only thing keeping her alive.", type: 'article' },
-      { title: "Lost in Translation", banner: "https://picsum.photos/seed/lost/1920/1080", description: "A journey across worlds where words are the only weapons.", type: 'comic' }
-    ];
-
-    try {
-      for (const sample of samples) {
-        await addDoc(collection(db, 'featured'), {
-          ...sample,
-          targetId: 'sample',
-          genre: sample.type === 'comic' ? ['Action', 'Mystery'] : ['Article'],
-          createdAt: serverTimestamp()
-        });
-      }
-      alert("5 Sample items added! Go back to Home to see them.");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'featured');
-    }
-  };
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-8">
@@ -82,12 +60,6 @@ export function FeaturedManager({
           <h2 className="text-3xl font-black tracking-tight">Manage Featured</h2>
         </div>
         <div className="flex gap-3">
-          <button 
-            onClick={seedSampleData}
-            className="px-6 py-2 bg-zinc-100 text-zinc-600 rounded-full font-bold hover:bg-zinc-200 transition-colors"
-          >
-            Seed 5 Samples
-          </button>
           <button 
             onClick={() => setIsAdding(!isAdding)}
             className="px-6 py-2 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 transition-colors flex items-center gap-2"
@@ -139,12 +111,23 @@ export function FeaturedManager({
                       <p className="text-[10px] text-zinc-400 font-bold uppercase">{formatViews(article.views || 0)} views</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => handleFeature(article, 'article')}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <Plus size={18} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {onEditArticle && (
+                      <button 
+                        onClick={() => onEditArticle(article)}
+                        className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit Article"
+                      >
+                        <Edit size={18} />
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => handleFeature(article, 'article')}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

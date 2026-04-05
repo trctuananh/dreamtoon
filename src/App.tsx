@@ -97,6 +97,7 @@ export default function App() {
   const [ratingSuccess, setRatingSuccess] = useState(false);
   const [editingComic, setEditingComic] = useState<Comic | null>(null);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [history, setHistory] = useState<string[]>([]);
   const [artists, setArtists] = useState<UserProfile[]>([]);
@@ -559,6 +560,7 @@ export default function App() {
       window.history.pushState(null, '', '/');
     } else if (view === 'create-article') {
       setView('home');
+      setEditingArticle(null);
       window.history.pushState(null, '', '/');
     } else if (view === 'detail') {
       setView('home');
@@ -946,11 +948,16 @@ export default function App() {
                 user={user}
                 profile={profile}
                 lang={lang}
+                initialData={editingArticle}
                 onSuccess={() => {
+                  setEditingArticle(null);
                   setView('home');
                   window.scrollTo(0, 0);
                 }}
-                onCancel={() => setView('home')}
+                onCancel={() => {
+                  setEditingArticle(null);
+                  setView('home');
+                }}
               />
             )}
 
@@ -984,6 +991,10 @@ export default function App() {
                 featuredItems={featuredItems}
                 lang={lang}
                 onBack={() => setView('home')}
+                onEditArticle={(article) => {
+                  setEditingArticle(article);
+                  setView('create-article');
+                }}
               />
             )}
 

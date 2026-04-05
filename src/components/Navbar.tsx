@@ -52,10 +52,14 @@ export function Navbar({
               </button>
             ) : (
               <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('home')}>
-                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                  <BookOpen size={20} className="text-white" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-zinc-900 shadow-lg shadow-purple-500/20 overflow-hidden relative group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity" />
+                  <span className="relative text-white font-black text-xl italic tracking-tighter">D</span>
                 </div>
-                <span className="text-xl font-bold tracking-tighter text-blue-500 uppercase hidden sm:inline">Dream<span className="text-zinc-900">Toon</span></span>
+                <span className="text-xl font-black tracking-tighter uppercase hidden sm:inline">
+                  <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">Dream</span>
+                  <span className="text-zinc-900">Toon</span>
+                </span>
               </div>
             )}
           </div>
@@ -256,10 +260,14 @@ export function Navbar({
         <div className="fixed inset-0 z-[60] bg-white md:hidden overflow-y-auto">
           <div className="p-4 flex items-center justify-between border-b border-zinc-100">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                <BookOpen size={20} className="text-white" />
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-zinc-900 shadow-lg shadow-purple-500/20 overflow-hidden relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity" />
+                <span className="relative text-white font-black text-xl italic tracking-tighter">D</span>
               </div>
-              <span className="text-xl font-bold tracking-tighter text-blue-500 uppercase">Dream<span className="text-zinc-900">Toon</span></span>
+              <span className="text-xl font-black tracking-tighter uppercase">
+                <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">Dream</span>
+                <span className="text-zinc-900">Toon</span>
+              </span>
             </div>
             <button 
               onClick={() => setIsMobileMenuOpen(false)}

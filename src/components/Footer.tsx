@@ -12,10 +12,14 @@ export function Footer({ lang }: { lang: Language }) {
         <div className="grid md:grid-cols-4 gap-12 mb-16">
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-                <BookOpen size={24} className="text-white" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-zinc-900 shadow-lg shadow-purple-500/20 overflow-hidden relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity" />
+                <span className="relative text-white font-black text-2xl italic tracking-tighter">D</span>
               </div>
-              <span className="text-2xl font-black tracking-tighter text-blue-500">DREAM<span className="text-white">TOON</span></span>
+              <span className="text-2xl font-black tracking-tighter uppercase">
+                <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">Dream</span>
+                <span className="text-white">Toon</span>
+              </span>
             </div>
             <p className="text-zinc-500 max-w-sm leading-relaxed font-medium">
               The next generation platform for digital storytellers and dreamers. Join our community and share your stories with the world.
