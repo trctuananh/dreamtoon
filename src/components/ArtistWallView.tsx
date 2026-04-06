@@ -434,7 +434,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                         onClick={() => setViewingWorkImage(work.imageUrl || null)}
                         className="w-14 h-14 rounded-xl overflow-hidden border border-zinc-200 hover:scale-105 transition-transform"
                       >
-                        <img src={work.imageUrl} alt={work.title} className="w-full h-full object-cover" />
+                        <img src={work.imageUrl} alt={work.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </button>
                     ) : (
                       <div className="w-14 h-14 rounded-xl bg-zinc-200 flex items-center justify-center text-zinc-400">
@@ -894,6 +894,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                 src={viewingWorkImage} 
                 alt="Work preview" 
                 className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                referrerPolicy="no-referrer"
               />
               <button 
                 onClick={() => setViewingWorkImage(null)}

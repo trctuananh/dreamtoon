@@ -73,39 +73,16 @@ export function ComicDetailView({
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-20">
-      {/* Hero Banner */}
-      <div className="relative h-[200px] sm:h-[400px] w-full overflow-hidden bg-zinc-200">
-        {comic.banner ? (
-          <img 
-            src={comic.banner} 
-            alt={comic.title} 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-indigo-600/20 flex items-center justify-center">
-            <Compass size={64} className="text-zinc-300" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-50 via-zinc-50/50 to-transparent" />
-        <button 
-          onClick={onBack}
-          className="absolute top-8 left-8 p-3 bg-white/80 backdrop-blur-md rounded-full shadow-xl hover:bg-white transition-all text-zinc-900"
-        >
-          <ArrowLeft size={24} />
-        </button>
-      </div>
-
-      <div className="container mx-auto px-4 -mt-32 relative z-10 max-w-6xl">
+    <div className="min-h-screen bg-zinc-50 pb-20 pt-4 sm:pt-8">
+      <div className="container mx-auto px-4 relative z-10 max-w-6xl">
         <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
           {/* Left Column: Info Card */}
           <div className="md:col-span-1">
-            <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl border border-zinc-100 sticky top-8">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-zinc-100 sticky top-8">
               <img 
                 src={comic.thumbnail} 
                 alt={comic.title} 
-                className="w-full aspect-[2/3] object-cover rounded-2xl shadow-2xl mb-4 sm:mb-8"
+                className="w-full aspect-[2/3] object-cover rounded-2xl shadow-2xl mb-4 sm:mb-6"
                 referrerPolicy="no-referrer"
               />
               
@@ -117,13 +94,13 @@ export function ComicDetailView({
                 ))}
               </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-8">
-                <div className="text-center p-2 sm:p-4 bg-zinc-50 rounded-xl sm:rounded-2xl">
-                  <p className="text-base sm:text-xl font-black text-blue-600">{formatViews(comic.views)}</p>
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <div className="text-center p-2 sm:p-3 bg-zinc-50 rounded-xl sm:rounded-2xl">
+                  <p className="text-base sm:text-lg font-black text-blue-600">{formatViews(comic.views)}</p>
                   <p className="text-[8px] sm:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('views')}</p>
                 </div>
-                <div className="text-center p-2 sm:p-4 bg-zinc-50 rounded-xl sm:rounded-2xl">
-                  <p className="text-base sm:text-xl font-black text-yellow-500">{comic.rating}</p>
+                <div className="text-center p-2 sm:p-3 bg-zinc-50 rounded-xl sm:rounded-2xl">
+                  <p className="text-base sm:text-lg font-black text-yellow-500">{comic.rating}</p>
                   <p className="text-[8px] sm:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('rating')}</p>
                 </div>
               </div>
@@ -132,21 +109,21 @@ export function ComicDetailView({
                 {isAuthor && (
                   <button 
                     onClick={() => onEditComic(comic)}
-                    className="w-full py-2 sm:py-4 bg-blue-50 text-blue-600 rounded-full font-bold text-xs sm:text-sm hover:bg-blue-100 transition-all border border-blue-100 flex items-center justify-center gap-2"
+                    className="w-full py-2 sm:py-3 bg-blue-50 text-blue-600 rounded-full font-bold text-xs sm:text-sm hover:bg-blue-100 transition-all border border-blue-100 flex items-center justify-center gap-2"
                   >
-                    <Edit2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                    <Edit2 size={16} />
                     {t('edit')}
                   </button>
                 )}
                 <button 
                   onClick={() => onToggleFollow(comic.id, 'comic')}
-                  className={`w-full py-2 sm:py-4 rounded-full font-bold text-xs sm:text-sm transition-all shadow-xl flex items-center justify-center gap-2 ${
+                  className={`w-full py-2 sm:py-3 rounded-full font-bold text-xs sm:text-sm transition-all shadow-xl flex items-center justify-center gap-2 ${
                     isFollowingComic 
                       ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200' 
-                      : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
+                      : 'bg-blue-50 text-white hover:bg-blue-600 shadow-blue-500/20'
                   }`}
                 >
-                  <Heart size={16} className={`sm:w-[18px] sm:h-[18px] ${isFollowingComic ? 'fill-zinc-600' : ''}`} />
+                  <Heart size={16} className={isFollowingComic ? 'fill-zinc-600' : ''} />
                   {isFollowingComic ? t('unfollow') : t('follow')}
                 </button>
                 <button 
@@ -154,15 +131,15 @@ export function ComicDetailView({
                     if (chapters.length > 0) onChapterClick(chapters[0]);
                   }}
                   disabled={chapters.length === 0}
-                  className="w-full py-2 sm:py-4 bg-zinc-900 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 disabled:opacity-50"
+                  className="w-full py-2 sm:py-3 bg-zinc-900 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 disabled:opacity-50"
                 >
                   {t('readNow')}
                 </button>
                 <button 
                   onClick={() => onArtistClick(comic.authorUid)}
-                  className="w-full py-2 sm:py-4 bg-green-500 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-green-600 transition-all shadow-xl shadow-green-500/20 flex items-center justify-center gap-2"
+                  className="w-full py-2 sm:py-3 bg-green-500 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-green-600 transition-all shadow-xl shadow-green-500/20 flex items-center justify-center gap-2"
                 >
-                  <DollarSign size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  <DollarSign size={16} />
                   {t('donate')}
                 </button>
               </div>
@@ -170,7 +147,7 @@ export function ComicDetailView({
           </div>
 
           {/* Right Column: Content */}
-          <div className="md:col-span-2 pt-4 sm:pt-32">
+          <div className="md:col-span-2">
             <h1 className="text-2xl sm:text-5xl font-black text-zinc-900 mb-2 sm:mb-4 tracking-tight leading-tight sm:leading-none">{comic.title}</h1>
             
             <div className="flex items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
@@ -256,8 +233,12 @@ export function ComicDetailView({
                     className="flex-1 bg-white p-3 sm:p-4 rounded-2xl border border-zinc-100 shadow-sm hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 font-black group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors text-sm sm:text-base">
-                        {ch.number}
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 font-black group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors text-sm sm:text-base overflow-hidden border border-zinc-100">
+                        {ch.thumbnail ? (
+                          <img src={ch.thumbnail} className="w-full h-full object-cover" alt={ch.title} referrerPolicy="no-referrer" />
+                        ) : (
+                          ch.number
+                        )}
                       </div>
                       <div className="text-left">
                         <h4 className="text-xs sm:text-sm font-bold text-zinc-900 group-hover:text-blue-600 transition-colors">{ch.title}</h4>

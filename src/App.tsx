@@ -70,6 +70,7 @@ import { Language } from './translations';
 export default function App() {
   // State
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [view, setView] = useState<View>('home');
   const [comics, setComics] = useState<Comic[]>([]);
@@ -178,6 +179,7 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      setIsAuthReady(true);
       if (!user) {
         setProfile(null);
         setFollowing([]);
@@ -687,7 +689,7 @@ export default function App() {
           unreadNotificationsCount={unreadNotificationsCount}
         />
 
-        <main className="pb-20 sm:pb-0">
+        <main className={`pb-20 sm:pb-0 ${view === 'reader' ? 'pb-0' : ''}`}>
           <AnimatePresence mode="wait">
             {view === 'home' && (
               <HomeView 
@@ -1026,6 +1028,7 @@ export default function App() {
                 user={user}
                 comics={comics}
                 lang={lang}
+                searchQuery={searchQuery}
                 onBack={handleBack}
                 onArtistClick={handleArtistClick}
                 onLogin={() => setIsLoginModalOpen(true)}
@@ -1062,7 +1065,7 @@ export default function App() {
           </AnimatePresence>
         </main>
 
-        <Footer lang={lang} />
+        {view !== 'reader' && <Footer lang={lang} />}
       </div>
     </ErrorBoundary>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronUp, ArrowLeft, ArrowRight, Share2, Facebook, Twitter, Copy, Check, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronUp, ArrowLeft, ArrowRight, Heart, Facebook, Twitter, Copy, Check, MessageCircle, Send, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, runTransaction, increment } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -74,9 +74,10 @@ export function ReaderView({
               <button onClick={onBack} className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
                 <ChevronLeft size={24} />
               </button>
-              <div className="min-w-0">
-                <h3 className="font-bold truncate text-sm">{comic.title}</h3>
-                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{t('chapter')} {chapter.number}</p>
+              <div className="flex items-center gap-3 min-w-0">
+                {chapter.thumbnail && (
+                  <img src={chapter.thumbnail} className="w-8 h-8 rounded-lg object-cover border border-zinc-800" alt={chapter.title} referrerPolicy="no-referrer" />
+                )}
               </div>
             </div>
             
@@ -162,6 +163,12 @@ export function ReaderView({
           </div>
         </div>
 
+        {/* Advertisement Space */}
+        <div className="mt-8 mb-4 bg-zinc-900/30 rounded-2xl p-8 border-2 border-dashed border-zinc-800 flex flex-col items-center justify-center text-zinc-500 min-h-[150px]">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-50">Advertisement Space</div>
+          <p className="text-xs font-medium italic">Your ad content will appear here</p>
+        </div>
+
         {/* Interaction Section */}
         <div className="mt-4 bg-zinc-900/50 rounded-3xl p-3 border border-zinc-900">
           <div className="flex items-center justify-between mb-2">
@@ -170,7 +177,7 @@ export function ReaderView({
                 onClick={(e) => { e.stopPropagation(); onToggleLike(); }}
                 className={`flex items-center gap-2 font-bold transition-colors ${isLiked ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}
               >
-                <Share2 size={24} className={isLiked ? 'fill-red-500' : ''} />
+                <Heart size={24} className={isLiked ? 'fill-red-500' : ''} />
                 <span>{likes.length}</span>
               </button>
               <div className="flex items-center gap-2 text-zinc-400 font-bold">

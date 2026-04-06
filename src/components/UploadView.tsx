@@ -72,9 +72,27 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    setIsUploading(true);
     setError(null);
 
+    // Client-side validation
+    if (!title.trim()) {
+      setError(t('errorTitleRequired' as any));
+      return;
+    }
+    if (selectedGenres.length === 0) {
+      setError(t('errorGenreRequired' as any));
+      return;
+    }
+    if (description.trim().length < 20) {
+      setError(t('errorDescriptionMinLength' as any));
+      return;
+    }
+    if (!thumbnail) {
+      setError(t('errorThumbnailRequired' as any));
+      return;
+    }
+
+    setIsUploading(true);
     try {
       let currentPioneerNumber = profile?.pioneerNumber;
 
@@ -153,7 +171,6 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
           <div>
             <label className="block text-sm font-bold text-zinc-700 mb-1">{t('title')}</label>
             <input 
-              required
               type="text" 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -230,7 +247,6 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
           <div>
             <label className="block text-sm font-bold text-zinc-700 mb-1">{t('description')}</label>
             <textarea 
-              required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 focus:outline-none focus:border-blue-500 transition-colors"
@@ -240,14 +256,19 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
 
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-sm font-bold text-zinc-700 mb-1">{t('thumbnail')}</label>
+              <label className="block text-sm font-bold text-zinc-700 mb-1">
+                {t('thumbnail')}
+                <span className="ml-2 text-[10px] font-normal text-zinc-400 italic">
+                  ({t('thumbnailRecommendedSize' as any)})
+                </span>
+              </label>
               <input 
                 type="file" 
                 accept="image/*"
                 onChange={(e) => handleFileChange(e)}
                 className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
-              {thumbnail && <img src={thumbnail} className="mt-2 h-32 w-24 object-cover rounded-lg" />}
+              {thumbnail && <img src={thumbnail} className="mt-2 h-32 w-24 object-cover rounded-lg" referrerPolicy="no-referrer" />}
             </div>
           </div>
 

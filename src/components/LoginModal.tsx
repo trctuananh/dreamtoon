@@ -141,14 +141,14 @@ export function LoginModal({
                 onClick={() => onLogin('google')}
                 className="flex items-center justify-center gap-2 p-3 bg-white border-2 border-zinc-100 rounded-2xl font-bold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-200 transition-all group"
               >
-                <img src="https://www.google.com/favicon.ico" className="w-4 h-4 grayscale group-hover:grayscale-0 transition-all" alt="Google" />
+                <img src="https://www.google.com/favicon.ico" className="w-4 h-4 grayscale group-hover:grayscale-0 transition-all" alt="Google" referrerPolicy="no-referrer" />
                 <span className="text-xs">Google</span>
               </button>
               <button 
                 onClick={() => onLogin('facebook')}
                 className="flex items-center justify-center gap-2 p-3 bg-[#1877F2] text-white rounded-2xl font-bold hover:bg-[#166fe5] transition-all shadow-xl shadow-blue-600/20"
               >
-                <img src="https://www.facebook.com/favicon.ico" className="w-4 h-4 brightness-0 invert" alt="Facebook" />
+                <img src="https://www.facebook.com/favicon.ico" className="w-4 h-4 brightness-0 invert" alt="Facebook" referrerPolicy="no-referrer" />
                 <span className="text-xs">Facebook</span>
               </button>
             </div>

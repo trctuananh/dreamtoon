@@ -212,6 +212,21 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                     {handleError && <p className="text-[10px] text-red-500 mt-1 text-left font-bold">{handleError}</p>}
                   </div>
                   <div>
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 text-left">
+                      {t('avatar')}
+                      <span className="ml-2 text-[8px] font-normal text-zinc-400 italic lowercase">
+                        ({t('avatarRecommendedSize' as any)})
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <img src={photoURL} className="w-12 h-12 rounded-xl object-cover border border-zinc-100" referrerPolicy="no-referrer" />
+                      <label className="px-4 py-2 bg-zinc-100 text-zinc-600 rounded-xl text-xs font-bold hover:bg-zinc-200 cursor-pointer transition-colors">
+                        {t('changeAvatar')}
+                        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                  <div>
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 text-left">{t('bio')}</label>
                     <textarea
                       value={bio}

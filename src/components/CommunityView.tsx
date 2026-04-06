@@ -7,13 +7,28 @@ import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLogin, setView }: { user: any, comics: Comic[], lang: Language, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void }) {
+export function CommunityView({ user, comics, lang, searchQuery = '', onBack, onArtistClick, onLogin, setView }: { user: any, comics: Comic[], lang: Language, searchQuery?: string, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   const [topCreators, setTopCreators] = useState<{uid: string, name: string, photo: string, views: number, pioneerNumber?: number}[]>([]);
   const [topMonthCreators, setTopMonthCreators] = useState<{uid: string, name: string, photo: string, views: number, pioneerNumber?: number}[]>([]);
   const [newCreators, setNewCreators] = useState<{uid: string, name: string, photo: string, views: number, pioneerNumber?: number}[]>([]);
   const [rankingTab, setRankingTab] = useState<'month' | 'all' | 'new'>('month');
+
+  // Search filtering for posts
+  const filteredPosts = searchQuery.trim()
+    ? posts.filter(post => 
+        post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.authorName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : posts;
+
+  // Search filtering for creators
+  const filteredCreators = (rankingTab === 'month' ? topMonthCreators : rankingTab === 'all' ? topCreators : newCreators)
+    .filter(creator => 
+      !searchQuery.trim() || 
+      creator.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   useEffect(() => {
     if (!comics || comics.length === 0) return;
@@ -188,10 +203,10 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
       </div>
 
       {/* Top Creators Display */}
-      {(rankingTab === 'month' ? topMonthCreators : rankingTab === 'all' ? topCreators : newCreators).length > 0 && (
+      {filteredCreators.length > 0 && (
         <div className="mb-2">
           <div className="flex items-center gap-6 overflow-x-auto pt-3 pb-2 no-scrollbar">
-            {(rankingTab === 'month' ? topMonthCreators : rankingTab === 'all' ? topCreators : newCreators).map((creator, index) => (
+            {filteredCreators.map((creator, index) => (
               <motion.button
                 key={`${rankingTab}-${creator.uid}`}
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -253,7 +268,7 @@ export function CommunityView({ user, comics, lang, onBack, onArtistClick, onLog
       {/* Posts List */}
       <div className="space-y-6">
         <AnimatePresence mode="popLayout">
-          {posts.map((post) => (
+          {filteredPosts.map((post) => (
               <motion.div
                 key={post.id}
                 layout

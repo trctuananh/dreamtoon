@@ -10,9 +10,31 @@ import { validateImage } from '../lib/utils';
 export function AddChapterView({ comicId, authorUid, chapterCount, initialData, onSuccess, onCancel, lang }: { comicId: string, authorUid: string, chapterCount: number, initialData?: Chapter, onSuccess: () => void, onCancel: () => void, lang: Language }) {
   const { t } = useTranslation(lang);
   const [title, setTitle] = useState(initialData?.title || '');
+  const [thumbnail, setThumbnail] = useState(initialData?.thumbnail || '');
   const [imageUrls, setImageUrls] = useState<string[]>(initialData?.images || []);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleThumbnailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await validateImage(file);
+    if (!result.valid) {
+      setError(result.error || 'Invalid image');
+      return;
+    }
+
+    if (file.size > 500 * 1024) {
+      setError(t('warningLargeFiles'));
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setThumbnail(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []) as File[];
@@ -50,6 +72,10 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
     setImageUrls(prev => [...prev, ...newUrls]);
   };
 
+  const handleRemoveImage = (idx: number) => {
+    setImageUrls(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -60,27 +86,33 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
     }
 
     const totalSize = imageUrls.reduce((acc, url) => acc + url.length, 0);
-    if (totalSize > 900 * 1024) { // ~900KB limit for base64 strings
-      setError("Total size of images is too large for a single chapter (Firestore 1MB limit). Please reduce the number of images or their quality.");
+    if (totalSize > 1024 * 1024) { // 1MB limit for Firestore
+      setError("Total size of images is too large for a single chapter (Max 1MB). Please use fewer or smaller images.");
       return;
     }
 
     setIsUploading(true);
     try {
+      const chapterData = {
+        title,
+        thumbnail,
+        images: imageUrls,
+      };
+
       if (initialData) {
-        await updateDoc(doc(db, 'comics', comicId, 'chapters', initialData.id), {
-          title,
-          images: imageUrls,
-        });
+        await updateDoc(doc(db, 'comics', comicId, 'chapters', initialData.id), chapterData);
       } else {
         await addDoc(collection(db, 'comics', comicId, 'chapters'), {
+          ...chapterData,
           comicId,
           authorUid,
-          title,
           number: chapterCount + 1,
-          images: imageUrls,
           uploadDate: new Date().toLocaleDateString(),
           createdAt: serverTimestamp()
+        });
+        // Update parent comic's updatedAt
+        await updateDoc(doc(db, 'comics', comicId), {
+          updatedAt: serverTimestamp()
         });
       }
       onSuccess();
@@ -114,7 +146,38 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-zinc-700 mb-1">{t('chapterPages')}</label>
+            <label className="block text-sm font-bold text-zinc-700 mb-1">
+              {t('thumbnail')}
+              <span className="ml-2 text-[10px] font-normal text-zinc-400 italic lowercase">
+                ({t('chapterThumbnailRecommendedSize' as any)})
+              </span>
+            </label>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-zinc-100 rounded-xl overflow-hidden flex-shrink-0 border border-zinc-200">
+                {thumbnail ? (
+                  <img src={thumbnail} className="w-full h-full object-cover" alt="Chapter Thumbnail" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                    <span className="text-[10px] font-bold uppercase">No Pic</span>
+                  </div>
+                )}
+              </div>
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={handleThumbnailChange}
+                className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-zinc-700 mb-1">
+              {t('chapterPages')}
+              <span className="ml-2 text-[10px] font-normal text-zinc-400 italic lowercase">
+                ({t('chapterRecommendedSize' as any)})
+              </span>
+            </label>
             <div className="space-y-1">
               <input 
                 type="file" 
@@ -123,16 +186,15 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
                 onChange={handleFileChange}
                 className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
-              <p className="text-[10px] text-zinc-400 italic">{t('rules')}</p>
               
               {imageUrls.length > 0 && (
                 <div className="grid grid-cols-4 gap-2">
                   {imageUrls.map((url, idx) => (
                     <div key={idx} className="aspect-[2/3] bg-zinc-100 rounded-lg overflow-hidden relative group">
-                      <img src={url} className="w-full h-full object-cover" alt={`Page ${idx + 1}`} />
+                      <img src={url} className="w-full h-full object-cover" alt={`Page ${idx + 1}`} referrerPolicy="no-referrer" />
                       <button 
                         type="button"
-                        onClick={() => setImageUrls(prev => prev.filter((_, i) => i !== idx))}
+                        onClick={() => handleRemoveImage(idx)}
                         className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold"
                       >
                         {t('remove')}

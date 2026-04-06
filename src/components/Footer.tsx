@@ -22,11 +22,11 @@ export function Footer({ lang }: { lang: Language }) {
               </span>
             </div>
             <p className="text-zinc-500 max-w-sm leading-relaxed font-medium">
-              The next generation platform for digital storytellers and dreamers. Join our community and share your stories with the world.
+              {t('footerDescription' as any)}
             </p>
           </div>
           <div>
-            <h4 className="font-bold mb-6 uppercase tracking-widest text-xs text-zinc-400">Connect</h4>
+            <h4 className="font-bold mb-6 uppercase tracking-widest text-xs text-zinc-400">{t('connect' as any)}</h4>
             <div className="flex gap-4">
               <a href="#" className="p-3 bg-zinc-900 rounded-2xl hover:bg-blue-600 transition-all group">
                 <Facebook size={20} className="group-hover:scale-110 transition-transform" />
@@ -46,9 +46,9 @@ export function Footer({ lang }: { lang: Language }) {
         <div className="pt-8 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
           <p>© 2026 DREAMTOON. ALL RIGHTS RESERVED.</p>
           <div className="flex gap-8">
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+            <a href="#" className="hover:text-white transition-colors">{t('privacyPolicy' as any)}</a>
+            <a href="#" className="hover:text-white transition-colors">{t('termsOfService' as any)}</a>
+            <a href="#" className="hover:text-white transition-colors">{t('cookiePolicy' as any)}</a>
           </div>
         </div>
       </div>

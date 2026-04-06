@@ -4,7 +4,9 @@ export interface Chapter {
   authorUid?: string;
   number: number;
   title: string;
+  thumbnail?: string;
   images: string[];
+  genre?: string;
   uploadDate: string;
   views?: number;
   createdAt?: any;
@@ -27,6 +29,7 @@ export interface Comic {
   views: number;
   chapters?: Chapter[];
   createdAt?: any;
+  updatedAt?: any;
 }
 
 export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'public-profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall' | 'notifications' | 'support' | 'admin-users';

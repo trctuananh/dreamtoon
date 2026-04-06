@@ -38,7 +38,7 @@ export function Navbar({
 
   return (
     <>
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-zinc-100 px-4 py-1.5 sm:py-2.5 flex flex-col gap-1 sm:gap-2">
+      <nav className={`sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-zinc-100 px-4 py-1.5 sm:py-2.5 flex flex-col gap-1 sm:gap-2 ${view === 'reader' ? 'hidden sm:flex' : 'flex'}`}>
         {/* Row 1: Logo, Search, Profile, Menu */}
         <div className="flex items-center justify-between gap-2 sm:gap-4">
           {/* Logo / Back Button */}
@@ -65,7 +65,7 @@ export function Navbar({
           </div>
 
           {/* Search Bar - Flexible in middle on mobile, fixed max-width on desktop */}
-          {(view === 'home' || view === 'explore') && (
+          {(view === 'home' || view === 'explore' || view === 'community') && (
             <div className="flex-1 max-w-md relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
               <input 

@@ -79,35 +79,50 @@ export function ExploreView({
       </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4">
-        {filteredComics.map((comic) => (
-          <div 
-            key={comic.id} 
-            className="group cursor-pointer"
-            onClick={() => onComicClick(comic)}
-          >
-            <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 shadow-sm group-hover:shadow-md transition-all duration-300">
-              <img 
-                src={comic.thumbnail} 
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                alt={comic.title}
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-white/90 backdrop-blur-md rounded-md flex items-center gap-1 shadow-sm">
-                <Star size={8} className="text-yellow-500 fill-yellow-500" />
-                <span className="text-[8px] font-black text-zinc-900">{comic.rating.toFixed(1)}</span>
+        {filteredComics.map((comic) => {
+          const isNewChapter = comic.updatedAt && (
+            (comic.updatedAt.toDate ? comic.updatedAt.toDate() : new Date(comic.updatedAt)).getTime() > 
+            (Date.now() - 72 * 60 * 60 * 1000)
+          );
+
+          return (
+            <div 
+              key={comic.id} 
+              className="group cursor-pointer"
+              onClick={() => onComicClick(comic)}
+            >
+              <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 shadow-sm group-hover:shadow-md transition-all duration-300">
+                <img 
+                  src={comic.thumbnail} 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  alt={comic.title}
+                  referrerPolicy="no-referrer"
+                />
+                
+                {/* New Chapter Badge */}
+                {isNewChapter && (
+                  <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter z-10">
+                    New Chapter
+                  </div>
+                )}
+
+                <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-white/90 backdrop-blur-md rounded-md flex items-center gap-1 shadow-sm">
+                  <Star size={8} className="text-yellow-500 fill-yellow-500" />
+                  <span className="text-[8px] font-black text-zinc-900">{comic.rating.toFixed(1)}</span>
+                </div>
+              </div>
+              <h3 className="font-bold text-zinc-900 text-[10px] sm:text-sm truncate mb-0.5 group-hover:text-blue-600 transition-colors">
+                {comic.title}
+              </h3>
+              <div className="flex items-center justify-between">
+                <p className="text-[8px] sm:text-[10px] font-medium text-zinc-400 truncate">{comic.authorName}</p>
+                <span className="text-[8px] sm:text-[10px] font-bold text-blue-500 uppercase tracking-widest hidden sm:block">
+                  {formatViews(comic.views)}
+                </span>
               </div>
             </div>
-            <h3 className="font-bold text-zinc-900 text-[10px] sm:text-sm truncate mb-0.5 group-hover:text-blue-600 transition-colors">
-              {comic.title}
-            </h3>
-            <div className="flex items-center justify-between">
-              <p className="text-[8px] sm:text-[10px] font-medium text-zinc-400 truncate">{comic.authorName}</p>
-              <span className="text-[8px] sm:text-[10px] font-bold text-blue-500 uppercase tracking-widest hidden sm:block">
-                {formatViews(comic.views)}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {searchQuery.trim() && filteredArtists.length > 0 && (

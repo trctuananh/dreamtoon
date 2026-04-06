@@ -18,7 +18,7 @@ export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, in
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (Firestore limit is 1MB, so let's aim for < 800KB to be safe with other fields)
+    // Check file size (Firestore limit ~800KB for base64 safety)
     if (file.size > 800 * 1024) {
       alert(t('imageTooLarge' as any));
       return;
@@ -106,6 +106,7 @@ export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, in
                   src={banner} 
                   alt="Banner preview" 
                   className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
                 />
                 <button
                   type="button"

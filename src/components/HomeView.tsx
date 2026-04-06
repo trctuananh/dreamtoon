@@ -321,38 +321,45 @@ export function HomeView({
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-3 sm:gap-x-4 gap-y-8">
-          {(trendingTab === 'trending' ? comics.slice(0, 6) : [...comics].sort((a, b) => b.views - a.views).slice(0, 6)).map((comic, index) => (
-            <motion.div
-              key={comic.id}
-              onClick={() => onComicClick(comic)}
-              className="group cursor-pointer"
-            >
-              <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2">
-                <img 
-                  src={comic.thumbnail} 
-                  alt={comic.title} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  referrerPolicy="no-referrer"
-                />
+          {(trendingTab === 'trending' ? comics.slice(0, 6) : [...comics].sort((a, b) => b.views - a.views).slice(0, 6)).map((comic) => {
+            const isNewChapter = comic.updatedAt && (
+              (comic.updatedAt.toDate ? comic.updatedAt.toDate() : new Date(comic.updatedAt)).getTime() > 
+              (Date.now() - 72 * 60 * 60 * 1000)
+            );
+
+            return (
+              <motion.div
+                key={comic.id}
+                onClick={() => onComicClick(comic)}
+                className="group cursor-pointer"
+              >
+                <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2">
+                  <img 
+                    src={comic.thumbnail} 
+                    alt={comic.title} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                  
+                  {/* New Chapter Badge */}
+                  {isNewChapter && (
+                    <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter">
+                      New Chapter
+                    </div>
+                  )}
+                </div>
                 
-                {/* New Episode Badge (Mock for first item) */}
-                {index === 0 && (
-                  <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-green-500 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter">
-                    New Episode
-                  </div>
-                )}
-              </div>
-              
-              <div className="mt-1">
-                <h4 className="font-bold text-zinc-900 text-xs sm:text-sm line-clamp-1 mb-0.5 group-hover:text-blue-600 transition-colors">
-                  {comic.title}
-                </h4>
-                <p className="text-[10px] font-medium text-zinc-400 capitalize">
-                  {t(comic.genre[0] as any)}
-                </p>
-              </div>
-            </motion.div>
-          ))}
+                <div className="mt-1">
+                  <h4 className="font-bold text-zinc-900 text-xs sm:text-sm line-clamp-1 mb-0.5 group-hover:text-blue-600 transition-colors">
+                    {comic.title}
+                  </h4>
+                  <p className="text-[10px] font-medium text-zinc-400 capitalize">
+                    {t(comic.genre[0] as any)}
+                  </p>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
 
@@ -371,24 +378,38 @@ export function HomeView({
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          {comics.slice(6, 12).map((comic) => (
-            <div 
-              key={comic.id}
-              onClick={() => onComicClick(comic)}
-              className="flex flex-col gap-2 group cursor-pointer"
-            >
-              <img 
-                src={comic.thumbnail} 
-                alt={comic.title} 
-                className="w-full aspect-[3/4] object-cover rounded-xl shadow-sm"
-                referrerPolicy="no-referrer"
-              />
-              <div className="min-w-0">
-                <h4 className="font-bold text-zinc-900 text-[10px] truncate mb-0.5 group-hover:text-blue-600 transition-colors">{comic.title}</h4>
-                <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{t(comic.genre[0] as any)}</p>
+          {comics.slice(6, 12).map((comic) => {
+            const isNewChapter = comic.updatedAt && (
+              (comic.updatedAt.toDate ? comic.updatedAt.toDate() : new Date(comic.updatedAt)).getTime() > 
+              (Date.now() - 72 * 60 * 60 * 1000)
+            );
+
+            return (
+              <div 
+                key={comic.id}
+                onClick={() => onComicClick(comic)}
+                className="flex flex-col gap-2 group cursor-pointer"
+              >
+                <div className="relative">
+                  <img 
+                    src={comic.thumbnail} 
+                    alt={comic.title} 
+                    className="w-full aspect-[3/4] object-cover rounded-xl shadow-sm"
+                    referrerPolicy="no-referrer"
+                  />
+                  {isNewChapter && (
+                    <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter">
+                      New Chapter
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-zinc-900 text-[10px] truncate mb-0.5 group-hover:text-blue-600 transition-colors">{comic.title}</h4>
+                  <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{t(comic.genre[0] as any)}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -413,7 +434,7 @@ export function HomeView({
                   className="flex gap-3 group cursor-pointer bg-zinc-50 p-2 rounded-2xl hover:bg-zinc-100 transition-colors"
                 >
                   <img 
-                    src={comic.thumbnail} 
+                    src={chapter.thumbnail || comic.thumbnail} 
                     alt={comic.title} 
                     className="w-12 h-16 object-cover rounded-xl shadow-sm"
                     referrerPolicy="no-referrer"

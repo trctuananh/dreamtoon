@@ -472,7 +472,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                 <div className="flex items-center gap-4">
                   {workForm.imageUrl && (
                     <div className="w-16 h-16 rounded-xl overflow-hidden border border-zinc-200 flex-shrink-0">
-                      <img src={workForm.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={workForm.imageUrl} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
                   )}
                   <input
@@ -537,7 +537,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                         onClick={() => setViewingWorkImage(work.imageUrl || null)}
                         className="w-14 h-14 rounded-xl overflow-hidden border border-zinc-200 hover:scale-105 transition-transform"
                       >
-                        <img src={work.imageUrl} alt={work.title} className="w-full h-full object-cover" />
+                        <img src={work.imageUrl} alt={work.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </button>
                     ) : (
                       <div className="w-14 h-14 rounded-xl bg-zinc-200 flex items-center justify-center text-zinc-400">
@@ -629,7 +629,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
 
           {selectedImage && (
             <div className="relative w-full max-h-48 mb-4 rounded-2xl overflow-hidden group">
-              <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
+              <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               <button 
                 type="button"
                 onClick={() => setSelectedImage(null)}
@@ -926,7 +926,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                       <div className="flex items-center gap-4">
                         {infoImage && (
                           <div className="w-20 h-20 rounded-xl overflow-hidden border border-zinc-100 flex-shrink-0">
-                            <img src={infoImage} alt="Preview" className="w-full h-full object-cover" />
+                            <img src={infoImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                         )}
                         <input
