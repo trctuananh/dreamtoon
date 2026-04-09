@@ -87,7 +87,7 @@ export async function createNotification({
   senderPhoto
 }: {
   recipientId: string;
-  type: 'like' | 'comment' | 'follow' | 'new_chapter' | 'commission';
+  type: 'like' | 'comment' | 'follow' | 'new_chapter' | 'commission' | 'donation';
   targetId: string;
   targetTitle?: string;
   senderId: string;

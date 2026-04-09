@@ -351,12 +351,12 @@ service cloud.firestore {
     }
 
     function isValidCommissionRequest(data) {
-      return data.keys().hasAll(['artistUid', 'guestUid', 'guestName', 'guestEmail', 'answers', 'status', 'createdAt']) &&
+      return data.keys().hasAll(['artistUid', 'guestUid', 'guestName', 'guestEmail', 'requestDetails', 'status', 'createdAt']) &&
              data.artistUid is string &&
              data.guestUid == request.auth.uid &&
              data.guestName is string && data.guestName.size() > 0 && data.guestName.size() <= 100 &&
              data.guestEmail is string && isValidEmail(data.guestEmail) &&
-             data.answers is list &&
+             data.requestDetails is string && data.requestDetails.size() > 0 && data.requestDetails.size() <= 5000 &&
              data.status in ['pending', 'accepted', 'rejected', 'completed'] &&
              data.createdAt is timestamp &&
              (!('id' in data) || data.id is string);

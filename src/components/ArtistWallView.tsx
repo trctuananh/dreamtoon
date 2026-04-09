@@ -216,6 +216,23 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
       await addDoc(collection(db, 'commissions'), commissionData);
       
+      // Notify the artist via server (Email simulation)
+      try {
+        await fetch('/api/notify-artist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            artistEmail: artistProfile.email,
+            guestEmail,
+            guestName,
+            details: requestDetails,
+            type: 'commission'
+          })
+        });
+      } catch (e) {
+        console.error("Failed to send email notification:", e);
+      }
+
       // Create a notification for the artist
       createNotification({
         recipientId: artistUid,
@@ -233,12 +250,13 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       console.log(`Email would be sent to ${artistProfile.email} about new commission from ${guestEmail}`);
 
       setSubmitSuccess(true);
+      // Don't close immediately so they can see the success message
       setTimeout(() => {
         setSubmitSuccess(false);
         setShowCommissionForm(false);
         setActiveInfoModal(null);
         setRequestDetails('');
-      }, 3000);
+      }, 4000);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'commissions');
     } finally {
@@ -259,6 +277,35 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
         message: donorMessage.trim(),
         createdAt: serverTimestamp()
       });
+
+      // Notify the artist via server (Email simulation)
+      try {
+        await fetch('/api/notify-artist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            artistEmail: artistProfile.email,
+            guestEmail: user?.email || 'anonymous',
+            guestName: donorName.trim(),
+            details: donorMessage.trim(),
+            type: 'donation'
+          })
+        });
+      } catch (e) {
+        console.error("Failed to send email notification:", e);
+      }
+
+      // Create a notification for the artist
+      createNotification({
+        recipientId: artistUid,
+        type: 'donation',
+        targetId: 'profile',
+        targetTitle: 'New Support Message',
+        senderId: user?.uid || 'anonymous',
+        senderName: donorName.trim(),
+        senderPhoto: user?.photoURL || ''
+      });
+
       setDonorMessage('');
       setShowDonationForm(false);
     } catch (error) {
@@ -703,9 +750,19 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                 {showCommissionForm ? (
                   <form onSubmit={handleSubmitCommission} className="space-y-4">
                     {submitSuccess ? (
-                      <div className="text-center py-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200">
-                        <p className="text-green-600 font-black uppercase tracking-widest">{t('commissionSubmitted')}</p>
-                      </div>
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-center py-12 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 flex flex-col items-center gap-4"
+                      >
+                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                          <Check size={32} />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-green-600 font-black uppercase tracking-widest text-lg">{t('commissionSubmitted')}</p>
+                          <p className="text-green-500/80 text-xs font-medium">{t('artistNotified')}</p>
+                        </div>
+                      </motion.div>
                     ) : (
                       <>
                         <div className="space-y-3">
