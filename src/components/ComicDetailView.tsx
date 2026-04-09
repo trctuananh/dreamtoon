@@ -233,7 +233,7 @@ export function ComicDetailView({
                     className="flex-1 bg-white p-3 sm:p-4 rounded-2xl border border-zinc-100 shadow-sm hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 font-black group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors text-sm sm:text-base overflow-hidden border border-zinc-100">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 font-black group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors text-lg sm:text-xl overflow-hidden border border-zinc-100 flex-shrink-0">
                         {ch.thumbnail ? (
                           <img src={ch.thumbnail} className="w-full h-full object-cover" alt={ch.title} referrerPolicy="no-referrer" />
                         ) : (
@@ -241,8 +241,8 @@ export function ComicDetailView({
                         )}
                       </div>
                       <div className="text-left">
-                        <h4 className="text-xs sm:text-sm font-bold text-zinc-900 group-hover:text-blue-600 transition-colors">{ch.title}</h4>
-                        <p className="text-[8px] sm:text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{ch.uploadDate}</p>
+                        <h4 className="text-sm sm:text-lg font-bold text-zinc-900 group-hover:text-blue-600 transition-colors">{ch.title}</h4>
+                        <p className="text-[10px] sm:text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">{ch.uploadDate}</p>
                       </div>
                     </div>
                     <div className="p-1.5 sm:p-2 bg-zinc-50 rounded-full text-zinc-400 group-hover:bg-blue-500 group-hover:text-white transition-all">

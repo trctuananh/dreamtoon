@@ -155,28 +155,28 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
     <div className="container mx-auto px-2 py-2 md:px-4 md:py-8 max-w-6xl">
       <div className="grid md:grid-cols-3 gap-4 md:gap-8">
         <div className="md:col-span-1">
-          <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-8 border border-zinc-100 shadow-sm sticky top-24 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-12 md:h-32 bg-gradient-to-br from-blue-500 to-indigo-600" />
+          <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-10 border border-zinc-100 shadow-sm sticky top-24 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-20 md:h-40 bg-gradient-to-br from-blue-500 to-indigo-600" />
             <div className="flex flex-col items-center text-center relative z-10">
-              <div className="relative mb-1 md:mb-4 group">
+              <div className="relative mb-2 md:mb-6 group flex-shrink-0">
                 <img 
                   src={photoURL || user.photoURL || ''} 
                   alt={displayName || user.displayName || ''} 
-                  className="w-12 h-12 md:w-32 md:h-32 rounded-[1rem] md:rounded-[2.5rem] border-2 md:border-4 border-white shadow-2xl object-cover"
+                  className="w-24 h-24 md:w-48 md:h-48 rounded-[1.5rem] md:rounded-[3rem] border-2 md:border-4 border-white shadow-2xl object-cover aspect-square"
                   referrerPolicy="no-referrer"
                 />
                 {profile?.pioneerNumber && (
-                  <div className="absolute -top-1 -left-1 md:-top-2 md:-left-2 bg-blue-600 text-white text-[8px] md:text-xs font-black w-5 h-5 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 md:border-4 border-white shadow-xl z-20">
+                  <div className="absolute -top-2 -left-2 md:-top-4 md:-left-4 bg-blue-600 text-white text-[10px] md:text-base font-black w-8 h-8 md:w-14 md:h-14 rounded-full flex items-center justify-center border-2 md:border-4 border-white shadow-xl z-20">
                     {profile.pioneerNumber}
                   </div>
                 )}
                 {isEditing && (
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[1rem] md:rounded-[2.5rem] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="text-white w-4 h-4 md:w-8 md:h-8" />
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[1.5rem] md:rounded-[3rem] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="text-white w-6 h-6 md:w-12 md:h-12" />
                     <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                   </label>
                 )}
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 md:w-8 md:h-8 bg-green-500 border-2 md:border-4 border-white rounded-full shadow-lg" />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 md:w-10 md:h-10 bg-green-500 border-2 md:border-4 border-white rounded-full shadow-lg" />
               </div>
               <h3 className="text-xl md:text-2xl font-black text-zinc-900 tracking-tight leading-tight">{displayName || profile?.displayName || user.displayName}</h3>
               {profile?.handle && (

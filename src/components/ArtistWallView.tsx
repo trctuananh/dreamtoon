@@ -333,68 +333,70 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
   return (
     <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-10">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="relative">
-            <img 
-              src={artistProfile.photoURL || ''} 
-              alt={artistProfile.displayName} 
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl border-2 border-white shadow-md object-cover"
-              referrerPolicy="no-referrer"
-            />
-            {artistProfile.pioneerNumber && (
-              <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[10px] sm:text-xs font-black w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
-                {artistProfile.pioneerNumber}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
-              <p className="text-sm sm:text-sm font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-zinc-100 shadow-sm mb-6 sm:mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="relative flex-shrink-0">
+              <img 
+                src={artistProfile.photoURL || ''} 
+                alt={artistProfile.displayName} 
+                className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl sm:rounded-3xl border-4 border-white shadow-md object-cover aspect-square"
+                referrerPolicy="no-referrer"
+              />
+              {artistProfile.pioneerNumber && (
+                <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[10px] sm:text-xs font-black w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                  {artistProfile.pioneerNumber}
+                </div>
+              )}
             </div>
+            <div className="flex flex-col gap-2 sm:gap-3">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
+                <p className="text-sm sm:text-sm font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
+              </div>
+              <button 
+                onClick={() => onProfileClick(artistUid)}
+                className="px-3 py-1.5 sm:px-4 sm:py-2 border border-red-500 text-red-500 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-red-50 transition-colors whitespace-nowrap w-fit"
+              >
+                {t('viewProfilesAndArtworks')}
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:justify-end">
             <button 
-              onClick={() => onProfileClick(artistUid)}
-              className="px-3 py-1.5 sm:px-4 sm:py-1.5 border border-red-500 text-red-500 rounded-lg font-black uppercase tracking-widest text-[11px] sm:text-xs hover:bg-red-50 transition-colors whitespace-nowrap w-fit"
+              onClick={() => setActiveInfoModal('donate')}
+              className="flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-green-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
             >
-              {t('viewProfilesAndArtworks')}
+              <DollarSign size={14} className="sm:w-[18px] sm:h-[18px]" />
+              {t('donate')}
+            </button>
+            <button 
+              onClick={() => setActiveInfoModal('commission')}
+              className="flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-orange-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
+            >
+              <Briefcase size={14} className="sm:w-[18px] sm:h-[18px]" />
+              {t('commission')}
+            </button>
+            {user && user.uid !== artistUid && (
+              <button 
+                onClick={isFollowing ? handleUnfollow : handleFollow}
+                className={`px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
+                  isFollowing 
+                  ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
+                }`}
+              >
+                {isFollowing ? t('following') : t('follow')}
+              </button>
+            )}
+            <button 
+              onClick={() => setShowShareModal(true)}
+              className="p-2.5 sm:p-3.5 bg-zinc-100 text-zinc-600 rounded-xl sm:rounded-2xl hover:bg-zinc-200 transition-all"
+            >
+              <Share2 size={18} className="sm:w-[22px] sm:h-[22px]" />
             </button>
           </div>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button 
-            onClick={() => setActiveInfoModal('donate')}
-            className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5 bg-green-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
-          >
-            <DollarSign size={14} className="sm:w-[18px] sm:h-[18px]" />
-            {t('donate')}
-          </button>
-          <button 
-            onClick={() => setActiveInfoModal('commission')}
-            className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5 bg-orange-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
-          >
-            <Briefcase size={14} className="sm:w-[18px] sm:h-[18px]" />
-            {t('commission')}
-          </button>
-          {user && user.uid !== artistUid && (
-            <button 
-              onClick={isFollowing ? handleUnfollow : handleFollow}
-              className={`px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
-                isFollowing 
-                ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
-                : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
-              }`}
-            >
-              {isFollowing ? t('following') : t('follow')}
-            </button>
-          )}
-          <button 
-            onClick={() => setShowShareModal(true)}
-            className="p-2 sm:p-3 bg-zinc-100 text-zinc-600 rounded-xl sm:rounded-2xl hover:bg-zinc-200 transition-all"
-          >
-            <Share2 size={18} className="sm:w-[22px] sm:h-[22px]" />
-          </button>
         </div>
       </div>
 

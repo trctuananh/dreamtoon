@@ -613,15 +613,15 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
       <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-zinc-100 shadow-sm mb-6 sm:mb-8">
         <form onSubmit={handlePost}>
           <div className="flex gap-4 mb-4">
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <img 
                 src={profile?.photoURL || user.photoURL || ''} 
                 alt={user.displayName || ''} 
-                className="w-12 h-12 rounded-full border-2 border-blue-500"
+                className="w-14 h-14 rounded-xl border-2 border-blue-500 aspect-square object-cover"
                 referrerPolicy="no-referrer"
               />
               {profile?.pioneerNumber && (
-                <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
                   {profile.pioneerNumber}
                 </div>
               )}
