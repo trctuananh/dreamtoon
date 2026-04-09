@@ -51,7 +51,10 @@ export function Navbar({
                 <ChevronLeft size={24} />
               </button>
             ) : (
-              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('home')}>
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
+                setView('home');
+                window.history.pushState(null, '', '/');
+              }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-zinc-900 shadow-lg shadow-purple-500/20 overflow-hidden relative group">
                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity" />
                   <span className="relative text-white font-black text-xl italic tracking-tighter">D</span>
@@ -83,14 +86,20 @@ export function Navbar({
             {/* Desktop Nav Links (Hidden on mobile) */}
             <div className="hidden md:flex items-center gap-6 mr-4">
               <button 
-              onClick={() => setView('home')}
+              onClick={() => {
+                setView('home');
+                window.history.pushState(null, '', '/');
+              }}
               className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'home' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
             >
               <HomeIcon size={18} />
               {t('home')}
             </button>
             <button 
-              onClick={() => setView('explore')}
+              onClick={() => {
+                setView('explore');
+                window.history.pushState(null, '', '/explore');
+              }}
               className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'explore' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
             >
               <Compass size={18} />
@@ -98,7 +107,10 @@ export function Navbar({
             </button>
             
             <button 
-              onClick={() => setView('community')}
+              onClick={() => {
+                setView('community');
+                window.history.pushState(null, '', '/community');
+              }}
               className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'community' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
             >
               <Star size={18} className="text-amber-500" />
@@ -107,7 +119,10 @@ export function Navbar({
 
             {user && (
               <button 
-                onClick={() => setView('my-wall')}
+                onClick={() => {
+                  setView('my-wall');
+                  window.history.pushState(null, '', '/my-wall');
+                }}
                 className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
               >
                 <Users size={18} />
@@ -223,21 +238,30 @@ export function Navbar({
         {/* Row 2: Home, Explore, Dreamers (Mobile Only) */}
         <div className="flex items-center justify-around py-1 border-t border-zinc-50 md:hidden">
           <button 
-            onClick={() => setView('home')}
+            onClick={() => {
+              setView('home');
+              window.history.pushState(null, '', '/');
+            }}
             className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'home' ? 'text-blue-500' : 'text-zinc-500'}`}
           >
             <HomeIcon size={18} />
             <span className="text-[10px] font-bold">{t('home')}</span>
           </button>
           <button 
-            onClick={() => setView('explore')}
+            onClick={() => {
+              setView('explore');
+              window.history.pushState(null, '', '/explore');
+            }}
             className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'explore' ? 'text-blue-500' : 'text-zinc-500'}`}
           >
             <Compass size={18} />
             <span className="text-[10px] font-bold">{t('explore')}</span>
           </button>
           <button 
-            onClick={() => setView('community')}
+            onClick={() => {
+              setView('community');
+              window.history.pushState(null, '', '/community');
+            }}
             className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'community' ? 'text-blue-500' : 'text-zinc-500'}`}
           >
             <Star size={18} className="text-amber-500" />
@@ -245,7 +269,10 @@ export function Navbar({
           </button>
           {user && (
             <button 
-              onClick={() => setView('my-wall')}
+              onClick={() => {
+                setView('my-wall');
+                window.history.pushState(null, '', '/my-wall');
+              }}
               className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-500'}`}
             >
               <Users size={18} />

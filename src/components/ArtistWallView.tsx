@@ -339,23 +339,23 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
             <img 
               src={artistProfile.photoURL || ''} 
               alt={artistProfile.displayName} 
-              className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl border-2 border-white shadow-md object-cover"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl border-2 border-white shadow-md object-cover"
               referrerPolicy="no-referrer"
             />
             {artistProfile.pioneerNumber && (
-              <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[10px] sm:text-xs font-black w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+              <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[10px] sm:text-xs font-black w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
                 {artistProfile.pioneerNumber}
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <div>
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
-              <p className="text-xs sm:text-sm font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
+              <p className="text-sm sm:text-sm font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
             </div>
             <button 
               onClick={() => onProfileClick(artistUid)}
-              className="px-3 py-1 sm:px-4 sm:py-1.5 border border-red-500 text-red-500 rounded-lg font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-red-50 transition-colors whitespace-nowrap"
+              className="px-3 py-1.5 sm:px-4 sm:py-1.5 border border-red-500 text-red-500 rounded-lg font-black uppercase tracking-widest text-[11px] sm:text-xs hover:bg-red-50 transition-colors whitespace-nowrap w-fit"
             >
               {t('viewProfilesAndArtworks')}
             </button>

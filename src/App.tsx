@@ -107,50 +107,67 @@ export default function App() {
 
   const { t } = useTranslation(lang);
 
-  // Deep Linking
+  // Routing / Deep Linking
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    let artistHandle = params.get('artist');
-    
-    // Also check pathname for dreamtoon.vn/id format
-    if (!artistHandle && window.location.pathname !== '/') {
-      // Remove leading slash and any trailing slashes
-      const pathParts = window.location.pathname.replace(/^\/|\/$/g, '').split('/');
-      artistHandle = pathParts[0];
-      const isProfileView = pathParts[1] === 'profile';
+    const handleLocationChange = async () => {
+      const params = new URLSearchParams(window.location.search);
+      let artistHandle = params.get('artist');
+      
+      const path = window.location.pathname;
+      
+      // Handle Home
+      if (path === '/' && !artistHandle) {
+        if (view !== 'home' && !['detail', 'reader', 'upload', 'add-chapter', 'edit-chapter', 'article', 'create-article', 'edit-comic'].includes(view)) {
+          setView('home');
+          setSelectedArtist(null);
+        }
+        return;
+      }
 
-      if (artistHandle) {
-        const fetchArtist = async () => {
+      // Handle Artist Handle or Reserved Paths
+      if (!artistHandle && path !== '/') {
+        const pathParts = path.replace(/^\/|\/$/g, '').split('/');
+        artistHandle = pathParts[0];
+        const subPath = pathParts[1];
+
+        if (artistHandle) {
+          // Check if it's a reserved path
+          const reservedPaths = ['explore', 'upload', 'community', 'notifications', 'profile', 'privacy', 'manage-featured', 'admin-users'];
+          if (reservedPaths.includes(artistHandle)) {
+            setView(artistHandle as View);
+            window.scrollTo(0, 0);
+            return;
+          }
+
           try {
             // Try fetching by handle first from profiles collection
-            const q = query(collection(db, 'profiles'), where('handle', '==', artistHandle!.toLowerCase()));
+            const q = query(collection(db, 'profiles'), where('handle', '==', artistHandle.toLowerCase()));
             const snap = await getDocs(q);
             
             if (!snap.empty) {
               const artistProfile = snap.docs[0].data() as UserProfile;
               const artistUid = snap.docs[0].id;
               setSelectedArtist({ uid: artistUid, profile: artistProfile });
-              setView(isProfileView ? 'public-profile' : 'artist-wall');
+              setView(subPath === 'profile' ? 'public-profile' : 'artist-wall');
+              window.scrollTo(0, 0);
             } else {
               // Try fetching by UID from profiles collection
-              const docRef = doc(db, 'profiles', artistHandle!);
+              const docRef = doc(db, 'profiles', artistHandle);
               const docSnap = await getDoc(docRef);
               if (docSnap.exists()) {
-                setSelectedArtist({ uid: artistHandle!, profile: docSnap.data() as UserProfile });
-                setView(isProfileView ? 'public-profile' : 'artist-wall');
+                setSelectedArtist({ uid: artistHandle, profile: docSnap.data() as UserProfile });
+                setView(subPath === 'profile' ? 'public-profile' : 'artist-wall');
+                window.scrollTo(0, 0);
               }
             }
           } catch (error) {
             console.error("Error fetching artist for deep link:", error);
           }
-        };
-        fetchArtist();
-      }
-    } else if (artistHandle) {
-      const fetchArtist = async () => {
+        }
+      } else if (artistHandle) {
+        // Handle ?artist=handle query param
         try {
-          // Try fetching by handle first from profiles collection
-          const q = query(collection(db, 'profiles'), where('handle', '==', artistHandle!.toLowerCase()));
+          const q = query(collection(db, 'profiles'), where('handle', '==', artistHandle.toLowerCase()));
           const snap = await getDocs(q);
           
           if (!snap.empty) {
@@ -158,21 +175,26 @@ export default function App() {
             const artistUid = snap.docs[0].id;
             setSelectedArtist({ uid: artistUid, profile: artistProfile });
             setView('artist-wall');
+            window.scrollTo(0, 0);
           } else {
-            // Try fetching by UID from profiles collection
-            const docRef = doc(db, 'profiles', artistHandle!);
+            const docRef = doc(db, 'profiles', artistHandle);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-              setSelectedArtist({ uid: artistHandle!, profile: docSnap.data() as UserProfile });
+              setSelectedArtist({ uid: artistHandle, profile: docSnap.data() as UserProfile });
               setView('artist-wall');
+              window.scrollTo(0, 0);
             }
           }
         } catch (error) {
           console.error("Error fetching artist for deep link:", error);
         }
-      };
-      fetchArtist();
-    }
+      }
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    handleLocationChange(); // Initial check
+
+    return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
 
   const [selectedArtist, setSelectedArtist] = useState<{ uid: string, profile: UserProfile } | null>(null);

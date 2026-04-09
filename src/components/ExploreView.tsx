@@ -118,7 +118,7 @@ export function ExploreView({
                 
                 {/* New Chapter Badge */}
                 {isNewChapter && (
-                  <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter z-10">
+                  <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter z-10">
                     New Chapter
                   </div>
                 )}

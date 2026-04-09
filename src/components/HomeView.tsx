@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, Compass, BookOpen, Users } from 'lucide-react';
+import { ArrowRight, Compass, BookOpen, Users, Star } from 'lucide-react';
 import { Comic, FeaturedItem, Chapter, Article, Following, UserProfile, ReadingHistory } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -374,10 +374,16 @@ export function HomeView({
                   
                   {/* New Chapter Badge */}
                   {isNewChapter && (
-                    <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter">
+                    <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter z-10">
                       New Chapter
                     </div>
                   )}
+
+                  {/* Star Rating */}
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-white/90 backdrop-blur-md rounded-md flex items-center gap-1 shadow-sm z-10">
+                    <Star size={8} className="text-yellow-500 fill-yellow-500" />
+                    <span className="text-[8px] font-black text-zinc-900">{comic.rating.toFixed(1)}</span>
+                  </div>
                 </div>
                 
                 <div className="mt-1">
@@ -429,10 +435,15 @@ export function HomeView({
                     referrerPolicy="no-referrer"
                   />
                   {isNewChapter && (
-                    <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter">
+                    <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-sm uppercase tracking-tighter z-10">
                       New Chapter
                     </div>
                   )}
+                  {/* Star Rating */}
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-white/90 backdrop-blur-md rounded-md flex items-center gap-1 shadow-sm z-10">
+                    <Star size={8} className="text-yellow-500 fill-yellow-500" />
+                    <span className="text-[8px] font-black text-zinc-900">{comic.rating.toFixed(1)}</span>
+                  </div>
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-bold text-zinc-900 text-[10px] truncate mb-0.5 group-hover:text-blue-600 transition-colors">{comic.title}</h4>
