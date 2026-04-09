@@ -93,7 +93,6 @@ export interface UserProfile {
   pioneerNumber?: number;
   donateInfo?: { text: string; imageUrl: string };
   commissionInfo?: { text: string; imageUrl: string };
-  commissionQuestions?: string[];
   createdAt?: any;
 }
 
@@ -103,7 +102,7 @@ export interface CommissionRequest {
   guestUid: string;
   guestName: string;
   guestEmail: string;
-  answers: { question: string; answer: string }[];
+  requestDetails: string;
   status: 'pending' | 'accepted' | 'rejected' | 'completed';
   createdAt: any;
 }

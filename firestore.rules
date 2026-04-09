@@ -329,7 +329,7 @@ service cloud.firestore {
       return data.keys().hasAll(['recipientId', 'senderId', 'type', 'read', 'createdAt']) &&
              data.recipientId == userId &&
              data.senderId == request.auth.uid &&
-             data.type in ['like', 'comment', 'follow', 'new_chapter'] &&
+             data.type in ['like', 'comment', 'follow', 'new_chapter', 'commission', 'donation'] &&
              data.read is bool &&
              data.createdAt is timestamp &&
              (!('id' in data) || (data.id is string || data.id == null)) &&
@@ -348,6 +348,18 @@ service cloud.firestore {
              data.updatedAt is timestamp &&
              (!('clientName' in data) || (data.clientName is string || data.clientName == null)) &&
              (!('order' in data) || (data.order is number || data.order == null));
+    }
+
+    function isValidCommissionRequest(data) {
+      return data.keys().hasAll(['artistUid', 'guestUid', 'guestName', 'guestEmail', 'answers', 'status', 'createdAt']) &&
+             data.artistUid is string &&
+             data.guestUid == request.auth.uid &&
+             data.guestName is string && data.guestName.size() > 0 && data.guestName.size() <= 100 &&
+             data.guestEmail is string && isValidEmail(data.guestEmail) &&
+             data.answers is list &&
+             data.status in ['pending', 'accepted', 'rejected', 'completed'] &&
+             data.createdAt is timestamp &&
+             (!('id' in data) || data.id is string);
     }
 
     function isValidHistory(data) {
@@ -507,6 +519,15 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isValidDonation(request.resource.data);
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.artistUid || isAdmin());
+    }
+
+    match /commissions/{commissionId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.guestUid || request.auth.uid == resource.data.artistUid || isAdmin());
+      allow create: if isAuthenticated() && isValidCommissionRequest(request.resource.data);
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.artistUid || isAdmin()) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                       request.resource.data.status in ['pending', 'accepted', 'rejected', 'completed'];
+      allow delete: if isAdmin();
     }
   }
 }

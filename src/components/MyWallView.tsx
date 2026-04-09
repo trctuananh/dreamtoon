@@ -21,7 +21,6 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [infoText, setInfoText] = useState('');
   const [infoImage, setInfoImage] = useState<string | null>(null);
-  const [commissionQuestions, setCommissionQuestions] = useState<string[]>(['', '', '', '', '']);
   const [isSavingInfo, setIsSavingInfo] = useState(false);
   const [donationMessages, setDonationMessages] = useState<Donation[]>([]);
   const [commissionWorks, setCommissionWorks] = useState<CommissionWork[]>([]);
@@ -200,10 +199,6 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
           imageUrl: infoImage
         }
       };
-      
-      if (activeInfoModal === 'commission') {
-        updateData.commissionQuestions = commissionQuestions.filter(q => q.trim() !== '');
-      }
 
       await updateDoc(doc(db, 'users', user.uid), {
         ...updateData
@@ -221,12 +216,6 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
     const info = type === 'donate' ? profile?.donateInfo : profile?.commissionInfo;
     setInfoText(info?.text || '');
     setInfoImage(info?.imageUrl || null);
-    if (type === 'commission') {
-      const existingQuestions = profile?.commissionQuestions || [];
-      const newQuestions = [...existingQuestions];
-      while (newQuestions.length < 5) newQuestions.push('');
-      setCommissionQuestions(newQuestions.slice(0, 5));
-    }
     setIsEditingInfo(false);
   };
 
@@ -909,28 +898,6 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                         placeholder={activeInfoModal === 'donate' ? t('donateInfo') : t('commissionInfo')}
                       />
                     </div>
-                    {activeInfoModal === 'commission' && (
-                      <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('commissionQuestions')}</label>
-                        {commissionQuestions.map((q, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-zinc-300">{i + 1}</span>
-                            <input 
-                              type="text"
-                              value={q}
-                              onChange={(e) => {
-                                const newQs = [...commissionQuestions];
-                                newQs[i] = e.target.value;
-                                setCommissionQuestions(newQs);
-                              }}
-                              placeholder={`${t('question')} ${i + 1}`}
-                              className="flex-1 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
                     <div>
                       <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">{t('infoImageUrl')}</label>
                       <div className="flex items-center gap-3">

@@ -14,7 +14,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   // Info Modal State
   const [activeInfoModal, setActiveInfoModal] = useState<'donate' | 'commission' | null>(null);
   const [showCommissionForm, setShowCommissionForm] = useState(false);
-  const [answers, setAnswers] = useState<string[]>(['', '', '', '', '']);
+  const [requestDetails, setRequestDetails] = useState('');
   const [guestEmail, setGuestEmail] = useState(user?.email || '');
   const [guestName, setGuestName] = useState(user?.displayName || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -209,10 +209,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
         guestUid: user.uid,
         guestName,
         guestEmail,
-        answers: (artistProfile.commissionQuestions || []).map((q, i) => ({
-          question: q,
-          answer: answers[i]
-        })),
+        requestDetails,
         status: 'pending',
         createdAt: serverTimestamp()
       };
@@ -240,7 +237,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
         setSubmitSuccess(false);
         setShowCommissionForm(false);
         setActiveInfoModal(null);
-        setAnswers(['', '', '', '', '']);
+        setRequestDetails('');
       }, 3000);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'commissions');
@@ -738,23 +735,18 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                         </div>
 
                         <div className="space-y-2">
-                          <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('commissionQuestions')}</h4>
-                          {(artistProfile.commissionQuestions || []).map((q, i) => (
-                            <div key={i} className="space-y-0.5">
-                              <label className="block text-[10px] font-bold text-zinc-700">{q}</label>
-                              <textarea 
-                                required
-                                value={answers[i]}
-                                onChange={(e) => {
-                                  const newAns = [...answers];
-                                  newAns[i] = e.target.value;
-                                  setAnswers(newAns);
-                                }}
-                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-orange-500 transition-colors resize-none"
-                                rows={1}
-                              />
-                            </div>
-                          ))}
+                          <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('commissionRequest')}</h4>
+                          <div className="space-y-0.5">
+                            <label className="block text-[10px] font-bold text-zinc-700">{t('describeRequest')}</label>
+                            <textarea 
+                              required
+                              value={requestDetails}
+                              onChange={(e) => setRequestDetails(e.target.value)}
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-orange-500 transition-colors resize-none"
+                              rows={4}
+                              placeholder={t('requestDetailsPlaceholder')}
+                            />
+                          </div>
                         </div>
 
                         <button 
@@ -823,7 +815,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                         {t('leaveMessage')}
                       </button>
                     )}
-                    {activeInfoModal === 'commission' && artistProfile.commissionQuestions && artistProfile.commissionQuestions.length > 0 && (
+                    {activeInfoModal === 'commission' && (
                       <button 
                         onClick={() => setShowCommissionForm(true)}
                         className="w-full py-3 sm:py-4 bg-zinc-900 text-white rounded-full font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 flex items-center justify-center gap-2"
