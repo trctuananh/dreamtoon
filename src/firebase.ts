@@ -76,3 +76,39 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
+
+export async function createNotification({
+  recipientId,
+  type,
+  targetId,
+  targetTitle,
+  senderId,
+  senderName,
+  senderPhoto
+}: {
+  recipientId: string;
+  type: 'like' | 'comment' | 'follow' | 'new_chapter' | 'commission';
+  targetId: string;
+  targetTitle?: string;
+  senderId: string;
+  senderName: string;
+  senderPhoto: string;
+}) {
+  if (senderId === recipientId) return;
+
+  try {
+    await addDoc(collection(db, 'users', recipientId, 'notifications'), {
+      recipientId,
+      senderId,
+      senderName,
+      senderPhoto,
+      type,
+      targetId,
+      targetTitle,
+      read: false,
+      createdAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error("Error creating notification:", error);
+  }
+}

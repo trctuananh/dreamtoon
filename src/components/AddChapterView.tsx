@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 import { Language } from '../translations';
 import { Chapter } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
@@ -110,10 +110,32 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
           uploadDate: new Date().toLocaleDateString(),
           createdAt: serverTimestamp()
         });
-        // Update parent comic's updatedAt
+        // Update parent comic's updatedAt and chapterCount
         await updateDoc(doc(db, 'comics', comicId), {
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          chapterCount: chapterCount + 1
         });
+
+        // Notify followers
+        try {
+          const followersQuery = query(collection(db, 'follows'), where('targetId', '==', comicId));
+          const followersSnap = await getDocs(followersQuery);
+          
+          followersSnap.docs.forEach(followerDoc => {
+            const followerData = followerDoc.data();
+            createNotification({
+              recipientId: followerData.userId,
+              type: 'new_chapter',
+              targetId: comicId,
+              targetTitle: title,
+              senderId: authorUid,
+              senderName: 'DreamToon', // Or fetch author name
+              senderPhoto: '' // Or fetch author photo
+            });
+          });
+        } catch (err) {
+          console.error("Error notifying followers:", err);
+        }
       }
       onSuccess();
     } catch (error) {

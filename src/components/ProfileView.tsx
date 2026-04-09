@@ -9,7 +9,7 @@ import { Language, translations } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { formatViews, validateImage } from '../lib/utils';
 
-export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow, onLogout, isGuest = false }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onLogout: () => void, isGuest?: boolean }) {
+export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow, onLogout, isGuest = false }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic', authorUid?: string) => void, onLogout: () => void, isGuest?: boolean }) {
   const { t } = useTranslation(lang);
   const [activeTab, setActiveTab] = useState<'comics' | 'following'>('comics');
   const [isEditing, setIsEditing] = useState(false);
@@ -178,12 +178,12 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                 )}
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 md:w-8 md:h-8 bg-green-500 border-2 md:border-4 border-white rounded-full shadow-lg" />
               </div>
-              <h3 className="text-base md:text-2xl font-black text-zinc-900 tracking-tight leading-tight">{displayName || profile?.displayName || user.displayName}</h3>
+              <h3 className="text-xl md:text-2xl font-black text-zinc-900 tracking-tight leading-tight">{displayName || profile?.displayName || user.displayName}</h3>
               {profile?.handle && (
-                <p className="text-blue-500 font-black text-[10px] md:text-sm mb-0.5 md:mb-1 tracking-tight">@{profile.handle}</p>
+                <p className="text-blue-500 font-black text-xs md:text-sm mb-0.5 md:mb-1 tracking-tight">@{profile.handle}</p>
               )}
-              {!isGuest && <p className="text-zinc-400 text-[8px] md:text-xs font-bold mb-0.5 md:mb-2">{user.email}</p>}
-              <p className="text-[7px] md:text-[10px] text-zinc-400 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] mb-2 md:mb-6">{t('joined')}: {joinedDate}</p>
+              {!isGuest && <p className="text-zinc-400 text-[10px] md:text-xs font-bold mb-0.5 md:mb-2">{user.email}</p>}
+              <p className="text-[9px] md:text-[10px] text-zinc-400 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] mb-2 md:mb-6">{t('joined')}: {joinedDate}</p>
 
               {isEditing ? (
                 <div className="w-full mb-6 space-y-4">

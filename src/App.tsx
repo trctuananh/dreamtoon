@@ -36,11 +36,12 @@ import {
   googleProvider, 
   facebookProvider, 
   handleFirestoreError, 
-  OperationType 
+  OperationType,
+  createNotification
 } from './firebase';
 
 // Types
-import { Comic, Chapter, Article, FeaturedItem, UserProfile, Like, Comment, View, Following } from './types';
+import { Comic, Chapter, Article, FeaturedItem, UserProfile, Like, Comment, View, Following, ReadingHistory } from './types';
 
 // Components
 import { Navbar } from './components/Navbar';
@@ -62,6 +63,7 @@ import { ArtistWallView } from './components/ArtistWallView';
 import { CommunityView } from './components/CommunityView';
 import { NotificationsView } from './components/NotificationsView';
 import { AdminUserManagementView } from './components/AdminUserManagementView';
+import { PrivacyPolicyView } from './components/PrivacyPolicyView';
 
 // Hooks & Utils
 import { useTranslation } from './hooks/useTranslation';
@@ -100,7 +102,7 @@ export default function App() {
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<ReadingHistory[]>([]);
   const [artists, setArtists] = useState<UserProfile[]>([]);
 
   const { t } = useTranslation(lang);
@@ -463,10 +465,10 @@ export default function App() {
   useEffect(() => {
     if (user) {
       const unsubscribe = onSnapshot(collection(db, 'users', user.uid, 'history'), (snapshot) => {
-        const historyIds = snapshot.docs
+        const historyData = snapshot.docs
           .sort((a, b) => (b.data().lastRead?.seconds || 0) - (a.data().lastRead?.seconds || 0))
-          .map(doc => doc.id);
-        setHistory(historyIds);
+          .map(doc => ({ comicId: doc.id, ...doc.data() } as ReadingHistory));
+        setHistory(historyData);
       });
       return () => unsubscribe();
     }
@@ -497,7 +499,7 @@ export default function App() {
     }
   };
 
-  const handleToggleFollow = async (targetId: string, type: 'comic' | 'artist') => {
+  const handleToggleFollow = async (targetId: string, type: 'comic' | 'artist', comicAuthorUid?: string) => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
@@ -505,46 +507,48 @@ export default function App() {
 
     const followId = `${type}_${targetId}`;
     const followRef = doc(db, 'users', user.uid, 'following', followId);
+    const globalFollowRef = doc(db, 'follows', `${user.uid}_${targetId}`);
     
     try {
       const docSnap = await getDoc(followRef);
       if (docSnap.exists()) {
         await deleteDoc(followRef);
+        await deleteDoc(globalFollowRef);
       } else {
-        await setDoc(followRef, {
+        const followData = {
           id: followId,
           targetId,
+          userId: user.uid,
           type,
           createdAt: serverTimestamp()
-        });
+        };
+        await setDoc(followRef, followData);
+        await setDoc(globalFollowRef, followData);
         
         // Create notification for artist follow
         if (type === 'artist') {
-          createNotification(targetId, 'follow', user.uid);
+          createNotification({
+            recipientId: targetId,
+            type: 'follow',
+            targetId: user.uid,
+            senderId: user.uid,
+            senderName: profile?.displayName || user.displayName || 'Anonymous',
+            senderPhoto: profile?.photoURL || user.photoURL || ''
+          });
+        } else if (type === 'comic' && comicAuthorUid) {
+          createNotification({
+            recipientId: comicAuthorUid,
+            type: 'follow',
+            targetId: targetId,
+            targetTitle: comics.find(c => c.id === targetId)?.title,
+            senderId: user.uid,
+            senderName: profile?.displayName || user.displayName || 'Anonymous',
+            senderPhoto: profile?.photoURL || user.photoURL || ''
+          });
         }
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `following/${followId}`);
-    }
-  };
-
-  const createNotification = async (recipientId: string, type: 'like' | 'comment' | 'follow' | 'new_chapter', targetId: string, targetTitle?: string) => {
-    if (!user || user.uid === recipientId) return;
-
-    try {
-      await addDoc(collection(db, 'users', recipientId, 'notifications'), {
-        recipientId,
-        senderId: user.uid,
-        senderName: profile?.displayName || user.displayName || 'Anonymous',
-        senderPhoto: profile?.photoURL || user.photoURL || '',
-        type,
-        targetId,
-        targetTitle,
-        read: false,
-        createdAt: serverTimestamp()
-      });
-    } catch (error) {
-      console.error("Error creating notification:", error);
     }
   };
 
@@ -794,7 +798,15 @@ export default function App() {
                       });
                       
                       // Create notification for like
-                      createNotification(selectedComic.authorUid, 'like', selectedChapter.id, selectedComic.title);
+                      createNotification({
+                        recipientId: selectedComic.authorUid,
+                        type: 'like',
+                        targetId: selectedChapter.id,
+                        targetTitle: selectedComic.title,
+                        senderId: user.uid,
+                        senderName: profile?.displayName || user.displayName || 'Anonymous',
+                        senderPhoto: profile?.photoURL || user.photoURL || ''
+                      });
                     }
                   } catch (error) {
                     handleFirestoreError(error, OperationType.WRITE, `likes/${user.uid}`);
@@ -816,7 +828,15 @@ export default function App() {
                     });
                     
                     // Create notification for comment
-                    createNotification(selectedComic.authorUid, 'comment', selectedChapter.id, selectedComic.title);
+                    createNotification({
+                      recipientId: selectedComic.authorUid,
+                      type: 'comment',
+                      targetId: selectedChapter.id,
+                      targetTitle: selectedComic.title,
+                      senderId: user.uid,
+                      senderName: profile?.displayName || user.displayName || 'Anonymous',
+                      senderPhoto: profile?.photoURL || user.photoURL || ''
+                    });
                   } catch (error) {
                     handleFirestoreError(error, OperationType.CREATE, 'comments');
                   }
@@ -1020,6 +1040,7 @@ export default function App() {
                 lang={lang}
                 onBack={handleBack}
                 onProfileClick={handlePublicProfileClick}
+                onToggleFollow={handleToggleFollow}
               />
             )}
 
@@ -1038,6 +1059,13 @@ export default function App() {
 
             {view === 'admin-users' && (profile?.role === 'admin' || user?.email === 'tr.c.tuananh@gmail.com') && (
               <AdminUserManagementView lang={lang} />
+            )}
+
+            {view === 'privacy' && (
+              <PrivacyPolicyView 
+                lang={lang}
+                onBack={handleBack}
+              />
             )}
           </AnimatePresence>
 
@@ -1065,7 +1093,7 @@ export default function App() {
           </AnimatePresence>
         </main>
 
-        {view !== 'reader' && <Footer lang={lang} />}
+        {view !== 'reader' && <Footer lang={lang} onViewChange={setView} />}
       </div>
     </ErrorBoundary>
   );

@@ -27,12 +27,13 @@ export interface Comic {
   rating: number;
   ratingCount?: number;
   views: number;
+  chapterCount?: number;
   chapters?: Chapter[];
   createdAt?: any;
   updatedAt?: any;
 }
 
-export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'public-profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall' | 'notifications' | 'support' | 'admin-users';
+export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'public-profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall' | 'notifications' | 'support' | 'admin-users' | 'privacy';
 
 export interface Notification {
   id: string;
@@ -40,11 +41,18 @@ export interface Notification {
   senderId: string;
   senderName: string;
   senderPhoto: string;
-  type: 'like' | 'comment' | 'follow' | 'new_chapter';
+  type: 'like' | 'comment' | 'follow' | 'new_chapter' | 'commission';
   targetId: string;
   targetTitle?: string;
   read: boolean;
   createdAt: any;
+}
+
+export interface ReadingHistory {
+  comicId: string;
+  chapterId: string;
+  chapterNumber: number;
+  lastRead: any;
 }
 
 export interface Article {

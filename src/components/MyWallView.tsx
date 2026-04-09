@@ -521,80 +521,90 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
           {commissionWorks.length === 0 ? (
             <div className="text-center py-8 bg-zinc-50 rounded-2xl border border-dashed border-zinc-200">
               <p className="text-[10px] text-zinc-400 font-black uppercase tracking-widest">{t('noProgress')}</p>
             </div>
           ) : (
-            commissionWorks.map(work => (
-              <div key={work.id} className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 group relative hover:border-zinc-200 transition-all">
-                <div className="flex gap-4">
-                  {/* Thumbnail */}
-                  <div className="flex-shrink-0">
-                    {work.imageUrl ? (
-                      <button 
-                        onClick={() => setViewingWorkImage(work.imageUrl || null)}
-                        className="w-14 h-14 rounded-xl overflow-hidden border border-zinc-200 hover:scale-105 transition-transform"
-                      >
-                        <img src={work.imageUrl} alt={work.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      </button>
-                    ) : (
-                      <div className="w-14 h-14 rounded-xl bg-zinc-200 flex items-center justify-center text-zinc-400">
-                        <ImageIcon size={20} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h5 className="text-sm font-black text-zinc-900 tracking-tight truncate">{work.title}</h5>
-                          {work.clientName && (
-                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest truncate">
-                              / {work.clientName.toUpperCase()}
-                            </span>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-100">
+                  <th className="pb-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest pl-4 sm:pl-0">{t('work')}</th>
+                  <th className="pb-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('status')}</th>
+                  <th className="pb-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest w-1/4">{t('progress')}</th>
+                  <th className="pb-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right pr-4 sm:pr-0">{t('actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-50">
+                {commissionWorks.map((work) => (
+                  <tr key={work.id} className="group hover:bg-zinc-50/50 transition-colors">
+                    <td className="py-3 pl-4 sm:pl-0 max-w-[100px] sm:max-w-none">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex-shrink-0">
+                          {work.imageUrl ? (
+                            <button 
+                              onClick={() => setViewingWorkImage(work.imageUrl || null)}
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg overflow-hidden border border-zinc-200 hover:scale-105 transition-transform"
+                            >
+                              <img src={work.imageUrl} alt={work.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            </button>
+                          ) : (
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-300 border border-zinc-200">
+                              <ImageIcon size={14} className="sm:w-[16px] sm:h-[16px]" />
+                            </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-4">
-                          <span className="px-2 py-0.5 bg-zinc-200 text-zinc-600 rounded text-[8px] font-black uppercase tracking-widest flex-shrink-0">
-                            {work.status}
-                          </span>
-                          <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden shadow-inner flex-1">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${work.progress}%` }}
-                              className="h-full bg-blue-500"
-                            />
-                          </div>
+                        <div className="min-w-0">
+                          <h5 className="text-[10px] sm:text-xs font-black text-zinc-900 truncate">{work.title}</h5>
+                          {work.clientName && (
+                            <p className="text-[8px] sm:text-[9px] font-bold text-zinc-400 uppercase tracking-widest truncate">
+                              {work.clientName}
+                            </p>
+                          )}
                         </div>
                       </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    </td>
+                    <td className="py-3">
+                      <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[7px] sm:text-[8px] font-black uppercase tracking-widest whitespace-nowrap">
+                        {work.status}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="h-1 bg-zinc-100 rounded-full overflow-hidden flex-1 max-w-[50px] sm:max-w-[100px]">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${work.progress}%` }}
+                            className="h-full bg-blue-500"
+                          />
+                        </div>
+                        <span className="text-[9px] sm:text-[10px] font-black text-zinc-900">{work.progress}%</span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-right pr-4 sm:pr-0">
+                      <div className="flex items-center justify-end gap-0.5 sm:gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => {
                             setIsEditingWork(work.id);
                             setWorkForm({ title: work.title, clientName: work.clientName || '', status: work.status, progress: work.progress, imageUrl: work.imageUrl || null });
                           }}
-                          className="p-1.5 text-zinc-300 hover:text-zinc-900 hover:bg-white rounded-lg transition-all"
+                          className="p-1 sm:p-1.5 text-zinc-300 hover:text-zinc-900 hover:bg-white rounded-lg transition-all"
                         >
-                          <PenTool size={14} />
+                          <PenTool size={12} className="sm:w-[14px] sm:h-[14px]" />
                         </button>
                         <button 
                           onClick={() => handleDeleteWork(work.id)}
-                          className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                          className="p-1 sm:p-1.5 text-zinc-300 hover:text-red-500 hover:bg-white rounded-lg transition-all"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={12} className="sm:w-[14px] sm:h-[14px]" />
                         </button>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
@@ -874,23 +884,23 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl"
+              className="bg-white w-full max-w-lg rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
-              <div className={`p-6 flex items-center justify-between text-white ${activeInfoModal === 'donate' ? 'bg-green-500' : 'bg-orange-500'}`}>
-                <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-2">
-                  {activeInfoModal === 'donate' ? <DollarSign size={20} /> : <Briefcase size={20} />}
+              <div className={`p-2 sm:p-3 flex items-center justify-between text-white flex-shrink-0 ${activeInfoModal === 'donate' ? 'bg-green-500' : 'bg-orange-500'}`}>
+                <h3 className="text-sm sm:text-base font-black uppercase tracking-widest flex items-center gap-2">
+                  {activeInfoModal === 'donate' ? <DollarSign size={16} /> : <Briefcase size={16} />}
                   {t(activeInfoModal as any)}
                 </h3>
-                <button onClick={() => setActiveInfoModal(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                  <X size={20} />
+                <button onClick={() => setActiveInfoModal(null)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
+                  <X size={16} />
                 </button>
               </div>
 
-              <div className="p-8">
+              <div className="p-2 sm:p-3 overflow-y-auto no-scrollbar sm:scrollbar-thin scrollbar-thumb-zinc-200">
                 {isEditingInfo ? (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">{t('infoText')}</label>
+                      <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">{t('infoText')}</label>
                       <textarea
                         value={infoText}
                         onChange={(e) => setInfoText(e.target.value)}
@@ -900,10 +910,10 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                       />
                     </div>
                     {activeInfoModal === 'commission' && (
-                      <div className="space-y-3">
+                      <div className="space-y-1.5">
                         <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('commissionQuestions')}</label>
                         {commissionQuestions.map((q, i) => (
-                          <div key={i} className="flex items-center gap-3">
+                          <div key={i} className="flex items-center gap-2">
                             <span className="text-[10px] font-black text-zinc-300">{i + 1}</span>
                             <input 
                               type="text"
@@ -914,7 +924,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                                 setCommissionQuestions(newQs);
                               }}
                               placeholder={`${t('question')} ${i + 1}`}
-                              className="flex-1 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors"
+                              className="flex-1 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors"
                             />
                           </div>
                         ))}
@@ -922,10 +932,10 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                     )}
 
                     <div>
-                      <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">{t('infoImageUrl')}</label>
-                      <div className="flex items-center gap-4">
+                      <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">{t('infoImageUrl')}</label>
+                      <div className="flex items-center gap-3">
                         {infoImage && (
-                          <div className="w-20 h-20 rounded-xl overflow-hidden border border-zinc-100 flex-shrink-0">
+                          <div className="w-16 h-16 rounded-xl overflow-hidden border border-zinc-100 flex-shrink-0">
                             <img src={infoImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                         )}
@@ -939,7 +949,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                         <button
                           type="button"
                           onClick={() => infoFileInputRef.current?.click()}
-                          className="flex-1 flex items-center justify-center gap-2 py-3 bg-zinc-100 text-zinc-600 rounded-full text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-zinc-100 text-zinc-600 rounded-full text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
                         >
                           <Upload size={16} />
                           {t('upload')}
@@ -948,37 +958,34 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                           <button 
                             type="button"
                             onClick={() => setInfoImage(null)}
-                            className="p-3 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors"
+                            className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors"
                           >
                             <Trash2 size={16} />
                           </button>
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-3 pt-4">
+                    <div className="flex gap-2 pt-2">
                       <button
                         onClick={handleSaveInfo}
                         disabled={isSavingInfo}
-                        className="flex-1 bg-zinc-900 text-white py-3 rounded-full text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
+                        className="flex-1 bg-zinc-900 text-white py-2.5 rounded-full text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
                       >
                         <Save size={16} />
                         {isSavingInfo ? '...' : t('saveInfo')}
                       </button>
                       <button
                         onClick={() => setIsEditingInfo(false)}
-                        className="px-6 py-3 bg-zinc-100 text-zinc-600 rounded-full text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                        className="px-6 py-2.5 bg-zinc-100 text-zinc-600 rounded-full text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
                       >
                         {t('cancel')}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <div className="text-zinc-700 text-sm leading-relaxed whitespace-pre-wrap min-h-[100px]">
-                      {infoText || (activeInfoModal === 'donate' ? t('donateInfo') : t('commissionInfo'))}
-                    </div>
+                  <div className="space-y-4">
                     {infoImage && (
-                      <div className="rounded-2xl overflow-hidden border border-zinc-100 shadow-md">
+                      <div className={`rounded-xl overflow-hidden border border-zinc-100 shadow-md ${activeInfoModal === 'donate' ? 'max-w-[70%] sm:max-w-[40%] mx-auto' : 'w-full'}`}>
                         <img 
                           src={infoImage} 
                           alt={activeInfoModal} 
@@ -997,12 +1004,12 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
 
                     {/* Donation Messages List */}
                     {activeInfoModal === 'donate' && donationMessages.length > 0 && (
-                      <div className="pt-6 border-t border-zinc-100">
-                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{t('donationMessages')}</h4>
-                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                      <div className="pt-4 border-t border-zinc-100">
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">{t('donationMessages')}</h4>
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar sm:scrollbar-thin scrollbar-thumb-zinc-200">
                           {donationMessages.map((msg) => (
-                            <div key={msg.id} className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 relative group">
-                              <div className="flex justify-between items-start mb-1">
+                            <div key={msg.id} className="bg-zinc-50 rounded-xl p-3 border border-zinc-100 relative group">
+                              <div className="flex justify-between items-start mb-0.5">
                                 <span className="text-xs font-black text-zinc-900">{msg.donorName}</span>
                                 <span className="text-[10px] font-black text-zinc-300 uppercase">
                                   {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleDateString() : '...'}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Heart, MessageCircle, UserPlus, BookOpen, Trash2, CheckCircle } from 'lucide-react';
+import { Bell, Heart, MessageCircle, UserPlus, BookOpen, Trash2, CheckCircle, Briefcase } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Notification } from '../types';
@@ -83,6 +83,7 @@ export function NotificationsView({
       case 'comment': return <MessageCircle size={16} className="text-blue-500 fill-blue-500" />;
       case 'follow': return <UserPlus size={16} className="text-green-500" />;
       case 'new_chapter': return <BookOpen size={16} className="text-purple-500" />;
+      case 'commission': return <Briefcase size={16} className="text-orange-500" />;
       default: return <Bell size={16} className="text-zinc-400" />;
     }
   };
@@ -93,6 +94,7 @@ export function NotificationsView({
       case 'comment': return `${t('commentedOnYourPost')} ${notification.targetTitle ? `"${notification.targetTitle}"` : ''}`;
       case 'follow': return t('startedFollowingYou');
       case 'new_chapter': return `${t('publishedNewChapter')} ${notification.targetTitle ? `"${notification.targetTitle}"` : ''}`;
+      case 'commission': return t('newCommissionRequest');
       default: return `sent you a notification`;
     }
   };

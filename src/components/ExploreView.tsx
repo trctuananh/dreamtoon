@@ -21,6 +21,7 @@ export function ExploreView({
   onArtistClick?: (artist: UserProfile) => void
 }) {
   const { t } = useTranslation(lang);
+  const [selectedGenre, setSelectedGenre] = React.useState<Genre | 'all'>('all');
   const genres: Genre[] = ['Action', 'Romance', 'Comedy', 'Fantasy', 'Horror', 'Slice of Life', 'Drama', 'Sci-Fi', 'Thriller'];
 
   const filteredComics = comics.filter(comic => {
@@ -28,7 +29,11 @@ export function ExploreView({
       comic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       comic.authorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       comic.genre.some(g => g.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesSearch;
+    
+    const matchesGenre = selectedGenre === 'all' || 
+      comic.genre.some(g => g.toLowerCase() === selectedGenre.toLowerCase());
+
+    return matchesSearch && matchesGenre;
   });
 
   const filteredArtists = searchQuery.trim()
@@ -39,8 +44,8 @@ export function ExploreView({
     : [];
 
   return (
-    <div className="container mx-auto px-4 pt-4 pb-12">
-      <div className="mb-8">
+    <div className="min-h-screen bg-white pb-24 pt-4">
+      <div className="px-6 mb-8">
         {searchQuery.trim() ? (
           <h2 className="text-2xl font-black text-zinc-900 mb-8 tracking-tight">
             {t('searchResults') || 'Search Results'} <span className="text-blue-500">"{searchQuery}"</span>
@@ -63,13 +68,25 @@ export function ExploreView({
 
         {!searchQuery.trim() && (
           <div className="flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar">
-            <button className="px-4 py-1.5 bg-zinc-900 text-white rounded-lg text-xs font-bold shadow-sm whitespace-nowrap">
+            <button 
+              onClick={() => setSelectedGenre('all')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap transition-all ${
+                selectedGenre === 'all' 
+                  ? 'bg-zinc-900 text-white' 
+                  : 'bg-zinc-100 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200'
+              }`}
+            >
               {t('all')}
             </button>
             {genres.map((genre) => (
               <button 
                 key={genre}
-                className="px-4 py-1.5 bg-zinc-100 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200 rounded-lg text-xs font-bold whitespace-nowrap transition-all"
+                onClick={() => setSelectedGenre(genre)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                  selectedGenre === genre 
+                    ? 'bg-zinc-900 text-white' 
+                    : 'bg-zinc-100 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200'
+                }`}
               >
                 {genre}
               </button>
@@ -78,7 +95,7 @@ export function ExploreView({
         )}
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4">
+      <div className="px-6 grid grid-cols-3 sm:grid-cols-6 gap-x-3 sm:gap-x-4 gap-y-8">
         {filteredComics.map((comic) => {
           const isNewChapter = comic.updatedAt && (
             (comic.updatedAt.toDate ? comic.updatedAt.toDate() : new Date(comic.updatedAt)).getTime() > 
@@ -126,12 +143,12 @@ export function ExploreView({
       </div>
 
       {searchQuery.trim() && filteredArtists.length > 0 && (
-        <div className="mt-16">
+        <div className="px-6 mt-16">
           <h3 className="text-xl font-black text-zinc-900 mb-8 tracking-tight flex items-center gap-2">
             <Users size={24} className="text-blue-500" />
             {t('authors') || 'Authors'}
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
             {filteredArtists.map((artist) => (
               <div 
                 key={artist.uid}
@@ -164,11 +181,13 @@ export function ExploreView({
       )}
 
       {comics.length === 0 && (
-        <div className="text-center py-32 bg-zinc-50 rounded-[40px] border-2 border-dashed border-zinc-200">
-          <div className="w-20 h-20 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <LayoutGrid size={32} className="text-zinc-300" />
+        <div className="px-6 mt-12">
+          <div className="text-center py-32 bg-zinc-50 rounded-[40px] border-2 border-dashed border-zinc-200">
+            <div className="w-20 h-20 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <LayoutGrid size={32} className="text-zinc-300" />
+            </div>
+            <p className="text-zinc-500 font-bold uppercase tracking-widest">{t('noComicsFound')}</p>
           </div>
-          <p className="text-zinc-500 font-bold uppercase tracking-widest">{t('noComicsFound')}</p>
         </div>
       )}
     </div>

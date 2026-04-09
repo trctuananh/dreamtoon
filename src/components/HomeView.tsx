@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Compass, BookOpen, Users } from 'lucide-react';
-import { Comic, FeaturedItem, Chapter, Article, Following, UserProfile } from '../types';
+import { Comic, FeaturedItem, Chapter, Article, Following, UserProfile, ReadingHistory } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { formatViews } from '../lib/utils';
@@ -29,7 +29,7 @@ export function HomeView({
   artists?: UserProfile[],
   followingFeed: Chapter[], 
   following?: Following[],
-  history?: string[],
+  history?: ReadingHistory[],
   user: any,
   lang: Language, 
   searchQuery: string, 
@@ -46,7 +46,7 @@ export function HomeView({
   // Calculate favorite comics based on followed comics or followed artists or history
   const followedComicIds = following?.filter(f => f.type === 'comic').map(f => f.targetId) || [];
   const followedArtistIds = following?.filter(f => f.type === 'artist').map(f => f.targetId) || [];
-  const historyIds = history || [];
+  const historyIds = history?.map(h => h.comicId) || [];
   
   const recentlyRead = comics.filter(comic => historyIds.includes(comic.id))
     .sort((a, b) => historyIds.indexOf(a.id) - historyIds.indexOf(b.id));
@@ -55,6 +55,37 @@ export function HomeView({
     followedComicIds.includes(comic.id) || 
     followedArtistIds.includes(comic.authorUid)
   );
+
+  // Calculate Hot Artists (artists with most views in their comics updated this week)
+  const hotArtists = React.useMemo(() => {
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const artistViews: { [uid: string]: number } = {};
+    
+    comics.forEach(comic => {
+      const updatedAt = comic.updatedAt?.toDate ? comic.updatedAt.toDate() : new Date(comic.updatedAt);
+      if (updatedAt.getTime() > oneWeekAgo && comic.authorUid) {
+        artistViews[comic.authorUid] = (artistViews[comic.authorUid] || 0) + (comic.views || 0);
+      }
+    });
+
+    // If no artists have views this week, fallback to total views
+    if (Object.keys(artistViews).length === 0) {
+      comics.forEach(comic => {
+        if (comic.authorUid) {
+          artistViews[comic.authorUid] = (artistViews[comic.authorUid] || 0) + (comic.views || 0);
+        }
+      });
+    }
+
+    return artists
+      .map(artist => ({
+        ...artist,
+        weeklyViews: artistViews[artist.uid] || 0
+      }))
+      .filter(artist => artist.weeklyViews > 0)
+      .sort((a, b) => b.weeklyViews - a.weeklyViews)
+      .slice(0, 6);
+  }, [comics, artists]);
 
   // Search filtering
   const filteredComics = searchQuery.trim() 
@@ -470,28 +501,50 @@ export function HomeView({
           </div>
         ) : recentlyRead.length > 0 ? (
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4">
-            {recentlyRead.slice(0, 6).map((comic) => (
-              <motion.div
-                key={comic.id}
-                onClick={() => onComicClick(comic)}
-                className="group cursor-pointer"
-              >
-                <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2">
-                  <img 
-                    src={comic.thumbnail} 
-                    alt={comic.title} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <h4 className="font-bold text-zinc-900 text-[10px] sm:text-sm truncate mb-0.5 group-hover:text-blue-600 transition-colors">
-                  {comic.title}
-                </h4>
-                <p className="text-[8px] sm:text-[10px] font-medium text-zinc-400 capitalize">
-                  {t(comic.genre[0] as any)}
-                </p>
-              </motion.div>
-            ))}
+            {recentlyRead.slice(0, 6).map((comic) => {
+              const historyItem = history?.find(h => h.comicId === comic.id);
+              const currentChapter = historyItem?.chapterNumber || 0;
+              const totalChapters = comic.chapterCount || 0;
+              const progress = totalChapters > 0 ? Math.min(Math.round((currentChapter / totalChapters) * 100), 100) : 0;
+
+              return (
+                <motion.div
+                  key={comic.id}
+                  onClick={() => onComicClick(comic)}
+                  className="group cursor-pointer"
+                >
+                  <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2">
+                    <img 
+                      src={comic.thumbnail} 
+                      alt={comic.title} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      referrerPolicy="no-referrer"
+                    />
+                    
+                    {/* Progress Bar Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        className="h-full bg-blue-500"
+                      />
+                    </div>
+
+                    {/* Chapter Indicator */}
+                    <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm text-white text-[8px] font-black rounded-sm uppercase tracking-tighter">
+                      {t('chapter')} {currentChapter}
+                      {totalChapters > 0 && ` / ${totalChapters}`}
+                    </div>
+                  </div>
+                  <h4 className="font-bold text-zinc-900 text-[10px] sm:text-sm truncate mb-0.5 group-hover:text-blue-600 transition-colors">
+                    {comic.title}
+                  </h4>
+                  <p className="text-[8px] sm:text-[10px] font-medium text-zinc-400 capitalize">
+                    {t(comic.genre[0] as any)}
+                  </p>
+                </motion.div>
+              );
+            })}
           </div>
         ) : (
           <div className="bg-zinc-50 rounded-2xl p-6 text-center">
@@ -544,6 +597,50 @@ export function HomeView({
           </div>
         )}
       </div>
+
+      {/* Section: Hot Artists */}
+      {hotArtists.length > 0 && (
+        <div className="px-6 mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
+                {t('hotArtists')}
+                <ArrowRight size={18} className="text-zinc-400" />
+              </h3>
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
+                {t('hotArtistsDesc')}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+            {hotArtists.map((artist) => (
+              <motion.div
+                key={artist.uid}
+                whileHover={{ y: -5 }}
+                onClick={() => onArtistClick?.(artist)}
+                className="group cursor-pointer text-center"
+              >
+                <div className="relative aspect-square rounded-full overflow-hidden mb-3 shadow-xl shadow-zinc-200/50 mx-auto w-24 sm:w-32 border-4 border-white group-hover:border-blue-500 transition-all duration-500">
+                  <img 
+                    src={artist.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(artist.displayName)}&background=random`} 
+                    alt={artist.displayName} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <h4 className="font-bold text-zinc-900 text-sm truncate mb-0.5 group-hover:text-blue-600 transition-colors">
+                  {artist.displayName}
+                </h4>
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                  @{artist.handle || artist.uid.slice(0, 6)}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

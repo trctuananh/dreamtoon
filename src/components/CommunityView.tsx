@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Image as ImageIcon, Trash2, Heart, ArrowLeft, PenTool, Crown } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, getDoc, updateDoc, increment } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 import { View, Post, Comic } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -142,13 +142,29 @@ export function CommunityView({ user, comics, lang, searchQuery = '', onBack, on
     }
   };
 
-  const handleLike = async (postId: string) => {
+  const handleLike = async (post: Post) => {
+    if (!user) {
+      onLogin();
+      return;
+    }
     try {
-      await updateDoc(doc(db, 'posts', postId), {
+      await updateDoc(doc(db, 'posts', post.id), {
         likes: increment(1)
       });
+
+      // Notify author
+      if (user.uid !== post.authorUid) {
+        createNotification({
+          recipientId: post.authorUid,
+          type: 'like',
+          targetId: post.id,
+          senderId: user.uid,
+          senderName: user.displayName || 'Anonymous',
+          senderPhoto: user.photoURL || ''
+        });
+      }
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `posts/${postId}`);
+      handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
     }
   };
 
@@ -349,7 +365,7 @@ export function CommunityView({ user, comics, lang, searchQuery = '', onBack, on
 
                 <div className="flex items-center gap-6 pt-2 border-t border-zinc-50">
                   <button 
-                    onClick={() => handleLike(post.id)}
+                    onClick={() => handleLike(post)}
                     className="flex items-center gap-2 text-zinc-400 hover:text-red-500 transition-all text-xs font-black uppercase tracking-wider"
                   >
                     <div className="p-2 rounded-full hover:bg-red-50 transition-colors">

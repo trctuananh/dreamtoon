@@ -2,8 +2,9 @@ import React from 'react';
 import { BookOpen, Facebook, Twitter, Share2, MessageSquare } from 'lucide-react';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
+import { View } from '../types';
 
-export function Footer({ lang }: { lang: Language }) {
+export function Footer({ lang, onViewChange }: { lang: Language, onViewChange?: (view: View) => void }) {
   const { t } = useTranslation(lang);
 
   return (
@@ -46,9 +47,14 @@ export function Footer({ lang }: { lang: Language }) {
         <div className="pt-8 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
           <p>© 2026 DREAMTOON. ALL RIGHTS RESERVED.</p>
           <div className="flex gap-8">
-            <a href="#" className="hover:text-white transition-colors">{t('privacyPolicy' as any)}</a>
-            <a href="#" className="hover:text-white transition-colors">{t('termsOfService' as any)}</a>
-            <a href="#" className="hover:text-white transition-colors">{t('cookiePolicy' as any)}</a>
+            <button 
+              onClick={() => onViewChange?.('privacy')}
+              className="hover:text-white transition-colors"
+            >
+              {t('privacyPolicy' as any)}
+            </button>
+            <button className="hover:text-white transition-colors">{t('termsOfService' as any)}</button>
+            <button className="hover:text-white transition-colors">{t('cookiePolicy' as any)}</button>
           </div>
         </div>
       </div>

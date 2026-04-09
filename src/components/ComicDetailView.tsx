@@ -35,7 +35,7 @@ export function ComicDetailView({
   ratingSuccess: boolean, 
   onRate: (score: number) => void, 
   onChapterClick: (chapter: Chapter) => void, 
-  onToggleFollow: (id: string, type: 'artist' | 'comic') => void, 
+  onToggleFollow: (id: string, type: 'artist' | 'comic', authorUid?: string) => void, 
   onAddChapter: () => void,
   onEditChapter: (chapter: Chapter) => void,
   onEditComic: (comic: Comic) => void,
@@ -116,11 +116,11 @@ export function ComicDetailView({
                   </button>
                 )}
                 <button 
-                  onClick={() => onToggleFollow(comic.id, 'comic')}
+                  onClick={() => onToggleFollow(comic.id, 'comic', comic.authorUid)}
                   className={`w-full py-2 sm:py-3 rounded-full font-bold text-xs sm:text-sm transition-all shadow-xl flex items-center justify-center gap-2 ${
                     isFollowingComic 
                       ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200' 
-                      : 'bg-blue-50 text-white hover:bg-blue-600 shadow-blue-500/20'
+                      : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
                   }`}
                 >
                   <Heart size={16} className={isFollowingComic ? 'fill-zinc-600' : ''} />
@@ -150,10 +150,10 @@ export function ComicDetailView({
           <div className="md:col-span-2">
             <h1 className="text-2xl sm:text-5xl font-black text-zinc-900 mb-2 sm:mb-4 tracking-tight leading-tight sm:leading-none">{comic.title}</h1>
             
-            <div className="flex items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
-              <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-3 sm:gap-6 mb-6 sm:mb-8">
+              <div className="flex items-center gap-3 sm:gap-4">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden">
                     {comic.authorPhoto ? (
                       <img src={comic.authorPhoto} alt={comic.authorName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
@@ -161,18 +161,18 @@ export function ComicDetailView({
                     )}
                   </div>
                   {comic.authorPioneerNumber && (
-                    <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                    <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[10px] sm:text-xs font-black w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
                       {comic.authorPioneerNumber}
                     </div>
                   )}
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{t('author')}</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-zinc-400 uppercase tracking-widest">{t('author')}</p>
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-zinc-900 hover:text-blue-500 cursor-pointer transition-colors" onClick={() => onArtistClick(comic.authorUid)}>{comic.authorName}</p>
+                    <p className="text-sm sm:text-base font-bold text-zinc-900 hover:text-blue-500 cursor-pointer transition-colors" onClick={() => onArtistClick(comic.authorUid)}>{comic.authorName}</p>
                     <button 
                       onClick={() => onToggleFollow(comic.authorUid, 'artist')}
-                      className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border transition-all ${
+                      className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 py-1 sm:px-4 sm:py-1.5 rounded-full border transition-all ${
                         isFollowingArtist 
                           ? 'bg-zinc-100 text-zinc-500 border-zinc-200' 
                           : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100'

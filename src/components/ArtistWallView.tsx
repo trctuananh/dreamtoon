@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, Trash2, MessageCircle, Layout } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 import { Post, UserProfile, Donation, CommissionWork, Following, PostComment } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void }) {
+export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick, onToggleFollow }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   
@@ -54,41 +54,12 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     }
   }, [user, artistUid]);
 
-  const handleFollow = async () => {
-    if (!user) return;
-    try {
-      const followData: Following = {
-        id: `artist_${artistUid}`,
-        userId: user.uid,
-        targetId: artistUid,
-        type: 'artist',
-        createdAt: serverTimestamp()
-      };
-      await setDoc(doc(db, 'users', user.uid, 'following', followData.id), followData);
-      
-      // Add notification for artist
-      await addDoc(collection(db, 'users', artistUid, 'notifications'), {
-        recipientId: artistUid,
-        senderId: user.uid,
-        senderName: user.displayName || 'Anonymous',
-        senderPhoto: user.photoURL || '',
-        type: 'follow',
-        targetId: user.uid,
-        read: false,
-        createdAt: serverTimestamp()
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/following`);
-    }
+  const handleFollow = () => {
+    onToggleFollow(artistUid, 'artist');
   };
 
-  const handleUnfollow = async () => {
-    if (!user) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'following', `artist_${artistUid}`));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/following/artist_${artistUid}`);
-    }
+  const handleUnfollow = () => {
+    onToggleFollow(artistUid, 'artist');
   };
 
   useEffect(() => {
@@ -181,6 +152,18 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
         likes: increment(1),
         likedBy: arrayUnion(user.uid)
       });
+
+      // Notify post author
+      if (user.uid !== artistUid) {
+        createNotification({
+          recipientId: artistUid,
+          type: 'like',
+          targetId: post.id,
+          senderId: user.uid,
+          senderName: profile?.displayName || user.displayName || 'Anonymous',
+          senderPhoto: profile?.photoURL || user.photoURL || ''
+        });
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
     }
@@ -237,14 +220,14 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       await addDoc(collection(db, 'commissions'), commissionData);
       
       // Create a notification for the artist
-      await addDoc(collection(db, 'notifications'), {
-        uid: artistUid,
+      createNotification({
+        recipientId: artistUid,
         type: 'commission',
-        title: 'New Commission Request',
-        message: `${guestName} has sent a new commission request.`,
-        link: 'profile', // Or a specific commissions view
-        read: false,
-        createdAt: serverTimestamp()
+        targetId: 'profile', // Or a specific commissions view
+        targetTitle: 'New Commission Request',
+        senderId: user.uid,
+        senderName: profile?.displayName || user.displayName || 'Anonymous',
+        senderPhoto: profile?.photoURL || user.photoURL || ''
       });
 
       // NOTE: Real email sending would require a server-side function (e.g. Firebase Functions)
@@ -318,14 +301,13 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       
       // Add notification for post author
       if (user.uid !== artistUid) {
-        await addDoc(collection(db, 'users', artistUid, 'notifications'), {
+        createNotification({
+          recipientId: artistUid,
           type: 'comment',
-          fromUid: user.uid,
-          fromName: user.displayName || 'Anonymous',
-          fromPhoto: user.photoURL || '',
           targetId: postId,
-          createdAt: serverTimestamp(),
-          read: false
+          senderId: user.uid,
+          senderName: profile?.displayName || user.displayName || 'Anonymous',
+          senderPhoto: profile?.photoURL || user.photoURL || ''
         });
       }
 
@@ -351,54 +333,54 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
   return (
     <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-8">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-10">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className="relative">
             <img 
               src={artistProfile.photoURL || ''} 
               alt={artistProfile.displayName} 
-              className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl border-2 border-white shadow-md object-cover"
+              className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl border-2 border-white shadow-md object-cover"
               referrerPolicy="no-referrer"
             />
             {artistProfile.pioneerNumber && (
-              <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] sm:text-[10px] font-black w-4 h-4 sm:w-6 sm:h-6 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+              <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[10px] sm:text-xs font-black w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
                 {artistProfile.pioneerNumber}
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3 sm:gap-4">
             <div>
-              <h2 className="text-sm sm:text-xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
-              <p className="text-[8px] sm:text-[10px] font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
+              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
+              <p className="text-xs sm:text-sm font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
             </div>
             <button 
               onClick={() => onProfileClick(artistUid)}
-              className="px-2 py-0.5 sm:px-3 sm:py-1 border border-red-500 text-red-500 rounded-md font-black uppercase tracking-widest text-[8px] sm:text-xs hover:bg-red-50 transition-colors whitespace-nowrap"
+              className="px-3 py-1 sm:px-4 sm:py-1.5 border border-red-500 text-red-500 rounded-lg font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-red-50 transition-colors whitespace-nowrap"
             >
               {t('viewProfilesAndArtworks')}
             </button>
           </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button 
             onClick={() => setActiveInfoModal('donate')}
-            className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-4 sm:py-2 bg-green-500 text-white rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
+            className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5 bg-green-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
           >
-            <DollarSign size={10} className="sm:w-[14px] sm:h-[14px]" />
+            <DollarSign size={14} className="sm:w-[18px] sm:h-[18px]" />
             {t('donate')}
           </button>
           <button 
             onClick={() => setActiveInfoModal('commission')}
-            className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-4 sm:py-2 bg-orange-500 text-white rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
+            className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5 bg-orange-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
           >
-            <Briefcase size={10} className="sm:w-[14px] sm:h-[14px]" />
+            <Briefcase size={14} className="sm:w-[18px] sm:h-[18px]" />
             {t('commission')}
           </button>
           {user && user.uid !== artistUid && (
             <button 
               onClick={isFollowing ? handleUnfollow : handleFollow}
-              className={`px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
+              className={`px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
                 isFollowing 
                 ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
                 : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
@@ -409,9 +391,9 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
           )}
           <button 
             onClick={() => setShowShareModal(true)}
-            className="p-1.5 sm:p-2 bg-zinc-100 text-zinc-600 rounded-lg sm:rounded-xl hover:bg-zinc-200 transition-all"
+            className="p-2 sm:p-3 bg-zinc-100 text-zinc-600 rounded-xl sm:rounded-2xl hover:bg-zinc-200 transition-all"
           >
-            <Share2 size={14} className="sm:w-[18px] sm:h-[18px]" />
+            <Share2 size={18} className="sm:w-[22px] sm:h-[22px]" />
           </button>
         </div>
       </div>
@@ -423,60 +405,71 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
             <Layout size={18} className="text-zinc-400" />
             <h4 className="text-xs font-black text-zinc-900 uppercase tracking-widest">{t('commissionProgress')}</h4>
           </div>
-          <div className="grid grid-cols-1 gap-4">
-            {commissionWorks.map((work) => (
-              <div key={work.id} className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 hover:border-zinc-200 transition-all">
-                <div className="flex gap-4">
-                  {/* Thumbnail */}
-                  <div className="flex-shrink-0">
-                    {work.imageUrl ? (
-                      <button 
-                        onClick={() => setViewingWorkImage(work.imageUrl || null)}
-                        className="w-14 h-14 rounded-xl overflow-hidden border border-zinc-200 hover:scale-105 transition-transform"
-                      >
-                        <img src={work.imageUrl} alt={work.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      </button>
-                    ) : (
-                      <div className="w-14 h-14 rounded-xl bg-zinc-200 flex items-center justify-center text-zinc-400">
-                        <Layout size={20} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h5 className="text-sm font-black text-zinc-900 tracking-tight truncate">{work.title}</h5>
-                          {work.clientName && (
-                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest truncate">
-                              / {work.clientName.toUpperCase()}
-                            </span>
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-100">
+                  <th className="pb-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest pl-4 sm:pl-0">{t('work')}</th>
+                  <th className="pb-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('status')}</th>
+                  <th className="pb-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest w-1/4 sm:w-1/3">{t('progress')}</th>
+                  <th className="pb-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right pr-4 sm:pr-0 hidden xs:table-cell">{t('updated')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-50">
+                {commissionWorks.map((work) => (
+                  <tr key={work.id} className="group hover:bg-zinc-50/50 transition-colors">
+                    <td className="py-3 pl-4 sm:pl-0 max-w-[120px] sm:max-w-none">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex-shrink-0">
+                          {work.imageUrl ? (
+                            <button 
+                              onClick={() => setViewingWorkImage(work.imageUrl || null)}
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg overflow-hidden border border-zinc-200 hover:scale-105 transition-transform"
+                            >
+                              <img src={work.imageUrl} alt={work.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            </button>
+                          ) : (
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-300 border border-zinc-200">
+                              <Layout size={14} className="sm:w-[16px] sm:h-[16px]" />
+                            </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-4">
-                          <span className="px-2 py-0.5 bg-zinc-200 text-zinc-600 rounded text-[8px] font-black uppercase tracking-widest flex-shrink-0">
-                            {work.status}
-                          </span>
-                          <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden shadow-inner flex-1">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${work.progress}%` }}
-                              className="h-full bg-blue-500"
-                            />
-                          </div>
+                        <div className="min-w-0">
+                          <h5 className="text-[10px] sm:text-xs font-black text-zinc-900 truncate">{work.title}</h5>
+                          {work.clientName && (
+                            <p className="text-[8px] sm:text-[9px] font-bold text-zinc-400 uppercase tracking-widest truncate">
+                              {work.clientName}
+                            </p>
+                          )}
                         </div>
                       </div>
-
-                      <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest flex-shrink-0">
+                    </td>
+                    <td className="py-3">
+                      <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[7px] sm:text-[8px] font-black uppercase tracking-widest whitespace-nowrap">
+                        {work.status}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="h-1 bg-zinc-100 rounded-full overflow-hidden flex-1 max-w-[60px] sm:max-w-[120px]">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${work.progress}%` }}
+                            className="h-full bg-blue-500"
+                          />
+                        </div>
+                        <span className="text-[9px] sm:text-[10px] font-black text-zinc-900">{work.progress}%</span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-right pr-4 sm:pr-0 hidden xs:table-cell">
+                      <span className="text-[9px] sm:text-[10px] font-black text-zinc-300 uppercase tracking-widest">
                         {work.updatedAt?.toDate ? work.updatedAt.toDate().toLocaleDateString() : '...'}
                       </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -691,34 +684,34 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl"
+              className="bg-white w-full max-w-lg rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
-              <div className={`p-6 flex items-center justify-between text-white ${activeInfoModal === 'donate' ? 'bg-green-500' : 'bg-orange-500'}`}>
-                <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-2">
-                  {showCommissionForm ? <Send size={20} /> : (activeInfoModal === 'donate' ? <DollarSign size={20} /> : <Briefcase size={20} />)}
+              <div className={`p-2 sm:p-3 flex items-center justify-between text-white flex-shrink-0 ${activeInfoModal === 'donate' ? 'bg-green-500' : 'bg-orange-500'}`}>
+                <h3 className="text-sm sm:text-base font-black uppercase tracking-widest flex items-center gap-2">
+                  {showCommissionForm ? <Send size={16} /> : (activeInfoModal === 'donate' ? <DollarSign size={16} /> : <Briefcase size={16} />)}
                   {showCommissionForm ? t('submitCommission') : t(activeInfoModal as any)}
                 </h3>
                 <button onClick={() => {
                   setActiveInfoModal(null);
                   setShowCommissionForm(false);
                   setShowDonationForm(false);
-                }} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                  <X size={20} />
+                }} className="p-1 hover:bg-white/20 rounded-full transition-colors">
+                  <X size={16} />
                 </button>
               </div>
 
-              <div className="p-8">
+              <div className="p-2 sm:p-3 overflow-y-auto no-scrollbar sm:scrollbar-thin scrollbar-thumb-zinc-200">
                 {showCommissionForm ? (
-                  <form onSubmit={handleSubmitCommission} className="space-y-6">
+                  <form onSubmit={handleSubmitCommission} className="space-y-4">
                     {submitSuccess ? (
-                      <div className="text-center py-12 bg-green-50 rounded-3xl border-2 border-dashed border-green-200">
+                      <div className="text-center py-8 bg-green-50 rounded-3xl border-2 border-dashed border-green-200">
                         <p className="text-green-600 font-black uppercase tracking-widest">{t('commissionSubmitted')}</p>
                       </div>
                     ) : (
                       <>
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('guestInfo')}</h4>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t('yourName')}</label>
                               <input 
@@ -742,11 +735,11 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                           </div>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-2">
                           <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('commissionQuestions')}</h4>
                           {(artistProfile.commissionQuestions || []).map((q, i) => (
-                            <div key={i} className="space-y-1">
-                              <label className="block text-xs font-bold text-zinc-700">{q}</label>
+                            <div key={i} className="space-y-0.5">
+                              <label className="block text-[10px] font-bold text-zinc-700">{q}</label>
                               <textarea 
                                 required
                                 value={answers[i]}
@@ -755,8 +748,8 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                                   newAns[i] = e.target.value;
                                   setAnswers(newAns);
                                 }}
-                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-orange-500 transition-colors resize-none"
-                                rows={2}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-orange-500 transition-colors resize-none"
+                                rows={1}
                               />
                             </div>
                           ))}
@@ -765,7 +758,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                         <button 
                           type="submit"
                           disabled={isSubmitting}
-                          className="w-full py-4 bg-orange-500 text-white rounded-full font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/20 disabled:opacity-50"
+                          className="w-full py-3 sm:py-4 bg-orange-500 text-white rounded-full font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/20 disabled:opacity-50"
                         >
                           {isSubmitting ? '...' : t('submitCommission')}
                         </button>
@@ -773,8 +766,8 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                     )}
                   </form>
                 ) : showDonationForm ? (
-                  <form onSubmit={handlePostDonation} className="space-y-6">
-                    <div className="space-y-4">
+                  <form onSubmit={handlePostDonation} className="space-y-4">
+                    <div className="space-y-3">
                       <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t('leaveMessage')}</h4>
                       <div>
                         <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t('yourName')}</label>
@@ -801,19 +794,16 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                     <button 
                       type="submit"
                       disabled={isPostingDonation}
-                      className="w-full py-4 bg-green-500 text-white rounded-full font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-xl shadow-green-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full py-3 sm:py-4 bg-green-500 text-white rounded-full font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-xl shadow-green-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <Send size={18} />
                       {isPostingDonation ? '...' : t('postMessage')}
                     </button>
                   </form>
                 ) : (
-                  <div className="space-y-6">
-                    <div className="text-zinc-700 text-sm leading-relaxed whitespace-pre-wrap min-h-[100px]">
-                      {(activeInfoModal === 'donate' ? artistProfile.donateInfo?.text : artistProfile.commissionInfo?.text) || (activeInfoModal === 'donate' ? t('donateInfo') : t('commissionInfo'))}
-                    </div>
+                  <div className="space-y-4">
                     {(activeInfoModal === 'donate' ? artistProfile.donateInfo?.imageUrl : artistProfile.commissionInfo?.imageUrl) && (
-                      <div className="rounded-2xl overflow-hidden border border-zinc-100 shadow-md">
+                      <div className={`rounded-xl overflow-hidden border border-zinc-100 shadow-md ${activeInfoModal === 'donate' ? 'max-w-[70%] sm:max-w-[40%] mx-auto' : 'w-full'}`}>
                         <img 
                           src={activeInfoModal === 'donate' ? artistProfile.donateInfo?.imageUrl : artistProfile.commissionInfo?.imageUrl} 
                           alt={activeInfoModal || 'info'} 
@@ -825,7 +815,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                     {activeInfoModal === 'donate' && (
                       <button 
                         onClick={() => setShowDonationForm(true)}
-                        className="w-full py-4 bg-zinc-900 text-white rounded-full font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 flex items-center justify-center gap-2"
+                        className="w-full py-3 sm:py-4 bg-zinc-900 text-white rounded-full font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 flex items-center justify-center gap-2"
                       >
                         <MessageCircle size={18} />
                         {t('leaveMessage')}
@@ -834,7 +824,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                     {activeInfoModal === 'commission' && artistProfile.commissionQuestions && artistProfile.commissionQuestions.length > 0 && (
                       <button 
                         onClick={() => setShowCommissionForm(true)}
-                        className="w-full py-4 bg-zinc-900 text-white rounded-full font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 flex items-center justify-center gap-2"
+                        className="w-full py-3 sm:py-4 bg-zinc-900 text-white rounded-full font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 flex items-center justify-center gap-2"
                       >
                         <Send size={18} />
                         {t('startNow')}
@@ -843,12 +833,12 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
                     {/* Donation Messages List */}
                     {activeInfoModal === 'donate' && donationMessages.length > 0 && (
-                      <div className="pt-6 border-t border-zinc-100">
-                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{t('donationMessages')}</h4>
-                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                      <div className="pt-4 border-t border-zinc-100">
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">{t('donationMessages')}</h4>
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar sm:scrollbar-thin scrollbar-thumb-zinc-200">
                           {donationMessages.map((msg) => (
-                            <div key={msg.id} className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 relative group">
-                              <div className="flex justify-between items-start mb-1">
+                            <div key={msg.id} className="bg-zinc-50 rounded-xl p-3 border border-zinc-100 relative group">
+                              <div className="flex justify-between items-start mb-0.5">
                                 <span className="text-xs font-black text-zinc-900">{msg.donorName}</span>
                                 <span className="text-[10px] font-black text-zinc-300 uppercase">
                                   {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleDateString() : '...'}
