@@ -244,7 +244,7 @@ export function ReaderView({
               <div key={comment.id} className="space-y-1">
                 <div className="flex gap-4 group">
                   <img 
-                    src={comment.userPhoto || ''} 
+                    src={comment.userPhoto || undefined} 
                     alt={comment.userName} 
                     className="w-10 h-10 rounded-full border-2 border-zinc-800 object-cover"
                     referrerPolicy="no-referrer"
@@ -331,7 +331,7 @@ export function ReaderView({
                   {comments.filter(r => r.parentId === comment.id).map(reply => (
                     <div key={reply.id} className="flex gap-3 group">
                       <img 
-                        src={reply.userPhoto || ''} 
+                        src={reply.userPhoto || undefined} 
                         alt={reply.userName} 
                         className="w-8 h-8 rounded-full border border-zinc-800 object-cover"
                         referrerPolicy="no-referrer"

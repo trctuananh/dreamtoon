@@ -609,7 +609,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
           <div className="flex gap-4 mb-4">
             <div className="relative flex-shrink-0">
               <img 
-                src={profile?.photoURL || user.photoURL || ''} 
+                src={profile?.photoURL || user.photoURL || undefined} 
                 alt={user.displayName || ''} 
                 className="w-14 h-14 rounded-xl border-2 border-blue-500 aspect-square object-cover"
                 referrerPolicy="no-referrer"
@@ -791,7 +791,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                       <div className="flex items-center gap-3">
                         <div className="relative">
                           <img 
-                            src={profile?.photoURL || user.photoURL || ''} 
+                            src={profile?.photoURL || user.photoURL || undefined} 
                             alt={profile?.displayName || user.displayName} 
                             className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
                             referrerPolicy="no-referrer"

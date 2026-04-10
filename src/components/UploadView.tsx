@@ -64,6 +64,10 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
 
     try {
       const compressed = await compressImage(file, 400, 0.6);
+      if (compressed.length > 1048576) {
+        setError('Image is too complex and exceeds the 1MB limit. Please try a simpler image.');
+        return;
+      }
       setThumbnail(compressed);
     } catch (err) {
       setError('Failed to process image');

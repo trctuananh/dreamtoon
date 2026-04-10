@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, User, ChevronLeft, MoreVertical, Image as ImageIcon, Smile, MessageCircle } from 'lucide-react';
+import { Search, Send, User, ChevronLeft, MoreVertical, Image as ImageIcon, Smile, MessageCircle, Trash2, ImagePlus, X } from 'lucide-react';
 import { 
   collection, 
   query, 
@@ -12,13 +12,17 @@ import {
   doc, 
   updateDoc,
   getDocs,
-  limit
+  limit,
+  increment,
+  deleteDoc,
+  writeBatch
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, Conversation, Message } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { validateImage, compressImage } from '../lib/utils';
 
 export function MessengerView({ 
   user, 
@@ -40,6 +44,9 @@ export function MessengerView({
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -82,6 +89,18 @@ export function MessengerView({
       });
       
       setConversations(convs);
+
+      // Update selected conversation if it changed in the background
+      if (selectedConversation) {
+        const updated = convs.find(c => c.id === selectedConversation.id);
+        if (updated) {
+          setSelectedConversation(updated);
+          // If we are currently viewing this conversation, mark as read
+          if (updated.unreadCount?.[user.uid]) {
+            markAsRead(updated.id);
+          }
+        }
+      }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'conversations');
     });
@@ -140,6 +159,17 @@ export function MessengerView({
     }
   };
 
+  const markAsRead = async (convId: string) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, 'conversations', convId), {
+        [`unreadCount.${user.uid}`]: 0
+      });
+    } catch (error) {
+      console.error('Error marking as read:', error);
+    }
+  };
+
   const startConversation = async (otherUser: UserProfile) => {
     if (!user) return;
 
@@ -147,6 +177,9 @@ export function MessengerView({
     const existing = conversations.find(c => c.participants.includes(otherUser.uid));
     if (existing) {
       setSelectedConversation(existing);
+      if (existing.unreadCount?.[user.uid]) {
+        markAsRead(existing.id);
+      }
       setSearchQuery('');
       setSearchResults([]);
       return;
@@ -160,6 +193,10 @@ export function MessengerView({
         participantProfiles: {
           [user.uid]: { displayName: profile?.displayName || 'User', photoURL: profile?.photoURL || '' },
           [otherUser.uid]: { displayName: otherUser.displayName, photoURL: otherUser.photoURL }
+        },
+        unreadCount: {
+          [user.uid]: 0,
+          [otherUser.uid]: 0
         },
         updatedAt: serverTimestamp()
       };
@@ -177,29 +214,106 @@ export function MessengerView({
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedConversation || !newMessage.trim()) return;
+    if (!user || !selectedConversation || (!newMessage.trim() && !selectedImage)) return;
 
     const content = newMessage.trim();
+    const imageUrl = selectedImage;
     setNewMessage('');
+    setSelectedImage(null);
 
     try {
       const messageData: Partial<Message> = {
         conversationId: selectedConversation.id,
         senderId: user.uid,
-        content,
+        content: content || (imageUrl ? 'Sent a photo' : ''),
+        imageUrl: imageUrl || undefined,
         createdAt: serverTimestamp()
       };
 
       await addDoc(collection(db, 'conversations', selectedConversation.id, 'messages'), messageData);
       
-      // Update conversation last message
+      // Update conversation last message and increment unread for other participant
+      const otherId = selectedConversation.participants.find(id => id !== user.uid);
       await updateDoc(doc(db, 'conversations', selectedConversation.id), {
-        lastMessage: content,
+        lastMessage: content || 'Sent a photo',
         lastMessageAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        [`unreadCount.${otherId}`]: increment(1)
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `conversations/${selectedConversation.id}/messages`);
+    }
+  };
+
+  const deleteConversation = async (convId: string) => {
+    if (!user) return;
+    try {
+      // In a real app, we might want to just "hide" it for this user
+      // but the request says "delete conversation", so we'll delete it for both
+      // or at least the document.
+      
+      // First, delete all messages (optional but cleaner)
+      const messagesSnap = await getDocs(collection(db, 'conversations', convId, 'messages'));
+      
+      // Firestore batches are limited to 500 operations
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let operationCount = 0;
+
+      messagesSnap.docs.forEach(msgDoc => {
+        currentBatch.delete(msgDoc.ref);
+        operationCount++;
+        
+        if (operationCount === 500) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          operationCount = 0;
+        }
+      });
+      
+      if (operationCount > 0) {
+        batches.push(currentBatch.commit());
+      }
+      
+      await Promise.all(batches);
+
+      // Then delete the conversation document
+      await deleteDoc(doc(db, 'conversations', convId));
+      
+      if (selectedConversation?.id === convId) {
+        setSelectedConversation(null);
+      }
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `conversations/${convId}`);
+    }
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await validateImage(file);
+    if (!result.valid) {
+      alert(result.error);
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const compressed = await compressImage(file, 800, 0.6);
+      
+      // Check if base64 string length is > 1048576 (Firestore rule limit)
+      if (compressed.length > 1048576) {
+        alert('Image is too complex and exceeds the 1MB limit after compression. Please try a simpler image.');
+        return;
+      }
+      
+      setSelectedImage(compressed);
+    } catch (err) {
+      console.error('Image processing failed:', err);
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -250,7 +364,7 @@ export function MessengerView({
                   onClick={() => startConversation(result)}
                   className="w-full flex items-center gap-3 p-3 hover:bg-zinc-50 rounded-2xl transition-colors"
                 >
-                  <img src={result.photoURL} className="w-10 h-10 rounded-full object-cover" alt="" referrerPolicy="no-referrer" />
+                  <img src={result.photoURL || undefined} className="w-10 h-10 rounded-full object-cover" alt="" referrerPolicy="no-referrer" />
                   <div className="text-left">
                     <p className="font-bold text-sm">{result.displayName}</p>
                     <p className="text-xs text-zinc-500">@{result.handle}</p>
@@ -269,11 +383,14 @@ export function MessengerView({
                 return (
                   <button
                     key={conv.id}
-                    onClick={() => setSelectedConversation(conv)}
+                    onClick={() => {
+                      setSelectedConversation(conv);
+                      if (conv.unreadCount?.[user.uid]) markAsRead(conv.id);
+                    }}
                     className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${isActive ? 'bg-blue-50' : 'hover:bg-zinc-50'}`}
                   >
                     <div className="relative">
-                      <img src={other.photoURL} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" alt="" referrerPolicy="no-referrer" />
+                      <img src={other.photoURL || undefined} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" alt="" referrerPolicy="no-referrer" />
                       {/* Status indicator could go here */}
                     </div>
                     <div className="flex-1 text-left min-w-0">
@@ -285,6 +402,11 @@ export function MessengerView({
                       </div>
                       <p className="text-xs text-zinc-500 truncate">{conv.lastMessage || 'Start a conversation'}</p>
                     </div>
+                    {conv.unreadCount?.[user.uid] > 0 && (
+                      <div className="w-5 h-5 bg-blue-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold">
+                        {conv.unreadCount[user.uid]}
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -308,16 +430,56 @@ export function MessengerView({
                 <button onClick={() => setSelectedConversation(null)} className="p-2 hover:bg-zinc-100 rounded-full md:hidden">
                   <ChevronLeft size={20} />
                 </button>
-                <img src={getOtherParticipant(selectedConversation).photoURL} className="w-10 h-10 rounded-full object-cover" alt="" referrerPolicy="no-referrer" />
+                <img src={getOtherParticipant(selectedConversation).photoURL || undefined} className="w-10 h-10 rounded-full object-cover" alt="" referrerPolicy="no-referrer" />
                 <div>
                   <p className="font-bold text-sm">{getOtherParticipant(selectedConversation).displayName}</p>
                   <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">Online</p>
                 </div>
               </div>
-              <button className="p-2 hover:bg-zinc-100 rounded-full text-zinc-400">
-                <MoreVertical size={20} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-2 hover:bg-red-50 rounded-full text-zinc-400 hover:text-red-500 transition-colors"
+                  title="Delete Conversation"
+                >
+                  <Trash2 size={20} />
+                </button>
+                <button className="p-2 hover:bg-zinc-100 rounded-full text-zinc-400">
+                  <MoreVertical size={20} />
+                </button>
+              </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+              {showDeleteConfirm && (
+                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+                  >
+                    <h3 className="text-xl font-black mb-2">Delete Conversation?</h3>
+                    <p className="text-zinc-500 text-sm mb-6">This will permanently delete this conversation and all messages for both participants.</p>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="flex-1 py-3 bg-zinc-100 text-zinc-600 rounded-2xl font-bold hover:bg-zinc-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={() => deleteConversation(selectedConversation.id)}
+                        className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -330,7 +492,7 @@ export function MessengerView({
                     {!isMe && (
                       <div className="w-8 flex-shrink-0">
                         {showAvatar && (
-                          <img src={getOtherParticipant(selectedConversation).photoURL} className="w-8 h-8 rounded-full object-cover" alt="" referrerPolicy="no-referrer" />
+                          <img src={getOtherParticipant(selectedConversation).photoURL || undefined} className="w-8 h-8 rounded-full object-cover" alt="" referrerPolicy="no-referrer" />
                         )}
                       </div>
                     )}
@@ -339,7 +501,12 @@ export function MessengerView({
                         ? 'bg-blue-500 text-white rounded-br-none' 
                         : 'bg-white text-zinc-900 rounded-bl-none border border-zinc-100'
                     }`}>
-                      {msg.content}
+                      {msg.imageUrl && (
+                        <div className="mb-2 rounded-lg overflow-hidden border border-white/20">
+                          <img src={msg.imageUrl} alt="Sent photo" className="w-full h-auto max-h-60 object-cover" referrerPolicy="no-referrer" />
+                        </div>
+                      )}
+                      {msg.content && <p>{msg.content}</p>}
                       <p className={`text-[8px] mt-1 ${isMe ? 'text-blue-100' : 'text-zinc-400'}`}>
                         {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </p>
@@ -352,10 +519,22 @@ export function MessengerView({
 
             {/* Input Area */}
             <div className="p-4 bg-white border-t border-zinc-100">
+              {selectedImage && (
+                <div className="mb-3 relative inline-block">
+                  <img src={selectedImage} className="h-20 w-20 object-cover rounded-xl border border-zinc-200" referrerPolicy="no-referrer" />
+                  <button 
+                    onClick={() => setSelectedImage(null)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:bg-red-600 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
               <form onSubmit={sendMessage} className="flex items-center gap-2">
-                <button type="button" className="p-2 text-zinc-400 hover:text-blue-500 transition-colors">
-                  <ImageIcon size={20} />
-                </button>
+                <label className="p-2 text-zinc-400 hover:text-blue-500 transition-colors cursor-pointer">
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+                  <ImagePlus size={20} />
+                </label>
                 <button type="button" className="p-2 text-zinc-400 hover:text-blue-500 transition-colors">
                   <Smile size={20} />
                 </button>
@@ -368,7 +547,7 @@ export function MessengerView({
                 />
                 <button 
                   type="submit"
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() && !selectedImage}
                   className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
                 >
                   <Send size={20} />

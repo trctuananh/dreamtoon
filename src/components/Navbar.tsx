@@ -17,7 +17,8 @@ export function Navbar({
   onLogout, 
   onLogin,
   profile,
-  unreadNotificationsCount
+  unreadNotificationsCount,
+  unreadMessagesCount
 }: { 
   user: FirebaseUser | null, 
   view: View, 
@@ -30,7 +31,8 @@ export function Navbar({
   onLogout: () => void, 
   onLogin: () => void,
   profile: UserProfile | null,
-  unreadNotificationsCount: number
+  unreadNotificationsCount: number,
+  unreadMessagesCount: number
 }) {
   const { t } = useTranslation(lang);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -143,6 +145,11 @@ export function Navbar({
                   className={`relative p-2 hover:bg-zinc-100 rounded-full transition-colors hidden sm:block ${view === 'messenger' ? 'text-blue-500 bg-blue-50' : 'text-zinc-600'}`}
                 >
                   <MessageCircle size={20} />
+                  {unreadMessagesCount > 0 && (
+                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold border-2 border-white">
+                      {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                    </span>
+                  )}
                 </button>
 
                 {/* Bell Icon */}
@@ -160,7 +167,7 @@ export function Navbar({
 
                 <div className="relative group">
                 <img 
-                  src={profile?.photoURL || user.photoURL || ''} 
+                  src={profile?.photoURL || user.photoURL || undefined} 
                   alt={profile?.displayName || user.displayName || ''} 
                   className="w-8 h-8 rounded-full border-2 border-blue-500 cursor-pointer"
                   referrerPolicy="no-referrer"
@@ -303,7 +310,14 @@ export function Navbar({
             }}
             className={`flex flex-col items-center gap-1 transition-all ${view === 'messenger' ? 'text-blue-500 scale-110' : 'text-zinc-400 hover:text-zinc-600'}`}
           >
-            <MessageCircle size={20} strokeWidth={view === 'messenger' ? 2.5 : 2} />
+            <div className="relative">
+              <MessageCircle size={20} strokeWidth={view === 'messenger' ? 2.5 : 2} />
+              {unreadMessagesCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full font-bold border-2 border-white">
+                  {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                </span>
+              )}
+            </div>
             <span className="text-[10px] font-bold tracking-tight">{t('messenger')}</span>
           </button>
           <button 
@@ -349,7 +363,7 @@ export function Navbar({
               <div className="px-6 py-4 bg-zinc-50 rounded-2xl mb-6">
                 <div className="flex items-center gap-4">
                   <img 
-                    src={profile?.photoURL || user.photoURL || ''} 
+                    src={profile?.photoURL || user.photoURL || undefined} 
                     className="w-12 h-12 rounded-full border-2 border-blue-500"
                     referrerPolicy="no-referrer"
                   />
@@ -376,6 +390,20 @@ export function Navbar({
                 >
                   <User size={24} />
                   {t('profile')}
+                </button>
+                <button 
+                  onClick={() => { setView('messenger'); setIsMobileMenuOpen(false); }}
+                  className={`w-full text-left py-3 text-lg font-black flex items-center justify-between ${view === 'messenger' ? 'text-blue-500' : 'text-zinc-900'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <MessageCircle size={24} className="text-blue-500" />
+                    {t('messenger')}
+                  </div>
+                  {unreadMessagesCount > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+                      {unreadMessagesCount}
+                    </span>
+                  )}
                 </button>
                 <button 
                   onClick={() => { setView('notifications'); setIsMobileMenuOpen(false); }}

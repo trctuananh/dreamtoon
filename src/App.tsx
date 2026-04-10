@@ -103,6 +103,7 @@ export default function App() {
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [history, setHistory] = useState<ReadingHistory[]>([]);
   const [artists, setArtists] = useState<UserProfile[]>([]);
   const [chatTarget, setChatTarget] = useState<UserProfile | null>(null);
@@ -396,6 +397,26 @@ export default function App() {
       return () => unsubscribe();
     } else {
       setUnreadNotificationsCount(0);
+    }
+  }, [user]);
+
+  // Messages Listener
+  useEffect(() => {
+    if (user) {
+      const q = query(
+        collection(db, 'conversations'),
+        where('participants', 'array-contains', user.uid)
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const totalUnread = snapshot.docs.reduce((acc, doc) => {
+          const data = doc.data();
+          return acc + (data.unreadCount?.[user.uid] || 0);
+        }, 0);
+        setUnreadMessagesCount(totalUnread);
+      });
+      return () => unsubscribe();
+    } else {
+      setUnreadMessagesCount(0);
     }
   }, [user]);
 
@@ -795,6 +816,7 @@ export default function App() {
           lang={lang}
           setLang={setLang}
           unreadNotificationsCount={unreadNotificationsCount}
+          unreadMessagesCount={unreadMessagesCount}
         />
 
         <main className={`pb-20 sm:pb-0 ${view === 'reader' ? 'pb-0' : ''}`}>

@@ -58,6 +58,7 @@ export interface Message {
   conversationId: string;
   senderId: string;
   content: string;
+  imageUrl?: string;
   createdAt: any;
 }
 

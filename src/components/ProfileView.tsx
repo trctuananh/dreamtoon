@@ -162,7 +162,7 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
             <div className="flex flex-col items-center text-center relative z-10">
               <div className="relative mb-2 md:mb-6 group flex-shrink-0">
                 <img 
-                  src={photoURL || user.photoURL || ''} 
+                  src={photoURL || user.photoURL || undefined} 
                   alt={displayName || user.displayName || ''} 
                   className="w-24 h-24 md:w-48 md:h-48 rounded-[1.5rem] md:rounded-[3rem] border-2 md:border-4 border-white shadow-2xl object-cover aspect-square"
                   referrerPolicy="no-referrer"
@@ -282,6 +282,15 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                     >
                       <Layout size={10} className="md:w-3 md:h-3" />
                       {t('editProfile')}
+                    </button>
+                  )}
+                  {isGuest && user && (
+                    <button
+                      onClick={() => onMessageClick(profile)}
+                      className="mt-4 flex items-center gap-2 px-6 py-2.5 bg-blue-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 mx-auto"
+                    >
+                      <MessageCircle size={14} />
+                      {t('messenger')}
                     </button>
                   )}
                 </div>

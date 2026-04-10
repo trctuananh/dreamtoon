@@ -385,7 +385,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="relative flex-shrink-0">
               <img 
-                src={artistProfile.photoURL || ''} 
+                src={artistProfile.photoURL || undefined} 
                 alt={artistProfile.displayName} 
                 className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl sm:rounded-3xl border-4 border-white shadow-md object-cover aspect-square"
                 referrerPolicy="no-referrer"
@@ -644,7 +644,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                         <div className="flex items-center gap-3">
                           <div className="relative">
                             <img 
-                              src={user.photoURL || ''} 
+                              src={user.photoURL || undefined} 
                               alt={user.displayName} 
                               className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
                               referrerPolicy="no-referrer"

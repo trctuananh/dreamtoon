@@ -185,7 +185,11 @@ service cloud.firestore {
     }
 
     function isValidUrl(url) {
-      return url is string && url.size() <= 2048 && (url.matches("^https://.*") || url.matches("^http://.*"));
+      return url is string && (
+        url == "" ||
+        (url.size() <= 2048 && (url.matches("^https://.*") || url.matches("^http://.*"))) ||
+        (url.size() <= 1048576 && url.matches("^data:image/.*"))
+      );
     }
 
     function isRecent(time) {
@@ -246,13 +250,14 @@ service cloud.firestore {
       return hasOnlyAllowedFields(allowed) &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
              data.authorUid == request.auth.uid &&
-             isRecent(data.createdAt) &&
              (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
              (!('thumbnail' in data) || isValidUrl(data.thumbnail)) &&
              (!('banner' in data) || isValidUrl(data.banner)) &&
              (!('genre' in data) || (data.genre is list && data.genre.size() <= 10)) &&
              (!('tags' in data) || (data.tags is list && data.tags.size() <= 20)) &&
-             (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 100)) &&
+             (!('authorName' in data) || data.authorName == null || (data.authorName is string && data.authorName.size() <= 100)) &&
+             (!('authorPhoto' in data) || data.authorPhoto == null || isValidUrl(data.authorPhoto)) &&
+             (!('authorPioneerNumber' in data) || data.authorPioneerNumber == null || data.authorPioneerNumber is number) &&
              (!('views' in data) || isPositive(data.views)) &&
              (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5)) &&
              (!('ratingCount' in data) || isPositive(data.ratingCount));
@@ -263,12 +268,11 @@ service cloud.firestore {
       return hasOnlyAllowedFields(allowed) &&
              data.comicId == comicId &&
              data.number is number && data.number > 0 &&
-             isRecent(data.createdAt) &&
              (!('title' in data) || (data.title is string && data.title.size() <= 100)) &&
              (!('authorUid' in data) || data.authorUid == request.auth.uid) &&
              (!('views' in data) || isPositive(data.views)) &&
              (!('images' in data) || (data.images is list && data.images.size() <= 50)) &&
-             (!('thumbnail' in data) || isValidUrl(data.thumbnail));
+             (!('thumbnail' in data) || data.thumbnail == null || isValidUrl(data.thumbnail));
     }
 
     function isValidChapterPage(data, chapterId, comicId) {
@@ -323,7 +327,6 @@ service cloud.firestore {
              data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
              data.content is string && data.content.size() > 0 && data.content.size() <= 50000 &&
              data.authorUid == request.auth.uid &&
-             isRecent(data.createdAt) &&
              (!('banner' in data) || isValidUrl(data.banner)) &&
              (!('views' in data) || isPositive(data.views));
     }
@@ -345,7 +348,6 @@ service cloud.firestore {
              data.authorUid == request.auth.uid &&
              data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
              data.type in ['twit', 'sketch', 'donate', 'commission'] &&
-             isRecent(data.createdAt) &&
              (!('imageUrl' in data) || isValidUrl(data.imageUrl)) &&
              (!('likes' in data) || isPositive(data.likes)) &&
              (!('comments' in data) || isPositive(data.comments));
@@ -414,12 +416,13 @@ service cloud.firestore {
     }
 
     function isValidMessage(data, conversationId) {
-      let allowed = ['id', 'conversationId', 'senderId', 'content', 'createdAt'];
+      let allowed = ['id', 'conversationId', 'senderId', 'content', 'imageUrl', 'createdAt'];
       return hasOnlyAllowedFields(allowed) &&
              data.conversationId == conversationId &&
              data.senderId == request.auth.uid &&
-             data.content is string && data.content.size() > 0 && data.content.size() <= 5000 &&
-             isRecent(data.createdAt);
+             data.content is string && data.content.size() <= 5000 &&
+             isRecent(data.createdAt) &&
+             (!('imageUrl' in data) || isValidUrl(data.imageUrl));
     }
 
     // ===============================================================
@@ -483,7 +486,7 @@ service cloud.firestore {
 
     match /comics/{comicId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isValidComic(request.resource.data) && request.resource.data.authorUid == request.auth.uid;
+      allow create: if isAuthenticated() && isValidComic(request.resource.data) && isRecent(request.resource.data.createdAt);
       allow update: if (isDocOwner() || isAdmin()) && isValidComic(request.resource.data) && 
                        request.resource.data.authorUid == resource.data.authorUid &&
                        request.resource.data.createdAt == resource.data.createdAt;
@@ -496,7 +499,8 @@ service cloud.firestore {
         allow read: if true;
         allow create: if isAuthenticated() && 
                         get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid &&
-                        isValidChapter(request.resource.data, comicId);
+                        isValidChapter(request.resource.data, comicId) &&
+                        isRecent(request.resource.data.createdAt);
         allow update: if (get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid || isAdmin()) &&
                         isValidChapter(request.resource.data, comicId) &&
                         request.resource.data.comicId == resource.data.comicId &&
@@ -542,7 +546,7 @@ service cloud.firestore {
 
     match /articles/{articleId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isValidArticle(request.resource.data);
+      allow create: if isAuthenticated() && isValidArticle(request.resource.data) && isRecent(request.resource.data.createdAt);
       allow update: if (request.auth.uid == resource.data.authorUid || isAdmin()) && 
                        isValidArticle(request.resource.data) &&
                        request.resource.data.authorUid == resource.data.authorUid &&
@@ -558,7 +562,7 @@ service cloud.firestore {
 
     match /posts/{postId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isValidPost(request.resource.data);
+      allow create: if isAuthenticated() && isValidPost(request.resource.data) && isRecent(request.resource.data.createdAt);
       allow update: if (request.auth.uid == resource.data.authorUid || isAdmin()) && 
                        isValidPost(request.resource.data) &&
                        request.resource.data.authorUid == resource.data.authorUid &&
@@ -599,11 +603,13 @@ service cloud.firestore {
       allow update: if isAuthenticated() && request.auth.uid in resource.data.participants &&
                        isValidConversation(request.resource.data) &&
                        request.resource.data.participants == resource.data.participants;
+      allow delete: if isAuthenticated() && request.auth.uid in resource.data.participants;
       
       match /messages/{messageId} {
         allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
         allow create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
                         isValidMessage(request.resource.data, conversationId);
+        allow delete: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
       }
     }
   }

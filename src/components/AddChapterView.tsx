@@ -44,6 +44,10 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
 
     try {
       const compressed = await compressImage(file, 400, 0.6);
+      if (compressed.length > 1048576) {
+        setError('Thumbnail is too complex and exceeds the 1MB limit. Please try a simpler image.');
+        return;
+      }
       setThumbnail(compressed);
     } catch (err) {
       setError('Failed to process image');
@@ -77,6 +81,10 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
 
       try {
         const compressed = await compressImage(file, 1000, 0.7);
+        if (compressed.length > 1048576) {
+          setError(`Image ${file.name} is too complex and exceeds the 1MB limit after compression. Please try a simpler image.`);
+          continue; // Skip this image but process others
+        }
         newUrls.push(compressed);
       } catch (err) {
         setError(`Failed to process ${file.name}`);
