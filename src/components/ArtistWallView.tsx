@@ -7,7 +7,7 @@ import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick, onToggleFollow }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void }) {
+export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick, onToggleFollow, onMessageClick }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onMessageClick: (target: UserProfile) => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   
@@ -423,16 +423,25 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
               {t('commission')}
             </button>
             {user && user.uid !== artistUid && (
-              <button 
-                onClick={isFollowing ? handleUnfollow : handleFollow}
-                className={`px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
-                  isFollowing 
-                  ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
-                  : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
-                }`}
-              >
-                {isFollowing ? t('following') : t('follow')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={isFollowing ? handleUnfollow : handleFollow}
+                  className={`px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
+                    isFollowing 
+                    ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
+                    : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
+                  }`}
+                >
+                  {isFollowing ? t('following') : t('follow')}
+                </button>
+                <button 
+                  onClick={() => onMessageClick(artistProfile)}
+                  className="p-2.5 sm:p-3.5 bg-blue-50 text-blue-600 rounded-xl sm:rounded-2xl hover:bg-blue-100 transition-all shadow-lg shadow-blue-500/10"
+                  title={t('messenger')}
+                >
+                  <MessageCircle size={18} className="sm:w-[22px] sm:h-[22px]" />
+                </button>
+              </div>
             )}
             <button 
               onClick={() => setShowShareModal(true)}

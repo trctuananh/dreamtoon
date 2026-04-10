@@ -168,6 +168,8 @@ export const translations = {
     rateThis: "Rate this",
     synopsis: "Synopsis",
     new: "New",
+    download: "Download",
+    downloaded: "Downloaded",
     topRated: "Top Rated",
     noComicsFound: "No comics found",
     explore: "Explore",
@@ -234,9 +236,6 @@ export const translations = {
     post: "Post",
     updateProgress: "Update Progress",
     newWork: "New Work",
-    topMonth: "Top of Month",
-    topAllTime: "Top All Time",
-    newArtist: "New Artist",
     workImage: "Work Image",
     viewProfilesAndArtworks: "Profile",
     youMightAlsoLike: "You Might Also Like",
@@ -259,7 +258,11 @@ export const translations = {
     connect: "Connect",
     privacyPolicy: "Privacy Policy",
     termsOfService: "Terms of Service",
-    cookiePolicy: "Cookie Policy"
+    cookiePolicy: "Cookie Policy",
+    messenger: "Messenger",
+    noConversations: "No conversations yet",
+    typeAMessage: "Type a message...",
+    selectAConversation: "Select a conversation to start chatting"
   },
   vi: {
     home: "Trang chủ",
@@ -430,6 +433,8 @@ export const translations = {
     rateThis: "Đánh giá",
     synopsis: "Tóm tắt",
     new: "Mới",
+    download: "Tải xuống",
+    downloaded: "Đã tải",
     topRated: "Đánh giá cao",
     noComicsFound: "Không tìm thấy truyện",
     explore: "Khám phá",
@@ -496,9 +501,6 @@ export const translations = {
     post: "Bài viết",
     updateProgress: "Cập nhật tiến độ",
     newWork: "Công việc mới",
-    topMonth: "Bảng xếp hạng tháng",
-    topAllTime: "Bảng xếp hạng tổng",
-    newArtist: "Tác giả mới",
     workImage: "Hình ảnh công việc",
     viewProfilesAndArtworks: "Hồ sơ",
     youMightAlsoLike: "Có thể bạn sẽ thích",
@@ -521,7 +523,11 @@ export const translations = {
     connect: "Kết nối",
     privacyPolicy: "Chính sách bảo mật",
     termsOfService: "Điều khoản dịch vụ",
-    cookiePolicy: "Chính sách Cookie"
+    cookiePolicy: "Chính sách Cookie",
+    messenger: "Tin nhắn",
+    noConversations: "Chưa có cuộc hội thoại nào",
+    typeAMessage: "Nhập tin nhắn...",
+    selectAConversation: "Chọn một cuộc hội thoại để bắt đầu trò chuyện"
   }
 };
 

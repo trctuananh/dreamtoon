@@ -234,6 +234,34 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A chat conversation between two or more users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "participantProfiles": { "type": "object" },
+        "lastMessage": { "type": "string" },
+        "lastMessageAt": { "type": "string", "format": "date-time" },
+        "unreadCount": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "participants", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message within a conversation.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "conversationId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "conversationId", "senderId", "content", "createdAt"]
     }
   },
   "firestore": {
@@ -288,6 +316,14 @@
     "/commissions/{commissionId}": {
       "schema": "CommissionRequest",
       "description": "The collection of commission requests."
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "The collection of chat conversations."
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "The subcollection of messages for a specific conversation."
     }
   }
 }

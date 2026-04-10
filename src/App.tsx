@@ -64,6 +64,7 @@ import { CommunityView } from './components/CommunityView';
 import { NotificationsView } from './components/NotificationsView';
 import { AdminUserManagementView } from './components/AdminUserManagementView';
 import { PrivacyPolicyView } from './components/PrivacyPolicyView';
+import { MessengerView } from './components/MessengerView';
 
 // Hooks & Utils
 import { useTranslation } from './hooks/useTranslation';
@@ -104,6 +105,7 @@ export default function App() {
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [history, setHistory] = useState<ReadingHistory[]>([]);
   const [artists, setArtists] = useState<UserProfile[]>([]);
+  const [chatTarget, setChatTarget] = useState<UserProfile | null>(null);
 
   const { t } = useTranslation(lang);
 
@@ -609,13 +611,30 @@ export default function App() {
     } else if (view === 'manage-featured') {
       setView('home');
       window.history.pushState(null, '', '/');
+    } else if (view === 'messenger') {
+      setView('home');
+      setChatTarget(null);
+      window.history.pushState(null, '', '/');
     } else {
       setView('home');
       setSelectedComic(null);
       setSelectedChapter(null);
+      setSelectedArtist(null);
+      setChatTarget(null);
       window.history.pushState(null, '', '/');
     }
     window.scrollTo(0, 0);
+  };
+
+  const handleMessageClick = (target: UserProfile) => {
+    if (!user) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+    setChatTarget(target);
+    setView('messenger');
+    window.scrollTo(0, 0);
+    window.history.pushState(null, '', '/messenger');
   };
 
   const handleRate = async (score: number) => {
@@ -917,6 +936,7 @@ export default function App() {
                 onToggleFollow={handleToggleFollow}
                 onLogout={() => {}}
                 lang={lang}
+                onMessageClick={handleMessageClick}
                 isGuest={true}
               />
             )}
@@ -1063,6 +1083,7 @@ export default function App() {
                 onBack={handleBack}
                 onProfileClick={handlePublicProfileClick}
                 onToggleFollow={handleToggleFollow}
+                onMessageClick={handleMessageClick}
               />
             )}
 
@@ -1070,6 +1091,7 @@ export default function App() {
               <CommunityView 
                 user={user}
                 comics={comics}
+                following={following}
                 lang={lang}
                 searchQuery={searchQuery}
                 onBack={handleBack}
@@ -1087,6 +1109,17 @@ export default function App() {
               <PrivacyPolicyView 
                 lang={lang}
                 onBack={handleBack}
+              />
+            )}
+
+            {view === 'messenger' && (
+              <MessengerView 
+                user={user}
+                profile={profile}
+                lang={lang}
+                onBack={handleBack}
+                chatTarget={chatTarget}
+                onChatTargetHandled={() => setChatTarget(null)}
               />
             )}
           </AnimatePresence>

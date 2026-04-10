@@ -30,9 +30,37 @@ export const validateImage = async (file: File): Promise<{ valid: boolean; error
     img.src = objectUrl;
   });
 
-  if (dimensions.width > 2000) {
-    return { valid: false, error: `Image width (${dimensions.width}px) exceeds 2000px limit.` };
-  }
+  return dimensions.width > 2000 ? { valid: false, error: `Image width (${dimensions.width}px) exceeds 2000px limit.` } : { valid: true };
+};
 
-  return { valid: true };
+export const compressImage = async (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Use image/jpeg for better compression
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
 };

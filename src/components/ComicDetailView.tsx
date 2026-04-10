@@ -47,6 +47,37 @@ export function ComicDetailView({
   const isFollowingArtist = following.some(f => f.targetId === comic.authorUid && f.type === 'artist');
   const isAuthor = user && user.uid === comic.authorUid;
 
+  const [isDownloaded, setIsDownloaded] = React.useState(false);
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem('downloaded_comics');
+    if (saved) {
+      try {
+        const ids = JSON.parse(saved);
+        setIsDownloaded(ids.includes(comic.id));
+      } catch (e) {}
+    }
+  }, [comic.id]);
+
+  const handleDownload = () => {
+    const saved = localStorage.getItem('downloaded_comics');
+    let ids = [];
+    if (saved) {
+      try {
+        ids = JSON.parse(saved);
+      } catch (e) {}
+    }
+
+    if (isDownloaded) {
+      ids = ids.filter((id: string) => id !== comic.id);
+    } else {
+      ids.push(comic.id);
+    }
+
+    localStorage.setItem('downloaded_comics', JSON.stringify(ids));
+    setIsDownloaded(!isDownloaded);
+  };
+
   const handleMoveChapter = async (chapter: Chapter, direction: 'up' | 'down') => {
     const idx = chapters.findIndex(c => c.id === chapter.id);
     if (idx === -1) return;
@@ -134,6 +165,17 @@ export function ComicDetailView({
                   className="w-full py-2 sm:py-3 bg-zinc-900 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 disabled:opacity-50"
                 >
                   {t('readNow')}
+                </button>
+                <button 
+                  onClick={handleDownload}
+                  className={`w-full py-2 sm:py-3 rounded-full font-bold text-xs sm:text-sm transition-all shadow-xl flex items-center justify-center gap-2 ${
+                    isDownloaded 
+                      ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                  }`}
+                >
+                  <Clock size={16} />
+                  {isDownloaded ? t('downloaded') : t('download')}
                 </button>
                 <button 
                   onClick={() => onArtistClick(comic.authorUid)}

@@ -7,7 +7,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Comic } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
-import { validateImage } from '../lib/utils';
+import { validateImage, compressImage } from '../lib/utils';
 
 export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, initialData }: { user: FirebaseUser | null, profile: any, comics: Comic[], onSuccess: () => void, onCancel: () => void, lang: Language, initialData?: Comic }) {
   const { t } = useTranslation(lang);
@@ -62,11 +62,12 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setThumbnail(ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file, 400, 0.6);
+      setThumbnail(compressed);
+    } catch (err) {
+      setError('Failed to process image');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

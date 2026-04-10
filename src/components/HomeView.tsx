@@ -158,9 +158,13 @@ export function HomeView({
                         <h4 className="font-bold text-zinc-900 text-sm truncate mb-1 group-hover:text-blue-600 transition-colors">
                           {comic.title}
                         </h4>
-                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
-                          {t(comic.genre[0] as any)}
-                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {comic.genre.map(g => (
+                            <p key={g} className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
+                              {t(g as any)}
+                            </p>
+                          ))}
+                        </div>
                       </motion.div>
                     ))}
                   </div>
@@ -390,9 +394,13 @@ export function HomeView({
                   <h4 className="font-bold text-zinc-900 text-xs sm:text-sm line-clamp-1 mb-0.5 group-hover:text-blue-600 transition-colors">
                     {comic.title}
                   </h4>
-                  <p className="text-[10px] font-medium text-zinc-400 capitalize">
-                    {t(comic.genre[0] as any)}
-                  </p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {comic.genre.map(g => (
+                      <p key={g} className="text-[10px] font-medium text-zinc-400 capitalize">
+                        {t(g as any)}
+                      </p>
+                    ))}
+                  </div>
                 </div>
               </motion.div>
             );
@@ -447,7 +455,11 @@ export function HomeView({
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-bold text-zinc-900 text-[10px] truncate mb-0.5 group-hover:text-blue-600 transition-colors">{comic.title}</h4>
-                  <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{t(comic.genre[0] as any)}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {comic.genre.map(g => (
+                      <p key={g} className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{t(g as any)}</p>
+                    ))}
+                  </div>
                 </div>
               </div>
             );
@@ -486,6 +498,11 @@ export function HomeView({
                     <p className="text-[10px] text-zinc-600 font-medium truncate mb-0.5">
                       {t('chapter')} {chapter.number}
                     </p>
+                    <div className="flex flex-wrap gap-1 mb-0.5">
+                      {comic.genre.map(g => (
+                        <p key={g} className="text-[8px] text-blue-500 font-bold uppercase tracking-widest">{t(g as any)}</p>
+                      ))}
+                    </div>
                     <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">
                       {new Date(chapter.uploadDate).toLocaleDateString()}
                     </p>
@@ -596,9 +613,13 @@ export function HomeView({
                 <h4 className="font-bold text-zinc-900 text-[10px] sm:text-sm truncate mb-0.5 group-hover:text-blue-600 transition-colors">
                   {comic.title}
                 </h4>
-                <p className="text-[8px] sm:text-[10px] font-medium text-zinc-400 capitalize">
-                  {t(comic.genre[0] as any)}
-                </p>
+                <div className="flex flex-wrap gap-1">
+                  {comic.genre.map(g => (
+                    <p key={g} className="text-[8px] sm:text-[10px] font-medium text-zinc-400 capitalize">
+                      {t(g as any)}
+                    </p>
+                  ))}
+                </div>
               </motion.div>
             ))}
           </div>

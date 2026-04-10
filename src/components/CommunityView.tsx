@@ -1,117 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Image as ImageIcon, Trash2, Heart, ArrowLeft, PenTool, Crown } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, getDoc, updateDoc, increment } from 'firebase/firestore';
+import { Trash2, Heart, PenTool } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, updateDoc, increment } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
-import { View, Post, Comic } from '../types';
+import { View, Post, Comic, Following } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function CommunityView({ user, comics, lang, searchQuery = '', onBack, onArtistClick, onLogin, setView }: { user: any, comics: Comic[], lang: Language, searchQuery?: string, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void }) {
+export function CommunityView({ user, comics, following = [], lang, searchQuery = '', onBack, onArtistClick, onLogin, setView }: { user: any, comics: Comic[], following?: Following[], lang: Language, searchQuery?: string, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [topCreators, setTopCreators] = useState<{uid: string, name: string, photo: string, views: number, pioneerNumber?: number}[]>([]);
-  const [topMonthCreators, setTopMonthCreators] = useState<{uid: string, name: string, photo: string, views: number, pioneerNumber?: number}[]>([]);
-  const [newCreators, setNewCreators] = useState<{uid: string, name: string, photo: string, views: number, pioneerNumber?: number}[]>([]);
-  const [rankingTab, setRankingTab] = useState<'month' | 'all' | 'new'>('month');
+  const [feedTab, setFeedTab] = useState<'all' | 'following'>('all');
 
   // Search filtering for posts
-  const filteredPosts = searchQuery.trim()
-    ? posts.filter(post => 
-        post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.authorName.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : posts;
-
-  // Search filtering for creators
-  const filteredCreators = (rankingTab === 'month' ? topMonthCreators : rankingTab === 'all' ? topCreators : newCreators)
-    .filter(creator => 
-      !searchQuery.trim() || 
-      creator.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredPosts = posts.filter(post => {
+    const matchesSearch = !searchQuery.trim() || 
+      post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.authorName.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesTab = feedTab === 'all' || (
+      following.some(f => f.type === 'artist' && f.targetId === post.authorUid)
     );
 
-  useEffect(() => {
-    if (!comics || comics.length === 0) return;
-
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    const authorViewsAllTime: Record<string, {name: string, views: number}> = {};
-    const authorViewsMonth: Record<string, {name: string, views: number}> = {};
-    const authorFirstComicDate: Record<string, {name: string, firstDate: Date, views: number}> = {};
-
-    comics.forEach(comic => {
-      // All Time
-      if (!authorViewsAllTime[comic.authorUid]) {
-        authorViewsAllTime[comic.authorUid] = { name: comic.authorName, views: 0 };
-      }
-      authorViewsAllTime[comic.authorUid].views += comic.views;
-
-      // Month (approximate by comic creation date)
-      const createdAt = comic.createdAt?.toDate ? comic.createdAt.toDate() : new Date(comic.createdAt);
-      if (createdAt > thirtyDaysAgo) {
-        if (!authorViewsMonth[comic.authorUid]) {
-          authorViewsMonth[comic.authorUid] = { name: comic.authorName, views: 0 };
-        }
-        authorViewsMonth[comic.authorUid].views += comic.views;
-      }
-
-      // New Artists
-      if (!authorFirstComicDate[comic.authorUid]) {
-        authorFirstComicDate[comic.authorUid] = { name: comic.authorName, firstDate: createdAt, views: 0 };
-      } else if (createdAt < authorFirstComicDate[comic.authorUid].firstDate) {
-        authorFirstComicDate[comic.authorUid].firstDate = createdAt;
-      }
-      authorFirstComicDate[comic.authorUid].views += comic.views;
-    });
-
-    const sortedAllTime = Object.entries(authorViewsAllTime)
-      .map(([uid, data]) => ({ uid, ...data }))
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 5);
-
-    const sortedMonth = Object.entries(authorViewsMonth)
-      .map(([uid, data]) => ({ uid, ...data }))
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 5);
-
-    const sortedNew = Object.entries(authorFirstComicDate)
-      .map(([uid, data]) => ({ uid, ...data }))
-      .sort((a, b) => b.firstDate.getTime() - a.firstDate.getTime())
-      .slice(0, 5);
-
-    const fetchPhotos = async (authors: any[]) => {
-      return await Promise.all(authors.map(async (author) => {
-        try {
-          const userDoc = await getDoc(doc(db, 'profiles', author.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            return { 
-              ...author, 
-              photo: data.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${author.uid}`,
-              pioneerNumber: data.pioneerNumber
-            };
-          }
-        } catch (e) {
-          console.error("Error fetching user photo:", e);
-        }
-        return { ...author, photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${author.uid}` };
-      }));
-    };
-
-    const loadAll = async () => {
-      const [allTime, month, newArtists] = await Promise.all([
-        fetchPhotos(sortedAllTime),
-        fetchPhotos(sortedMonth),
-        fetchPhotos(sortedNew)
-      ]);
-      setTopCreators(allTime);
-      setTopMonthCreators(month);
-      setNewCreators(newArtists);
-    };
-
-    loadAll();
-  }, [comics]);
+    return matchesSearch && matchesTab;
+  });
 
   useEffect(() => {
     const q = query(
@@ -168,117 +80,42 @@ export function CommunityView({ user, comics, lang, searchQuery = '', onBack, on
     }
   };
 
-  const getRankStyle = (index: number) => {
-    switch (index) {
-      case 0: return "bg-yellow-400 text-white shadow-yellow-400/50 scale-110 ring-2 ring-yellow-200";
-      case 1: return "bg-zinc-300 text-white shadow-zinc-300/50 scale-105 ring-2 ring-zinc-100";
-      case 2: return "bg-orange-400 text-white shadow-orange-400/50 ring-2 ring-orange-100";
-      default: return "bg-zinc-900 text-white border-2 border-white";
-    }
-  };
-
-  const getRankIcon = (index: number) => {
-    if (index === 0) return <Crown size={10} className="mb-0.5" />;
-    return null;
-  };
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      {/* Ranking Tabs */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <button
-          onClick={() => setRankingTab('month')}
-          className={`py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
-            rankingTab === 'month' 
-            ? 'bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20' 
-            : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'
-          }`}
-        >
-          {t('topMonth')}
-        </button>
-        <button
-          onClick={() => setRankingTab('all')}
-          className={`py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
-            rankingTab === 'all' 
-            ? 'bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20' 
-            : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'
-          }`}
-        >
-          {t('topAllTime')}
-        </button>
-        <button
-          onClick={() => setRankingTab('new')}
-          className={`py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 ${
-            rankingTab === 'new' 
-            ? 'bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20' 
-            : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'
-          }`}
-        >
-          {t('newArtist') || 'New Artist'}
-        </button>
-      </div>
-
-      {/* Top Creators Display */}
-      {filteredCreators.length > 0 && (
-        <div className="mb-2">
-          <div className="flex items-center gap-6 overflow-x-auto pt-3 pb-2 no-scrollbar">
-            {filteredCreators.map((creator, index) => (
-              <motion.button
-                key={`${rankingTab}-${creator.uid}`}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1 }}
-                onClick={() => onArtistClick(creator.uid)}
-                className="flex-shrink-0 group relative"
-              >
-                <div className="relative">
-                  <div className={`absolute inset-0 rounded-[1.5rem] blur-lg opacity-0 group-hover:opacity-40 transition-opacity duration-500 bg-gradient-to-br ${
-                    index === 0 ? 'from-yellow-400 to-orange-500' : 
-                    index === 1 ? 'from-zinc-300 to-zinc-500' :
-                    index === 2 ? 'from-orange-400 to-orange-700' :
-                    'from-blue-500 to-purple-500'
-                  }`} />
-                  <div className={`relative bg-white p-1 rounded-[1.5rem] border transition-all duration-500 ${
-                    index === 0 ? 'border-yellow-100 shadow-yellow-100/50 group-hover:shadow-yellow-400/30' :
-                    index === 1 ? 'border-zinc-100 shadow-zinc-100/50 group-hover:shadow-zinc-300/30' :
-                    index === 2 ? 'border-orange-100 shadow-orange-100/50 group-hover:shadow-orange-400/30' :
-                    'border-zinc-100 shadow-sm group-hover:shadow-xl'
-                  }`}>
-                    <img 
-                      src={creator.photo} 
-                      alt={creator.name} 
-                      className="w-12 h-12 sm:w-16 sm:h-16 rounded-[1rem] sm:rounded-[1.25rem] object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                    {creator.pioneerNumber && (
-                      <div className="absolute top-0 left-0 bg-blue-600 text-white text-[8px] sm:text-[10px] font-black w-4 h-4 sm:w-6 sm:h-6 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
-                        {creator.pioneerNumber}
-                      </div>
-                    )}
-                    <div className={`absolute -top-2 -right-2 sm:-top-3 sm:-right-3 min-w-[24px] sm:min-w-[28px] h-6 sm:h-7 px-1 text-[9px] sm:text-[11px] font-black rounded-full flex flex-col items-center justify-center shadow-lg transition-transform duration-500 group-hover:scale-110 ${getRankStyle(index)}`}>
-                      {getRankIcon(index)}
-                      {index + 1}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-2 text-center">
-                  <p className="text-[9px] sm:text-[11px] font-black text-zinc-900 truncate w-16 sm:w-20 tracking-tight group-hover:text-blue-500 transition-colors">
-                    {creator.name}
-                  </p>
-                  <p className="text-[8px] sm:text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-0.5">
-                    {creator.views.toLocaleString()}
-                  </p>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Dream World Section */}
-      <div className="mb-4">
-        <h2 className="text-xl sm:text-3xl font-black tracking-tight text-zinc-900 mb-1 sm:mb-2">{t('dreamWorld')}</h2>
-        <div className="w-12 h-1 bg-blue-500 rounded-full" />
+      <div className="mb-6 border-b border-zinc-100">
+        <div className="flex items-center gap-8">
+          <button 
+            onClick={() => setFeedTab('all')}
+            className={`pb-4 text-xl sm:text-3xl font-black tracking-tight transition-all relative ${feedTab === 'all' ? 'text-zinc-900' : 'text-zinc-300 hover:text-zinc-400'}`}
+          >
+            {t('dreamWorld')}
+            {feedTab === 'all' && (
+              <motion.div 
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-full" 
+              />
+            )}
+          </button>
+          <button 
+            onClick={() => {
+              if (!user) {
+                onLogin();
+                return;
+              }
+              setFeedTab('following');
+            }}
+            className={`pb-4 text-xl sm:text-3xl font-black tracking-tight transition-all relative ${feedTab === 'following' ? 'text-zinc-900' : 'text-zinc-300 hover:text-zinc-400'}`}
+          >
+            {t('following')}
+            {feedTab === 'following' && (
+              <motion.div 
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-full" 
+              />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Posts List */}
@@ -378,10 +215,14 @@ export function CommunityView({ user, comics, lang, searchQuery = '', onBack, on
             ))}
           </AnimatePresence>
 
-          {posts.length === 0 && (
+          {filteredPosts.length === 0 && (
             <div className="text-center py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
               <PenTool size={48} className="mx-auto text-zinc-300 mb-4" />
-              <p className="text-zinc-500 font-medium">No posts in the community yet. Be the first to post!</p>
+              <p className="text-zinc-500 font-medium">
+                {feedTab === 'all' 
+                  ? 'No posts in the community yet. Be the first to post!' 
+                  : 'No posts from artists you follow yet.'}
+              </p>
             </div>
           )}
         </div>

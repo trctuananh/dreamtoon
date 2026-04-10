@@ -5,7 +5,7 @@ import { db, handleFirestoreError, OperationType, createNotification } from '../
 import { Language } from '../translations';
 import { Chapter } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
-import { validateImage } from '../lib/utils';
+import { validateImage, compressImage } from '../lib/utils';
 
 export function AddChapterView({ comicId, authorUid, chapterCount, initialData, onSuccess, onCancel, lang }: { comicId: string, authorUid: string, chapterCount: number, initialData?: Chapter, onSuccess: () => void, onCancel: () => void, lang: Language }) {
   const { t } = useTranslation(lang);
@@ -29,11 +29,12 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
       setError(t('warningLargeFiles'));
     }
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setThumbnail(ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file, 400, 0.6);
+      setThumbnail(compressed);
+    } catch (err) {
+      setError('Failed to process image');
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,12 +62,13 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
         setError(t('warningLargeFiles'));
       }
 
-      const dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (ev) => resolve(ev.target?.result as string);
-        reader.readAsDataURL(file);
-      });
-      newUrls.push(dataUrl);
+      try {
+        const compressed = await compressImage(file, 1000, 0.7);
+        newUrls.push(compressed);
+      } catch (err) {
+        setError(`Failed to process ${file.name}`);
+        return;
+      }
     }
     
     setImageUrls(prev => [...prev, ...newUrls]);

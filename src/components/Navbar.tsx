@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown, Star, LayoutDashboard, HelpCircle, Upload } from 'lucide-react';
+import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown, Star, LayoutDashboard, HelpCircle, Upload, MessageCircle } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { View, UserProfile } from '../types';
 import { Language } from '../translations';
@@ -234,51 +234,65 @@ export function Navbar({
             </div>
           </div>
         </div>
+      </nav>
 
-        {/* Row 2: Home, Explore, Dreamers (Mobile Only) */}
-        <div className="flex items-center justify-around py-1 border-t border-zinc-50 md:hidden">
+      {/* Bottom Navigation (Mobile Only) */}
+      <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-zinc-100 md:hidden pb-safe ${view === 'reader' ? 'hidden' : 'block'}`}>
+        <div className="flex items-center justify-around py-2 px-2">
           <button 
             onClick={() => {
               setView('home');
               window.history.pushState(null, '', '/');
             }}
-            className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'home' ? 'text-blue-500' : 'text-zinc-500'}`}
+            className={`flex flex-col items-center gap-1 transition-all ${view === 'home' ? 'text-blue-500 scale-110' : 'text-zinc-400 hover:text-zinc-600'}`}
           >
-            <HomeIcon size={18} />
-            <span className="text-[10px] font-bold">{t('home')}</span>
+            <HomeIcon size={20} strokeWidth={view === 'home' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold tracking-tight">{t('home')}</span>
           </button>
           <button 
             onClick={() => {
               setView('explore');
               window.history.pushState(null, '', '/explore');
             }}
-            className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'explore' ? 'text-blue-500' : 'text-zinc-500'}`}
+            className={`flex flex-col items-center gap-1 transition-all ${view === 'explore' ? 'text-blue-500 scale-110' : 'text-zinc-400 hover:text-zinc-600'}`}
           >
-            <Compass size={18} />
-            <span className="text-[10px] font-bold">{t('explore')}</span>
+            <Compass size={20} strokeWidth={view === 'explore' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold tracking-tight">{t('explore')}</span>
           </button>
           <button 
             onClick={() => {
               setView('community');
               window.history.pushState(null, '', '/community');
             }}
-            className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'community' ? 'text-blue-500' : 'text-zinc-500'}`}
+            className={`flex flex-col items-center gap-1 transition-all ${view === 'community' ? 'text-blue-500 scale-110' : 'text-zinc-400 hover:text-zinc-600'}`}
           >
-            <Star size={18} className="text-amber-500" />
-            <span className="text-[10px] font-bold">{t('dreamWorld')}</span>
+            <Star size={20} strokeWidth={view === 'community' ? 2.5 : 2} className={view === 'community' ? 'text-amber-500' : ''} />
+            <span className="text-[10px] font-bold tracking-tight">{t('dreamWorld')}</span>
           </button>
-          {user && (
-            <button 
-              onClick={() => {
+          <button 
+            onClick={() => {
+              setView('messenger');
+              window.history.pushState(null, '', '/messenger');
+            }}
+            className={`flex flex-col items-center gap-1 transition-all ${view === 'messenger' ? 'text-blue-500 scale-110' : 'text-zinc-400 hover:text-zinc-600'}`}
+          >
+            <MessageCircle size={20} strokeWidth={view === 'messenger' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold tracking-tight">{t('messenger')}</span>
+          </button>
+          <button 
+            onClick={() => {
+              if (user) {
                 setView('my-wall');
                 window.history.pushState(null, '', '/my-wall');
-              }}
-              className={`flex flex-col items-center gap-0.5 transition-colors ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-500'}`}
-            >
-              <Users size={18} />
-              <span className="text-[10px] font-bold">{t('myWall')}</span>
-            </button>
-          )}
+              } else {
+                onLogin();
+              }
+            }}
+            className={`flex flex-col items-center gap-1 transition-all ${view === 'my-wall' ? 'text-blue-500 scale-110' : 'text-zinc-400 hover:text-zinc-600'}`}
+          >
+            <Users size={20} strokeWidth={view === 'my-wall' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold tracking-tight">{t('myWall')}</span>
+          </button>
         </div>
       </nav>
 

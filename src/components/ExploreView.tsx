@@ -22,7 +22,21 @@ export function ExploreView({
 }) {
   const { t } = useTranslation(lang);
   const [selectedGenre, setSelectedGenre] = React.useState<Genre | 'all'>('all');
-  const genres: Genre[] = ['Action', 'Romance', 'Comedy', 'Fantasy', 'Horror', 'Slice of Life', 'Drama', 'Sci-Fi', 'Thriller'];
+  const [filter, setFilter] = React.useState<'trending' | 'download' | 'topRated'>('trending');
+  const genreKeys: string[] = ['action', 'romance', 'comedy', 'fantasy', 'horror', 'sliceOfLife', 'drama', 'sciFi', 'thriller'];
+
+  const [downloadedIds, setDownloadedIds] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem('downloaded_comics');
+    if (saved) {
+      try {
+        setDownloadedIds(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse downloaded comics", e);
+      }
+    }
+  }, []);
 
   const filteredComics = comics.filter(comic => {
     const matchesSearch = !searchQuery.trim() || 
@@ -33,8 +47,20 @@ export function ExploreView({
     const matchesGenre = selectedGenre === 'all' || 
       comic.genre.some(g => g.toLowerCase() === selectedGenre.toLowerCase());
 
-    return matchesSearch && matchesGenre;
+    const matchesFilter = filter === 'download' ? downloadedIds.includes(comic.id) : true;
+
+    return matchesSearch && matchesGenre && matchesFilter;
   });
+
+  const sortedComics = React.useMemo(() => {
+    if (filter === 'topRated') {
+      return [...filteredComics].sort((a, b) => b.rating - a.rating);
+    }
+    if (filter === 'trending') {
+      return [...filteredComics].sort((a, b) => b.views - a.views);
+    }
+    return filteredComics;
+  }, [filteredComics, filter]);
 
   const filteredArtists = searchQuery.trim()
     ? artists.filter(artist =>
@@ -53,21 +79,30 @@ export function ExploreView({
         ) : (
           <div className="flex flex-col md:flex-row md:items-end justify-end gap-4 mb-6">
             <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto no-scrollbar">
-              <button className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 bg-white text-blue-600 rounded-lg text-[10px] sm:text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+              <button 
+                onClick={() => setFilter('trending')}
+                className={`flex-1 sm:flex-none px-2 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap transition-all ${filter === 'trending' ? 'bg-white text-blue-600' : 'text-zinc-500 hover:text-zinc-900'}`}
+              >
                 <TrendingUp size={14} /> {t('trending')}
               </button>
-              <button className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-zinc-500 hover:text-zinc-900 rounded-lg text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap">
-                <Clock size={14} /> {t('new')}
-              </button>
-              <button className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-zinc-500 hover:text-zinc-900 rounded-lg text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap">
+              <button 
+                onClick={() => setFilter('topRated')}
+                className={`flex-1 sm:flex-none px-2 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap ${filter === 'topRated' ? 'bg-white text-blue-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
+              >
                 <Star size={14} /> {t('topRated')}
+              </button>
+              <button 
+                onClick={() => setFilter('download')}
+                className={`flex-1 sm:flex-none px-2 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap ${filter === 'download' ? 'bg-white text-blue-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
+              >
+                <Clock size={14} /> {t('download')}
               </button>
             </div>
           </div>
         )}
 
         {!searchQuery.trim() && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar">
+          <div className="flex flex-wrap items-center gap-2 pb-4">
             <button 
               onClick={() => setSelectedGenre('all')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap transition-all ${
@@ -78,17 +113,17 @@ export function ExploreView({
             >
               {t('all')}
             </button>
-            {genres.map((genre) => (
+            {genreKeys.map((genreKey) => (
               <button 
-                key={genre}
-                onClick={() => setSelectedGenre(genre)}
+                key={genreKey}
+                onClick={() => setSelectedGenre(genreKey as Genre)}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
-                  selectedGenre === genre 
+                  selectedGenre === genreKey 
                     ? 'bg-zinc-900 text-white' 
                     : 'bg-zinc-100 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200'
                 }`}
               >
-                {genre}
+                {t(genreKey as any)}
               </button>
             ))}
           </div>
@@ -96,7 +131,7 @@ export function ExploreView({
       </div>
 
       <div className="px-6 grid grid-cols-3 sm:grid-cols-6 gap-x-3 sm:gap-x-4 gap-y-8">
-        {filteredComics.map((comic) => {
+        {sortedComics.map((comic) => {
           const isNewChapter = comic.updatedAt && (
             (comic.updatedAt.toDate ? comic.updatedAt.toDate() : new Date(comic.updatedAt)).getTime() > 
             (Date.now() - 72 * 60 * 60 * 1000)

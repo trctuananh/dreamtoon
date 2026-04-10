@@ -5,6 +5,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, Article } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
+import { compressImage } from '../lib/utils';
 
 export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, initialData }: { user: any, profile: UserProfile | null, lang: Language, onSuccess: () => void, onCancel: () => void, initialData?: Article | null }) {
   const { t } = useTranslation(lang);
@@ -14,28 +15,20 @@ export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, in
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (Firestore limit ~800KB for base64 safety)
-    if (file.size > 800 * 1024) {
-      alert(t('imageTooLarge' as any));
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadstart = () => setUploadProgress(10);
-    reader.onprogress = (data) => {
-      if (data.lengthComputable) {
-        setUploadProgress(Math.round((data.loaded / data.total) * 100));
-      }
-    };
-    reader.onloadend = () => {
-      setBanner(reader.result as string);
+    try {
+      setUploadProgress(10);
+      const compressed = await compressImage(file, 1200, 0.7);
+      setBanner(compressed);
+      setUploadProgress(100);
+      setTimeout(() => setUploadProgress(0), 500);
+    } catch (err) {
+      alert('Failed to process image');
       setUploadProgress(0);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

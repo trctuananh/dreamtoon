@@ -6,7 +6,7 @@ import { View, Post, UserProfile, Donation, CommissionWork, PostComment } from '
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
-import { compressImage } from '../lib/imageUtils';
+import { cn, compressImage } from '../lib/utils';
 
 export function MyWallView({ user, profile, lang, onBack, setView }: { user: any, profile: UserProfile | null, lang: Language, onBack: () => void, setView: (v: View) => void }) {
   const { t } = useTranslation(lang);
@@ -128,26 +128,29 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
     return () => unsubscribe();
   }, [activePostId]);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, target: 'post' | 'info' | 'work') => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>, target: 'post' | 'info' | 'work') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
-      try {
-        // Compress image before setting state
-        const compressed = await compressImage(base64);
-        if (target === 'post') {
-          setSelectedImage(compressed);
-        } else if (target === 'info') {
-          setInfoImage(compressed);
-        } else {
-          setWorkForm(prev => ({ ...prev, imageUrl: compressed }));
-        }
-      } catch (error) {
-        console.error('Image compression failed:', error);
-        // Fallback to original if compression fails
+    try {
+      // Compress image before setting state
+      // Use smaller size for info/work thumbnails
+      const maxWidth = target === 'post' ? 1000 : 400;
+      const compressed = await compressImage(file, maxWidth, 0.6);
+      
+      if (target === 'post') {
+        setSelectedImage(compressed);
+      } else if (target === 'info') {
+        setInfoImage(compressed);
+      } else {
+        setWorkForm(prev => ({ ...prev, imageUrl: compressed }));
+      }
+    } catch (error) {
+      console.error('Image compression failed:', error);
+      // Fallback to reader if compression fails
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
         if (target === 'post') {
           setSelectedImage(base64);
         } else if (target === 'info') {
@@ -155,9 +158,9 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
         } else {
           setWorkForm(prev => ({ ...prev, imageUrl: base64 }));
         }
-      }
-    };
-    reader.readAsDataURL(file);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handlePost = async (e: React.FormEvent) => {

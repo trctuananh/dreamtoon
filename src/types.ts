@@ -33,7 +33,25 @@ export interface Comic {
   updatedAt?: any;
 }
 
-export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'public-profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall' | 'notifications' | 'support' | 'admin-users' | 'privacy';
+export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-chapter' | 'edit-chapter' | 'article' | 'create-article' | 'manage-featured' | 'profile' | 'public-profile' | 'edit-comic' | 'my-wall' | 'community' | 'artist-wall' | 'notifications' | 'support' | 'admin-users' | 'privacy' | 'messenger';
+
+export interface Conversation {
+  id: string;
+  participants: string[];
+  participantProfiles?: { [uid: string]: { displayName: string, photoURL: string } };
+  lastMessage?: string;
+  lastMessageAt?: any;
+  unreadCount?: { [uid: string]: number };
+  updatedAt: any;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  createdAt: any;
+}
 
 export interface Notification {
   id: string;

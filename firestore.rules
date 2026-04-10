@@ -138,6 +138,24 @@ service cloud.firestore {
     //   - comments: number (optional, positive)
     //   - createdAt: timestamp (required, immutable)
     //
+    // Collection: conversations
+    // Document ID: conversationId
+    // Fields:
+    //   - participants: list (required, UIDs)
+    //   - participantProfiles: map (optional, {uid: {displayName, photoURL}})
+    //   - lastMessage: string (optional)
+    //   - lastMessageAt: timestamp (optional)
+    //   - unreadCount: map (optional, {uid: number})
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: conversations/{conversationId}/messages
+    // Document ID: messageId
+    // Fields:
+    //   - conversationId: string (required, immutable)
+    //   - senderId: string (required, immutable)
+    //   - content: string (required, max 5000 chars)
+    //   - createdAt: timestamp (required, immutable)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -369,6 +387,21 @@ service cloud.firestore {
              data.chapterNumber is number;
     }
 
+    function isValidConversation(data) {
+      return data.keys().hasAll(['participants', 'updatedAt']) &&
+             data.participants is list && data.participants.size() >= 2 &&
+             request.auth.uid in data.participants &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidMessage(data, conversationId) {
+      return data.keys().hasAll(['conversationId', 'senderId', 'content', 'createdAt']) &&
+             data.conversationId == conversationId &&
+             data.senderId == request.auth.uid &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 5000 &&
+             data.createdAt is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -528,6 +561,20 @@ service cloud.firestore {
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
                        request.resource.data.status in ['pending', 'accepted', 'rejected', 'completed'];
       allow delete: if isAdmin();
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() && isValidConversation(request.resource.data);
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants &&
+                       isValidConversation(request.resource.data) &&
+                       request.resource.data.participants == resource.data.participants;
+      
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        allow create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
+                        isValidMessage(request.resource.data, conversationId);
+      }
     }
   }
 }

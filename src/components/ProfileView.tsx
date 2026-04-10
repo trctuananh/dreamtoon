@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Layout, Compass, Star, Plus, Trash2, Library, Heart, LogOut, Camera } from 'lucide-react';
+import { ArrowLeft, Layout, Compass, Star, Plus, Trash2, Library, Heart, LogOut, Camera, MessageCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { collection, query, where, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
@@ -9,7 +9,7 @@ import { Language, translations } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { formatViews, validateImage } from '../lib/utils';
 
-export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow, onLogout, isGuest = false }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic', authorUid?: string) => void, onLogout: () => void, isGuest?: boolean }) {
+export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow, onLogout, onMessageClick, isGuest = false }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic', authorUid?: string) => void, onLogout: () => void, onMessageClick?: (target: any) => void, isGuest?: boolean }) {
   const { t } = useTranslation(lang);
   const [activeTab, setActiveTab] = useState<'comics' | 'following'>('comics');
   const [isEditing, setIsEditing] = useState(false);
@@ -184,6 +184,16 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
               )}
               {!isGuest && <p className="text-zinc-400 text-[10px] md:text-xs font-bold mb-0.5 md:mb-2">{user.email}</p>}
               <p className="text-[9px] md:text-[10px] text-zinc-400 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] mb-2 md:mb-6">{t('joined')}: {joinedDate}</p>
+
+              {isGuest && onMessageClick && (
+                <button
+                  onClick={() => onMessageClick(profile)}
+                  className="w-full mb-6 flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20"
+                >
+                  <MessageCircle size={18} />
+                  {t('messenger')}
+                </button>
+              )}
 
               {isEditing ? (
                 <div className="w-full mb-6 space-y-4">
