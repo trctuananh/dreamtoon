@@ -567,9 +567,13 @@ export function HomeView({
                   <h4 className="font-bold text-zinc-900 text-[10px] sm:text-sm truncate mb-0.5 group-hover:text-blue-600 transition-colors">
                     {comic.title}
                   </h4>
-                  <p className="text-[8px] sm:text-[10px] font-medium text-zinc-400 capitalize">
-                    {t(comic.genre[0] as any)}
-                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {comic.genre.map(g => (
+                      <p key={g} className="text-[8px] sm:text-[10px] font-medium text-zinc-400 capitalize">
+                        {t(g as any)}
+                      </p>
+                    ))}
+                  </div>
                 </motion.div>
               );
             })}

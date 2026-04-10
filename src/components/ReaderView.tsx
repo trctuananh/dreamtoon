@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronUp, ArrowLeft, ArrowRight, Heart, Facebook, Twitter, Copy, Check, MessageCircle, Send, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, runTransaction, increment } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, runTransaction, increment, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Comic, Chapter, Comment, Like } from '../types';
 import { Language } from '../translations';
@@ -44,7 +44,28 @@ export function ReaderView({
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [chapterImages, setChapterImages] = useState<string[]>(chapter.images || []);
   const isLiked = user && likes.some(l => l.userId === user.uid && l.targetId === chapter.id);
+
+  useEffect(() => {
+    // Reset images when chapter changes
+    setChapterImages(chapter.images || []);
+
+    // Fetch from subcollection
+    const q = query(
+      collection(db, 'comics', comic.id, 'chapters', chapter.id, 'pages'), 
+      orderBy('order', 'asc'),
+      limit(100)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const pages = snapshot.docs.map(doc => doc.data().imageUrl);
+        setChapterImages(pages);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [chapter.id, comic.id, chapter.images]);
 
   const handleShare = (platform: 'fb' | 'x' | 'copy') => {
     const url = window.location.href;
@@ -101,7 +122,7 @@ export function ReaderView({
 
       {/* Chapter Content */}
       <div className="max-w-3xl mx-auto pt-12" onClick={() => setShowControls(!showControls)}>
-        {chapter.images.map((url, idx) => (
+        {chapterImages.map((url, idx) => (
           <img 
             key={idx} 
             src={url} 

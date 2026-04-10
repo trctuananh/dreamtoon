@@ -30,7 +30,7 @@ export const validateImage = async (file: File): Promise<{ valid: boolean; error
     img.src = objectUrl;
   });
 
-  return dimensions.width > 2000 ? { valid: false, error: `Image width (${dimensions.width}px) exceeds 2000px limit.` } : { valid: true };
+  return dimensions.width > 800 ? { valid: false, error: `Image width (${dimensions.width}px) exceeds 800px limit.` } : { valid: true };
 };
 
 export const compressImage = async (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {

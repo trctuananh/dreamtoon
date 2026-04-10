@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs } from 'firebase/firestore';
+import { Plus } from 'lucide-react';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs, setDoc, orderBy } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 import { Language } from '../translations';
 import { Chapter } from '../types';
@@ -15,6 +16,18 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (initialData) {
+      const q = query(collection(db, 'comics', comicId, 'chapters', initialData.id, 'pages'), orderBy('order', 'asc'));
+      getDocs(q).then(snapshot => {
+        if (!snapshot.empty) {
+          const pages = snapshot.docs.map(doc => doc.data().imageUrl);
+          setImageUrls(pages);
+        }
+      });
+    }
+  }, [initialData, comicId]);
+
   const handleThumbnailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -25,7 +38,7 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
       return;
     }
 
-    if (file.size > 500 * 1024) {
+    if (file.size > 800 * 1024) {
       setError(t('warningLargeFiles'));
     }
 
@@ -50,7 +63,7 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
         let errorMsg = result.error || '';
         if (result.error?.includes('File size exceeds 20MB limit')) errorMsg = t('errorExceedsSize');
         else if (result.error?.includes('Image width')) {
-          const width = result.error.match(/\d+/)?.[0] || '2000';
+          const width = result.error.match(/\d+/)?.[0] || '800';
           errorMsg = t('errorExceedsWidth').replace('{width}', width);
         }
         setError(`${file.name}: ${errorMsg}`);
@@ -88,8 +101,8 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
     }
 
     const totalSize = imageUrls.reduce((acc, url) => acc + url.length, 0);
-    if (totalSize > 1024 * 1024) { // 1MB limit for Firestore
-      setError("Total size of images is too large for a single chapter (Max 1MB). Please use fewer or smaller images.");
+    if (totalSize > 20 * 1024 * 1024 * 1.37) { // 20MB limit (approx for base64)
+      setError(t('errorExceedsSize'));
       return;
     }
 
@@ -98,13 +111,16 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
       const chapterData = {
         title,
         thumbnail,
-        images: imageUrls,
+        // We still keep images array for small chapters/legacy, but for large ones we'll use subcollection
+        images: totalSize < 800 * 1024 ? imageUrls : [], 
       };
+
+      let chapterId = initialData?.id;
 
       if (initialData) {
         await updateDoc(doc(db, 'comics', comicId, 'chapters', initialData.id), chapterData);
       } else {
-        await addDoc(collection(db, 'comics', comicId, 'chapters'), {
+        const docRef = await addDoc(collection(db, 'comics', comicId, 'chapters'), {
           ...chapterData,
           comicId,
           authorUid,
@@ -112,6 +128,8 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
           uploadDate: new Date().toLocaleDateString(),
           createdAt: serverTimestamp()
         });
+        chapterId = docRef.id;
+
         // Update parent comic's updatedAt and chapterCount
         await updateDoc(doc(db, 'comics', comicId), {
           updatedAt: serverTimestamp(),
@@ -131,14 +149,30 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
               targetId: comicId,
               targetTitle: title,
               senderId: authorUid,
-              senderName: 'DreamToon', // Or fetch author name
-              senderPhoto: '' // Or fetch author photo
+              senderName: 'DreamToon',
+              senderPhoto: ''
             });
           });
         } catch (err) {
           console.error("Error notifying followers:", err);
         }
       }
+
+      // Store pages in subcollection if chapter is large or always for consistency
+      if (chapterId) {
+        // Delete old pages if editing (optional, but good for cleanup)
+        // For simplicity, we'll just add/overwrite
+        for (let i = 0; i < imageUrls.length; i++) {
+          const pageId = `page_${i}`;
+          await setDoc(doc(db, 'comics', comicId, 'chapters', chapterId, 'pages', pageId), {
+            chapterId,
+            comicId,
+            imageUrl: imageUrls[i],
+            order: i
+          });
+        }
+      }
+
       onSuccess();
     } catch (error) {
       handleFirestoreError(error, initialData ? OperationType.UPDATE : OperationType.CREATE, `comics/${comicId}/chapters`);
@@ -198,18 +232,27 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
           <div>
             <label className="block text-sm font-bold text-zinc-700 mb-1">
               {t('chapterPages')}
-              <span className="ml-2 text-[10px] font-normal text-zinc-400 italic lowercase">
-                ({t('chapterRecommendedSize' as any)})
-              </span>
+              <p className="text-[10px] font-normal text-zinc-400 italic lowercase">
+                {t('chapterRecommendedSize')}
+              </p>
             </label>
-            <div className="space-y-1">
-              <input 
-                type="file" 
-                multiple
-                accept="image/*"
-                onChange={handleFileChange}
-                className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
+            <div className="space-y-2">
+              <div className="bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl p-4 text-center hover:border-blue-500 transition-colors relative group">
+                <input 
+                  type="file" 
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
+                    <Plus size={20} />
+                  </div>
+                  <p className="text-xs font-bold text-zinc-600">{t('addNewChapter')}</p>
+                  <p className="text-[10px] text-zinc-400 font-medium">{t('rules')}</p>
+                </div>
+              </div>
               
               {imageUrls.length > 0 && (
                 <div className="grid grid-cols-4 gap-2">

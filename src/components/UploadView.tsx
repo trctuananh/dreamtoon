@@ -269,6 +269,7 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
                 onChange={(e) => handleFileChange(e)}
                 className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
+              <p className="text-[10px] text-zinc-400 font-medium mt-1">{t('rules')}</p>
               {thumbnail && <img src={thumbnail} className="mt-2 h-32 w-24 object-cover rounded-lg" referrerPolicy="no-referrer" />}
             </div>
           </div>

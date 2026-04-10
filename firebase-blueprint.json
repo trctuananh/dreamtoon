@@ -62,10 +62,23 @@
         "title": { "type": "string", "description": "The title of the chapter." },
         "number": { "type": "number", "description": "The chapter number." },
         "uploadDate": { "type": "string", "description": "The date the chapter was uploaded." },
-        "images": { "type": "array", "items": { "type": "string" }, "description": "The list of image URLs for the chapter." },
+        "images": { "type": "array", "items": { "type": "string" }, "description": "The list of image URLs for the chapter (legacy/small chapters)." },
         "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
       },
-      "required": ["id", "comicId", "number", "images"]
+      "required": ["id", "comicId", "number"]
+    },
+    "ChapterPage": {
+      "title": "Chapter Page",
+      "description": "A single page (image) within a chapter.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "comicId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "chapterId", "comicId", "imageUrl", "order"]
     },
     "Comment": {
       "title": "Chapter Comment",
@@ -292,6 +305,10 @@
     "/comics/{comicId}/chapters/{chapterId}": {
       "schema": "Chapter",
       "description": "The subcollection of chapters for a specific comic."
+    },
+    "/comics/{comicId}/chapters/{chapterId}/pages/{pageId}": {
+      "schema": "ChapterPage",
+      "description": "The subcollection of pages for a specific chapter."
     },
     "/comics/{comicId}/chapters/{chapterId}/comments/{commentId}": {
       "schema": "Comment",

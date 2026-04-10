@@ -82,6 +82,7 @@ export async function createNotification({
   type,
   targetId,
   targetTitle,
+  content,
   senderId,
   senderName,
   senderPhoto
@@ -90,6 +91,7 @@ export async function createNotification({
   type: 'like' | 'comment' | 'follow' | 'new_chapter' | 'commission' | 'donation';
   targetId: string;
   targetTitle?: string;
+  content?: string;
   senderId: string;
   senderName: string;
   senderPhoto: string;
@@ -105,6 +107,7 @@ export async function createNotification({
       type,
       targetId,
       targetTitle,
+      content,
       read: false,
       createdAt: serverTimestamp()
     });

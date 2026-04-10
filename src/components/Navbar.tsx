@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown, Star, LayoutDashboard, HelpCircle, Upload, MessageCircle } from 'lucide-react';
+import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown, Star, LayoutDashboard, HelpCircle, Upload, MessageCircle, Bell } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { View, UserProfile } from '../types';
 import { Language } from '../translations';
@@ -133,7 +133,32 @@ export function Navbar({
 
             {/* Profile / Login */}
             {user ? (
-              <div className="relative group">
+              <div className="flex items-center gap-1 sm:gap-3">
+                {/* Messenger Icon */}
+                <button 
+                  onClick={() => {
+                    setView('messenger');
+                    window.history.pushState(null, '', '/messenger');
+                  }}
+                  className={`relative p-2 hover:bg-zinc-100 rounded-full transition-colors hidden sm:block ${view === 'messenger' ? 'text-blue-500 bg-blue-50' : 'text-zinc-600'}`}
+                >
+                  <MessageCircle size={20} />
+                </button>
+
+                {/* Bell Icon */}
+                <button 
+                  onClick={() => setView('notifications')}
+                  className={`relative p-2 hover:bg-zinc-100 rounded-full transition-colors ${view === 'notifications' ? 'text-blue-500 bg-blue-50' : 'text-zinc-600'}`}
+                >
+                  <Bell size={20} />
+                  {unreadNotificationsCount > 0 && (
+                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold border-2 border-white">
+                      {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
+
+                <div className="relative group">
                 <img 
                   src={profile?.photoURL || user.photoURL || ''} 
                   alt={profile?.displayName || user.displayName || ''} 
@@ -145,6 +170,7 @@ export function Navbar({
                 <div className="hidden sm:block absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-zinc-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                   <div className="px-4 py-2 border-b border-zinc-50">
                     <p className="text-xs font-bold text-zinc-900 truncate">{profile?.displayName || user.displayName}</p>
+                    {profile?.handle && <p className="text-[10px] font-bold text-blue-500 truncate">@{profile.handle}</p>}
                     <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
                   </div>
                   <button 
@@ -200,6 +226,7 @@ export function Navbar({
                   </button>
                 </div>
               </div>
+            </div>
             ) : (
               <button 
                 onClick={onLogin}
@@ -318,6 +345,22 @@ export function Navbar({
             </button>
           </div>
           <div className="p-6 space-y-8">
+            {user && (
+              <div className="px-6 py-4 bg-zinc-50 rounded-2xl mb-6">
+                <div className="flex items-center gap-4">
+                  <img 
+                    src={profile?.photoURL || user.photoURL || ''} 
+                    className="w-12 h-12 rounded-full border-2 border-blue-500"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div>
+                    <p className="font-black text-zinc-900">{profile?.displayName || user.displayName}</p>
+                    {profile?.handle && <p className="text-xs font-bold text-blue-500">@{profile.handle}</p>}
+                    <p className="text-[10px] text-zinc-500 font-bold">{user.email}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             {user && (
               <div className="space-y-4">
                 <button 

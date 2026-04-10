@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, Trash2, MessageCircle, Layout } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 import { Post, UserProfile, Donation, CommissionWork, Following, PostComment } from '../types';
 import { Language } from '../translations';
@@ -66,7 +66,8 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     const q = query(
       collection(db, 'posts'),
       where('authorUid', '==', artistUid),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -86,7 +87,8 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     const q = query(
       collection(db, 'donations'),
       where('artistUid', '==', artistUid),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(20)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -239,6 +241,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
         type: 'commission',
         targetId: 'profile', // Or a specific commissions view
         targetTitle: 'New Commission Request',
+        content: requestDetails,
         senderId: user.uid,
         senderName: profile?.displayName || user.displayName || 'Anonymous',
         senderPhoto: profile?.photoURL || user.photoURL || ''

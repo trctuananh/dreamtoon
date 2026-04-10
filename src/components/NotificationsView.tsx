@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Heart, MessageCircle, UserPlus, BookOpen, Trash2, CheckCircle, Briefcase } from 'lucide-react';
+import { Bell, Heart, MessageCircle, UserPlus, BookOpen, Trash2, CheckCircle, Briefcase, X } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { Notification } from '../types';
+import { AppNotification } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,15 +10,18 @@ import { motion, AnimatePresence } from 'motion/react';
 export function NotificationsView({ 
   user, 
   lang, 
-  onBack 
+  onBack,
+  onNotificationClick
 }: { 
   user: any, 
   lang: Language, 
-  onBack: () => void 
+  onBack: () => void,
+  onNotificationClick: (notification: AppNotification) => void
 }) {
   const { t } = useTranslation(lang);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCommission, setSelectedCommission] = useState<AppNotification | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -32,7 +35,7 @@ export function NotificationsView({
       const newNotifications = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })) as Notification[];
+      })) as AppNotification[];
       setNotifications(newNotifications);
       setLoading(false);
     }, (error) => {
@@ -51,6 +54,16 @@ export function NotificationsView({
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}/notifications/${notificationId}`);
     }
+  };
+
+  const handleNotificationClick = async (notification: AppNotification) => {
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
+    if (notification.type === 'commission') {
+      setSelectedCommission(notification);
+    }
+    onNotificationClick(notification);
   };
 
   const markAllAsRead = async () => {
@@ -77,7 +90,7 @@ export function NotificationsView({
     }
   };
 
-  const getIcon = (type: Notification['type']) => {
+  const getIcon = (type: AppNotification['type']) => {
     switch (type) {
       case 'like': return <Heart size={16} className="text-red-500 fill-red-500" />;
       case 'comment': return <MessageCircle size={16} className="text-blue-500 fill-blue-500" />;
@@ -88,13 +101,13 @@ export function NotificationsView({
     }
   };
 
-  const getMessage = (notification: Notification) => {
+  const getMessage = (notification: AppNotification) => {
     switch (notification.type) {
       case 'like': return `${t('likedYourPost')} ${notification.targetTitle ? `"${notification.targetTitle}"` : ''}`;
       case 'comment': return `${t('commentedOnYourPost')} ${notification.targetTitle ? `"${notification.targetTitle}"` : ''}`;
       case 'follow': return t('startedFollowingYou');
       case 'new_chapter': return `${t('publishedNewChapter')} ${notification.targetTitle ? `"${notification.targetTitle}"` : ''}`;
-      case 'commission': return t('newCommissionRequest');
+      case 'commission': return `${t('newCommissionRequest')} ${notification.targetTitle ? `: ${notification.targetTitle}` : ''}`;
       default: return `sent you a notification`;
     }
   };
@@ -129,7 +142,7 @@ export function NotificationsView({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              onClick={() => !notification.read && markAsRead(notification.id)}
+              onClick={() => handleNotificationClick(notification)}
               className={`group relative p-2 rounded-3xl border transition-all duration-300 cursor-pointer ${
                 notification.read 
                   ? 'bg-white border-zinc-100 opacity-75' 
@@ -161,6 +174,28 @@ export function NotificationsView({
                   <p className="text-sm text-zinc-600 leading-relaxed">
                     {getMessage(notification)}
                   </p>
+                  
+                  {notification.type === 'commission' && notification.content && (
+                    <div className="mt-2 p-3 bg-zinc-50 rounded-2xl border border-zinc-100 italic text-xs text-zinc-500">
+                      "{notification.content}"
+                    </div>
+                  )}
+
+                  {notification.type === 'commission' && (
+                    <div className="mt-3 flex gap-2">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Trigger messenger
+                          onNotificationClick({ ...notification, type: 'commission_message' as any });
+                        }}
+                        className="px-3 py-1.5 bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-1.5"
+                      >
+                        <MessageCircle size={12} />
+                        {t('message')}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <button 
@@ -189,6 +224,72 @@ export function NotificationsView({
           </div>
         )}
       </div>
+
+      {/* Commission Detail Modal */}
+      <AnimatePresence>
+        {selectedCommission && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 flex items-center justify-between bg-zinc-900 text-white">
+                <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-2">
+                  <Briefcase size={20} />
+                  {t('commissionRequest' as any) || 'Commission Request'}
+                </h3>
+                <button onClick={() => setSelectedCommission(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="flex items-center gap-4">
+                  <img 
+                    src={selectedCommission.senderPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedCommission.senderId}`} 
+                    alt={selectedCommission.senderName} 
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-zinc-100 shadow-sm"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div>
+                    <h4 className="text-lg font-black text-zinc-900">{selectedCommission.senderName}</h4>
+                    <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest">
+                      {selectedCommission.createdAt?.toDate ? selectedCommission.createdAt.toDate().toLocaleString() : '...'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-zinc-50 rounded-3xl p-6 border border-zinc-100">
+                  <p className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap italic">
+                    "{selectedCommission.content}"
+                  </p>
+                </div>
+
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => {
+                      onNotificationClick({ ...selectedCommission, type: 'commission_message' as any });
+                      setSelectedCommission(null);
+                    }}
+                    className="flex-1 py-4 bg-blue-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle size={18} />
+                    {t('message')}
+                  </button>
+                  <button 
+                    onClick={() => setSelectedCommission(null)}
+                    className="px-8 py-4 bg-zinc-100 text-zinc-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                  >
+                    {t('close' as any) || 'Close'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

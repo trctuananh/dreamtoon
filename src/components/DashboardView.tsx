@@ -52,7 +52,8 @@ export function DashboardView({
     // Fetch user's comics
     const comicsQuery = query(
       collection(db, 'comics'),
-      where('authorUid', '==', user.uid)
+      where('authorUid', '==', user.uid),
+      limit(50)
     );
 
     const unsubscribeComics = onSnapshot(comicsQuery, (snapshot) => {

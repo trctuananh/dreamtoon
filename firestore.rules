@@ -185,7 +185,23 @@ service cloud.firestore {
     }
 
     function isValidUrl(url) {
-      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+      return url is string && url.size() <= 2048 && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function isRecent(time) {
+      return time > request.time - duration.value(5, 'm') && time < request.time + duration.value(5, 'm');
+    }
+
+    function hasOnlyAllowedFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+
+    function isPositive(val) {
+      return val is number && val >= 0;
+    }
+
+    function isUnchanged(field) {
+      return resource != null && field in request.resource.data && field in resource.data && request.resource.data[field] == resource.data[field];
     }
 
     // ===============================================================
@@ -193,213 +209,217 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email']) &&
+      let allowed = ['uid', 'email', 'displayName', 'handle', 'photoURL', 'bio', 'pioneerNumber', 'role', 'banned', 'donateInfo', 'commissionInfo', 'updatedAt', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
+             data.uid == request.auth.uid &&
              isValidEmail(data.email) &&
-             (!('displayName' in data) || (data.displayName is string || data.displayName == null)) &&
-             (!('handle' in data) || (data.handle is string || data.handle == null)) &&
-             (!('photoURL' in data) || (data.photoURL is string || data.photoURL == null)) &&
-             (!('bio' in data) || (data.bio is string || data.bio == null)) &&
-             (!('pioneerNumber' in data) || (data.pioneerNumber is number || data.pioneerNumber == null)) &&
-             (!('role' in data) || data.role in ['dreamer', 'admin']) &&
-             (!('banned' in data) || (data.banned is bool || data.banned == null)) &&
-             (!('donateInfo' in data) || (data.donateInfo is map || data.donateInfo == null)) &&
-             (!('commissionInfo' in data) || (data.commissionInfo is map || data.commissionInfo == null));
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('handle' in data) || (data.handle is string && data.handle.size() <= 30)) &&
+             (!('photoURL' in data) || isValidUrl(data.photoURL)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
+             (!('pioneerNumber' in data) || (data.pioneerNumber is number && data.pioneerNumber >= 0)) &&
+             (!('role' in data) || data.role in ['user', 'dreamer', 'admin']) &&
+             (!('banned' in data) || data.banned is bool) &&
+             (!('donateInfo' in data) || (data.donateInfo is map)) &&
+             (!('commissionInfo' in data) || (data.commissionInfo is map)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt < request.time + duration.value(5, 'm')));
     }
 
     function isValidProfile(data) {
-      return data.keys().hasAll(['uid']) &&
-             (!('displayName' in data) || (data.displayName is string || data.displayName == null)) &&
-             (!('handle' in data) || (data.handle is string || data.handle == null)) &&
-             (!('photoURL' in data) || (data.photoURL is string || data.photoURL == null)) &&
-             (!('bio' in data) || (data.bio is string || data.bio == null)) &&
-             (!('pioneerNumber' in data) || (data.pioneerNumber is number || data.pioneerNumber == null)) &&
-             (!('role' in data) || data.role in ['dreamer', 'admin']) &&
-             (!('banned' in data) || (data.banned is bool || data.banned == null)) &&
-             (!('donateInfo' in data) || (data.donateInfo is map || data.donateInfo == null)) &&
-             (!('commissionInfo' in data) || (data.commissionInfo is map || data.commissionInfo == null));
+      let allowed = ['uid', 'displayName', 'handle', 'photoURL', 'bio', 'pioneerNumber', 'role', 'banned', 'donateInfo', 'commissionInfo', 'updatedAt', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
+             data.uid == request.auth.uid &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('handle' in data) || (data.handle is string && data.handle.size() <= 30)) &&
+             (!('photoURL' in data) || isValidUrl(data.photoURL)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
+             (!('pioneerNumber' in data) || (data.pioneerNumber is number)) &&
+             (!('role' in data) || data.role in ['user', 'dreamer', 'admin']) &&
+             (!('banned' in data) || data.banned is bool) &&
+             (!('donateInfo' in data) || (data.donateInfo is map)) &&
+             (!('commissionInfo' in data) || (data.commissionInfo is map)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt < request.time + duration.value(5, 'm')));
     }
 
     function isValidComic(data) {
-      return data.keys().hasAll(['title', 'authorUid', 'createdAt']) &&
+      let allowed = ['id', 'title', 'description', 'thumbnail', 'banner', 'genre', 'tags', 'authorUid', 'authorName', 'authorPhoto', 'authorPioneerNumber', 'views', 'rating', 'ratingCount', 'createdAt', 'updatedAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
-             data.authorUid is string &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || (data.id is string || data.id == null)) &&
-             (!('description' in data) || (data.description is string || data.description == null)) &&
-             (!('thumbnail' in data) || (data.thumbnail is string || data.thumbnail == null)) &&
-             (!('banner' in data) || (data.banner is string || data.banner == null)) &&
-             (!('genre' in data) || (data.genre is list || data.genre == null)) &&
-             (!('tags' in data) || (data.tags is list || data.tags == null)) &&
-             (!('authorName' in data) || (data.authorName is string || data.authorName == null)) &&
-             (!('authorPioneerNumber' in data) || (data.authorPioneerNumber is number || data.authorPioneerNumber == null)) &&
-             (!('views' in data) || (data.views is number || data.views == null)) &&
-             (!('rating' in data) || (data.rating is number || data.rating == null)) &&
-             (!('ratingCount' in data) || (data.ratingCount is number || data.ratingCount == null)) &&
-             (!('updatedAt' in data) || (data.updatedAt is timestamp || data.updatedAt == null));
+             data.authorUid == request.auth.uid &&
+             isRecent(data.createdAt) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+             (!('thumbnail' in data) || isValidUrl(data.thumbnail)) &&
+             (!('banner' in data) || isValidUrl(data.banner)) &&
+             (!('genre' in data) || (data.genre is list && data.genre.size() <= 10)) &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 20)) &&
+             (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 100)) &&
+             (!('views' in data) || isPositive(data.views)) &&
+             (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5)) &&
+             (!('ratingCount' in data) || isPositive(data.ratingCount));
     }
 
     function isValidChapter(data, comicId) {
-      return data.keys().hasAll(['comicId', 'number', 'images', 'createdAt']) &&
+      let allowed = ['id', 'comicId', 'authorUid', 'title', 'number', 'uploadDate', 'images', 'thumbnail', 'views', 'createdAt', 'updatedAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.comicId == comicId &&
              data.number is number && data.number > 0 &&
-             data.images is list && data.images.size() > 0 &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || (data.id is string || data.id == null)) &&
-             (!('title' in data) || (data.title is string || data.title == null)) &&
-             (!('authorUid' in data) || (data.authorUid is string || data.authorUid == null)) &&
-             (!('views' in data) || (data.views is number || data.views == null)) &&
-             (!('uploadDate' in data) || (data.uploadDate is string || data.uploadDate == null));
+             isRecent(data.createdAt) &&
+             (!('title' in data) || (data.title is string && data.title.size() <= 100)) &&
+             (!('authorUid' in data) || data.authorUid == request.auth.uid) &&
+             (!('views' in data) || isPositive(data.views)) &&
+             (!('images' in data) || (data.images is list && data.images.size() <= 50)) &&
+             (!('thumbnail' in data) || isValidUrl(data.thumbnail));
+    }
+
+    function isValidChapterPage(data, chapterId, comicId) {
+      let allowed = ['id', 'chapterId', 'comicId', 'imageUrl', 'order'];
+      return hasOnlyAllowedFields(allowed) &&
+             data.chapterId == chapterId &&
+             data.comicId == comicId &&
+             isValidUrl(data.imageUrl) &&
+             data.order is number;
     }
 
     function isValidComment(data, comicId, chapterId) {
-      return data.keys().hasAll(['uid', 'userName', 'chapterId', 'comicId', 'content', 'createdAt']) &&
+      let allowed = ['id', 'uid', 'userName', 'userPhoto', 'userPioneerNumber', 'chapterId', 'comicId', 'content', 'createdAt', 'parentId', 'replyTo'];
+      return hasOnlyAllowedFields(allowed) &&
              data.uid == request.auth.uid &&
-             data.userName is string && data.userName.size() > 0 &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() <= 100 &&
              data.chapterId == chapterId && data.comicId == comicId &&
              data.content is string && data.content.size() > 0 && data.content.size() <= 1000 &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || (data.id is string || data.id == null)) &&
-             (!('userPhoto' in data) || (data.userPhoto is string || data.userPhoto == null)) &&
-             (!('userPioneerNumber' in data) || (data.userPioneerNumber is number || data.userPioneerNumber == null)) &&
-             (!('parentId' in data) || (data.parentId is string || data.parentId == null)) &&
-             (!('replyTo' in data) || (data.replyTo is string || data.replyTo == null));
+             isRecent(data.createdAt);
     }
 
     function isValidPostComment(data, postId) {
-      return data.keys().hasAll(['uid', 'userName', 'postId', 'content', 'createdAt']) &&
+      let allowed = ['id', 'uid', 'userName', 'userPhoto', 'userPioneerNumber', 'postId', 'content', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.uid == request.auth.uid &&
-             data.userName is string && data.userName.size() > 0 &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() <= 100 &&
              data.postId == postId &&
              data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || (data.id is string || data.id == null)) &&
-             (!('userPhoto' in data) || (data.userPhoto is string || data.userPhoto == null)) &&
-             (!('userPioneerNumber' in data) || (data.userPioneerNumber is number || data.userPioneerNumber == null));
+             isRecent(data.createdAt);
     }
 
     function isValidLike(data, comicId, chapterId) {
-      return data.keys().hasAll(['userId', 'chapterId', 'comicId', 'createdAt']) &&
+      let allowed = ['id', 'userId', 'chapterId', 'comicId', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.userId == request.auth.uid &&
              data.chapterId == chapterId && data.comicId == comicId &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || data.id is string);
+             isRecent(data.createdAt);
     }
 
     function isValidRating(data, comicId) {
-      return data.keys().hasAll(['userId', 'comicId', 'score', 'createdAt']) &&
+      let allowed = ['id', 'userId', 'comicId', 'score', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.userId == request.auth.uid &&
              data.comicId == comicId &&
              data.score is number && data.score >= 1 && data.score <= 5 &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || data.id is string);
+             isRecent(data.createdAt);
     }
 
     function isValidArticle(data) {
-      return data.keys().hasAll(['title', 'content', 'authorUid', 'createdAt']) &&
+      let allowed = ['id', 'title', 'content', 'authorUid', 'authorName', 'banner', 'views', 'createdAt', 'updatedAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
-             data.content is string && data.content.size() > 0 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 50000 &&
              data.authorUid == request.auth.uid &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || (data.id is string || data.id == null)) &&
-             (!('banner' in data) || (data.banner is string || data.banner == null)) &&
-             (!('authorName' in data) || (data.authorName is string || data.authorName == null)) &&
-             (!('views' in data) || (data.views is number || data.views == null));
+             isRecent(data.createdAt) &&
+             (!('banner' in data) || isValidUrl(data.banner)) &&
+             (!('views' in data) || isPositive(data.views));
     }
 
     function isValidFeatured(data) {
-      return data.keys().hasAll(['title', 'banner', 'type', 'createdAt']) &&
+      let allowed = ['id', 'title', 'banner', 'type', 'targetId', 'externalUrl', 'genre', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
-             data.banner is string &&
+             isValidUrl(data.banner) &&
              data.type in ['comic', 'article', 'external'] &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || data.id is string) &&
-             (!('targetId' in data) || data.targetId is string) &&
-             (!('externalUrl' in data) || data.externalUrl is string) &&
+             isRecent(data.createdAt) &&
+             (!('externalUrl' in data) || isValidUrl(data.externalUrl)) &&
              (!('genre' in data) || (data.genre is list && data.genre.size() <= 5));
     }
 
     function isValidPost(data) {
-      return data.keys().hasAll(['authorUid', 'content', 'type', 'createdAt']) &&
+      let allowed = ['id', 'authorUid', 'authorName', 'authorPhoto', 'authorPioneerNumber', 'content', 'imageUrl', 'type', 'likes', 'comments', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.authorUid == request.auth.uid &&
              data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
              data.type in ['twit', 'sketch', 'donate', 'commission'] &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || (data.id is string || data.id == null)) &&
-             (!('authorName' in data) || (data.authorName is string || data.authorName == null)) &&
-             (!('authorPhoto' in data) || (data.authorPhoto is string || data.authorPhoto == null)) &&
-             (!('authorPioneerNumber' in data) || (data.authorPioneerNumber is number || data.authorPioneerNumber == null)) &&
-             (!('imageUrl' in data) || (data.imageUrl is string || data.imageUrl == null)) &&
-             (!('likes' in data) || (data.likes is number && data.likes >= 0)) &&
-             (!('comments' in data) || (data.comments is number && data.comments >= 0));
+             isRecent(data.createdAt) &&
+             (!('imageUrl' in data) || isValidUrl(data.imageUrl)) &&
+             (!('likes' in data) || isPositive(data.likes)) &&
+             (!('comments' in data) || isPositive(data.comments));
     }
 
     function isValidDonation(data) {
-      return data.keys().hasAll(['artistUid', 'donorName', 'message', 'createdAt']) &&
+      let allowed = ['id', 'artistUid', 'donorUid', 'donorName', 'message', 'amount', 'createdAt'];
+      return isAuthenticated() &&
+             hasOnlyAllowedFields(allowed) &&
              data.artistUid is string &&
              data.donorName is string && data.donorName.size() > 0 && data.donorName.size() <= 100 &&
              data.message is string && data.message.size() > 0 && data.message.size() <= 1000 &&
-             data.createdAt is timestamp &&
-             (!('donorUid' in data) || (data.donorUid is string || data.donorUid == null)) &&
-             (!('amount' in data) || (data.amount is number || data.amount == null));
+             isRecent(data.createdAt) &&
+             (!('amount' in data) || isPositive(data.amount));
     }
 
     function isValidNotification(data, userId) {
-      return data.keys().hasAll(['recipientId', 'senderId', 'type', 'read', 'createdAt']) &&
+      let allowed = ['id', 'recipientId', 'senderId', 'senderName', 'senderPhoto', 'type', 'targetId', 'targetTitle', 'read', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.recipientId == userId &&
              data.senderId == request.auth.uid &&
              data.type in ['like', 'comment', 'follow', 'new_chapter', 'commission', 'donation'] &&
              data.read is bool &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || (data.id is string || data.id == null)) &&
-             (!('senderName' in data) || (data.senderName is string || data.senderName == null)) &&
-             (!('senderPhoto' in data) || (data.senderPhoto is string || data.senderPhoto == null)) &&
-             (!('targetId' in data) || (data.targetId is string || data.targetId == null)) &&
-             (!('targetTitle' in data) || (data.targetTitle is string || data.targetTitle == null));
+             isRecent(data.createdAt) &&
+             (!('senderName' in data) || (data.senderName is string && data.senderName.size() <= 100)) &&
+             (!('senderPhoto' in data) || isValidUrl(data.senderPhoto)) &&
+             (!('targetTitle' in data) || (data.targetTitle is string && data.targetTitle.size() <= 200));
     }
 
     function isValidCommissionWork(data, userId) {
-      return data.keys().hasAll(['artistUid', 'title', 'status', 'progress', 'updatedAt']) &&
+      let allowed = ['id', 'artistUid', 'title', 'clientName', 'status', 'progress', 'order', 'updatedAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.artistUid == userId &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
-             data.status is string && data.status.size() > 0 && data.status.size() <= 50 &&
+             data.status is string && data.status.size() > 0 && data.status.size() <= 100 &&
              data.progress is number && data.progress >= 0 && data.progress <= 100 &&
-             data.updatedAt is timestamp &&
-             (!('clientName' in data) || (data.clientName is string || data.clientName == null)) &&
-             (!('order' in data) || (data.order is number || data.order == null));
+             isRecent(data.updatedAt);
     }
 
     function isValidCommissionRequest(data) {
-      return data.keys().hasAll(['artistUid', 'guestUid', 'guestName', 'guestEmail', 'requestDetails', 'status', 'createdAt']) &&
+      let allowed = ['id', 'artistUid', 'guestUid', 'guestName', 'guestEmail', 'requestDetails', 'answers', 'status', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.artistUid is string &&
              data.guestUid == request.auth.uid &&
              data.guestName is string && data.guestName.size() > 0 && data.guestName.size() <= 100 &&
-             data.guestEmail is string && isValidEmail(data.guestEmail) &&
+             isValidEmail(data.guestEmail) &&
              data.requestDetails is string && data.requestDetails.size() > 0 && data.requestDetails.size() <= 5000 &&
              data.status in ['pending', 'accepted', 'rejected', 'completed'] &&
-             data.createdAt is timestamp &&
-             (!('id' in data) || data.id is string);
+             isRecent(data.createdAt);
     }
 
     function isValidHistory(data) {
-      return data.keys().hasAll(['lastRead', 'chapterId', 'chapterNumber']) &&
-             data.lastRead is timestamp &&
+      let allowed = ['lastRead', 'chapterId', 'chapterNumber'];
+      return hasOnlyAllowedFields(allowed) &&
+             isRecent(data.lastRead) &&
              data.chapterId is string &&
              data.chapterNumber is number;
     }
 
     function isValidConversation(data) {
-      return data.keys().hasAll(['participants', 'updatedAt']) &&
-             data.participants is list && data.participants.size() >= 2 &&
+      let allowed = ['id', 'participants', 'participantProfiles', 'lastMessage', 'lastMessageAt', 'unreadCount', 'updatedAt'];
+      return hasOnlyAllowedFields(allowed) &&
+             data.participants is list && data.participants.size() >= 2 && data.participants.size() <= 10 &&
              request.auth.uid in data.participants &&
-             data.updatedAt is timestamp;
+             isRecent(data.updatedAt);
     }
 
     function isValidMessage(data, conversationId) {
-      return data.keys().hasAll(['conversationId', 'senderId', 'content', 'createdAt']) &&
+      let allowed = ['id', 'conversationId', 'senderId', 'content', 'createdAt'];
+      return hasOnlyAllowedFields(allowed) &&
              data.conversationId == conversationId &&
              data.senderId == request.auth.uid &&
              data.content is string && data.content.size() > 0 && data.content.size() <= 5000 &&
-             data.createdAt is timestamp;
+             isRecent(data.createdAt);
     }
 
     // ===============================================================
@@ -407,7 +427,7 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId}/commissions/{id} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow create, update: if isOwner(userId) && isValidCommissionWork(request.resource.data, userId);
       allow delete: if isOwner(userId);
     }
@@ -415,7 +435,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == request.auth.uid && (request.resource.data.role != 'admin' || isAdmin());
-      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == request.auth.uid && request.resource.data.role == resource.data.role && !('banned' in request.resource.data)) || (isAdmin() && isValidUser(request.resource.data));
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == request.auth.uid && request.resource.data.get('role', 'user') == resource.data.get('role', 'user') && request.resource.data.get('banned', false) == resource.data.get('banned', false)) || (isAdmin() && isValidUser(request.resource.data));
 
       match /following/{id} {
         allow read: if isOwner(userId);
@@ -444,7 +464,7 @@ service cloud.firestore {
     match /profiles/{userId} {
       allow read: if true;
       allow create: if isOwner(userId) && isValidProfile(request.resource.data) && request.resource.data.uid == request.auth.uid;
-      allow update: if (isOwner(userId) && isValidProfile(request.resource.data) && request.resource.data.uid == request.auth.uid && !('role' in request.resource.data) && !('banned' in request.resource.data)) || (isAdmin() && isValidProfile(request.resource.data));
+      allow update: if (isOwner(userId) && isValidProfile(request.resource.data) && request.resource.data.uid == request.auth.uid && request.resource.data.get('role', 'user') == resource.data.get('role', 'user') && request.resource.data.get('banned', false) == resource.data.get('banned', false)) || (isAdmin() && isValidProfile(request.resource.data));
       allow delete: if isOwner(userId) || isAdmin();
 
       match /followers/{id} {
@@ -486,6 +506,16 @@ service cloud.firestore {
                         isValidChapter(request.resource.data, comicId);
         allow delete: if get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid || isAdmin();
 
+        match /pages/{pageId} {
+          allow read: if true;
+          allow create: if isAuthenticated() && 
+                          get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid &&
+                          isValidChapterPage(request.resource.data, chapterId, comicId);
+          allow update: if (get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid || isAdmin()) &&
+                          isValidChapterPage(request.resource.data, chapterId, comicId);
+          allow delete: if get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid || isAdmin();
+        }
+
         match /comments/{commentId} {
           allow read: if true;
           allow create: if isAuthenticated() && isValidComment(request.resource.data, comicId, chapterId);
@@ -499,7 +529,7 @@ service cloud.firestore {
         match /likes/{likeId} {
           allow read: if true;
           allow create: if isAuthenticated() && isValidLike(request.resource.data, comicId, chapterId) && likeId == request.auth.uid;
-          allow delete: if request.auth.uid == resource.data.userId || isAdmin();
+          allow delete: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
         }
       }
 
@@ -550,7 +580,7 @@ service cloud.firestore {
 
     match /donations/{donationId} {
       allow read: if true;
-      allow create: if isValidDonation(request.resource.data);
+      allow create: if isAuthenticated() && isValidDonation(request.resource.data);
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.artistUid || isAdmin());
     }
 

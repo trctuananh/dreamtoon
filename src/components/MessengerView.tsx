@@ -7,6 +7,7 @@ import {
   orderBy, 
   onSnapshot, 
   addDoc, 
+  setDoc,
   serverTimestamp, 
   doc, 
   updateDoc,
@@ -68,7 +69,18 @@ export function MessengerView({
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const convs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Conversation));
+      const convs: Conversation[] = [];
+      const seenIds = new Set();
+      
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const id = data.id || doc.id; // Prefer data.id if it exists (deterministic)
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          convs.push({ id, ...data } as Conversation);
+        }
+      });
+      
       setConversations(convs);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'conversations');
@@ -86,7 +98,8 @@ export function MessengerView({
 
     const q = query(
       collection(db, 'conversations', selectedConversation.id, 'messages'),
-      orderBy('createdAt', 'asc')
+      orderBy('createdAt', 'asc'),
+      limit(100)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -151,9 +164,12 @@ export function MessengerView({
         updatedAt: serverTimestamp()
       };
 
-      await addDoc(collection(db, 'conversations'), convData);
+      await setDoc(doc(db, 'conversations', convId), convData);
       setSearchQuery('');
       setSearchResults([]);
+      
+      // Select it immediately
+      setSelectedConversation({ id: convId, ...convData } as Conversation);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'conversations');
     }

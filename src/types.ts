@@ -5,11 +5,19 @@ export interface Chapter {
   number: number;
   title: string;
   thumbnail?: string;
-  images: string[];
+  images?: string[]; // Made optional, will be in subcollection for large chapters
   genre?: string;
   uploadDate: string;
   views?: number;
   createdAt?: any;
+}
+
+export interface ChapterPage {
+  id: string;
+  chapterId: string;
+  comicId: string;
+  imageUrl: string;
+  order: number;
 }
 
 export interface Comic {
@@ -53,7 +61,7 @@ export interface Message {
   createdAt: any;
 }
 
-export interface Notification {
+export interface AppNotification {
   id: string;
   recipientId: string;
   senderId: string;
@@ -62,6 +70,7 @@ export interface Notification {
   type: 'like' | 'comment' | 'follow' | 'new_chapter' | 'commission';
   targetId: string;
   targetTitle?: string;
+  content?: string;
   read: boolean;
   createdAt: any;
 }

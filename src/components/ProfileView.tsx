@@ -84,10 +84,12 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
       }
 
       const updateData = { 
+        uid: user.uid,
         bio, 
         displayName, 
         handle: handle.toLowerCase(),
-        photoURL
+        photoURL,
+        updatedAt: new Date()
       };
 
       await setDoc(doc(db, 'users', user.uid), updateData, { merge: true });

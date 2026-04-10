@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Image as ImageIcon, Trash2, Heart, ArrowLeft, PenTool, X, Save, DollarSign, Briefcase, Upload, Camera, Share2, Copy, Check, MessageCircle, Plus, Layout } from 'lucide-react';
-import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, serverTimestamp, updateDoc, increment, arrayUnion, arrayRemove, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, serverTimestamp, updateDoc, increment, arrayUnion, arrayRemove, setDoc, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { View, Post, UserProfile, Donation, CommissionWork, PostComment } from '../types';
+import { View, Post, UserProfile, Donation, CommissionWork, PostComment, CommissionRequest } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
@@ -47,7 +47,8 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
     const q = query(
       collection(db, 'posts'),
       where('authorUid', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -68,7 +69,8 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
     const q = query(
       collection(db, 'donations'),
       where('artistUid', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(20)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {

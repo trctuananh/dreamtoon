@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   collection, 
   query, 
@@ -41,7 +41,7 @@ import {
 } from './firebase';
 
 // Types
-import { Comic, Chapter, Article, FeaturedItem, UserProfile, Like, Comment, View, Following, ReadingHistory } from './types';
+import { Comic, Chapter, Article, FeaturedItem, UserProfile, Like, Comment, View, Following, ReadingHistory, AppNotification } from './types';
 
 // Components
 import { Navbar } from './components/Navbar';
@@ -222,10 +222,26 @@ export default function App() {
           const userData = snapshot.data() as UserProfile;
           setProfile(userData);
 
-          // Sync public profile
+          // Sync public profile only if necessary
           try {
             const { email, ...publicProfile } = userData;
-            await setDoc(doc(db, 'profiles', user.uid), publicProfile, { merge: true });
+            const profileRef = doc(db, 'profiles', user.uid);
+            const profileSnap = await getDoc(profileRef);
+            
+            let needsSync = true;
+            if (profileSnap.exists()) {
+              const currentProfile = profileSnap.data();
+              // Simple check to avoid redundant writes
+              if (currentProfile.displayName === publicProfile.displayName && 
+                  currentProfile.photoURL === publicProfile.photoURL &&
+                  currentProfile.role === publicProfile.role) {
+                needsSync = false;
+              }
+            }
+
+            if (needsSync) {
+              await setDoc(profileRef, publicProfile, { merge: true });
+            }
           } catch (e) {
             console.error("Error syncing public profile:", e);
           }
@@ -255,7 +271,7 @@ export default function App() {
 
   // Comics Listener
   useEffect(() => {
-    const q = query(collection(db, 'comics'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'comics'), orderBy('createdAt', 'desc'), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setComics(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic)));
     });
@@ -264,7 +280,7 @@ export default function App() {
 
   // Articles Listener
   useEffect(() => {
-    const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'), limit(20));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setArticles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article)));
     });
@@ -273,7 +289,7 @@ export default function App() {
 
   // Featured Listener
   useEffect(() => {
-    const q = query(collection(db, 'featured'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'featured'), orderBy('createdAt', 'desc'), limit(10));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setFeaturedItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeaturedItem)));
     });
@@ -296,7 +312,8 @@ export default function App() {
     if (selectedComic && selectedChapter) {
       const q = query(
         collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'comments'),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(50)
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment)));
@@ -308,12 +325,13 @@ export default function App() {
   // Likes Listener
   useEffect(() => {
     if (selectedComic && selectedChapter) {
-      const unsubscribe = onSnapshot(
+      const q = query(
         collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'likes'),
-        (snapshot) => {
-          setLikes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Like)));
-        }
+        limit(100)
       );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setLikes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Like)));
+      });
       return () => unsubscribe();
     }
   }, [selectedComic, selectedChapter]);
@@ -321,7 +339,8 @@ export default function App() {
   // Following Listener
   useEffect(() => {
     if (user) {
-      const unsubscribe = onSnapshot(collection(db, 'users', user.uid, 'following'), (snapshot) => {
+      const q = query(collection(db, 'users', user.uid, 'following'), limit(100));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
         setFollowing(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Following)));
       });
       return () => unsubscribe();
@@ -329,9 +348,17 @@ export default function App() {
   }, [user]);
 
   // Following Feed Listener
+  const followingIds = useMemo(() => {
+    return following
+      .filter(f => f.type === 'comic')
+      .map(f => f.id.replace('comic_', ''))
+      .sort()
+      .join(',');
+  }, [following]);
+
   useEffect(() => {
-    if (user && following.length > 0) {
-      const comicIds = following.filter(f => f.type === 'comic').map(f => f.id.replace('comic_', ''));
+    if (user && followingIds) {
+      const comicIds = followingIds.split(',').filter(id => id !== '');
       if (comicIds.length === 0) {
         setFollowingFeed([]);
         return;
@@ -350,15 +377,18 @@ export default function App() {
         setFollowingFeed(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Chapter)));
       });
       return () => unsubscribe();
+    } else if (user && !followingIds) {
+      setFollowingFeed([]);
     }
-  }, [user, following]);
+  }, [user, followingIds]);
 
   // Notifications Listener
   useEffect(() => {
     if (user) {
       const q = query(
         collection(db, 'users', user.uid, 'notifications'),
-        where('read', '==', false)
+        where('read', '==', false),
+        limit(50)
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setUnreadNotificationsCount(snapshot.size);
@@ -378,7 +408,7 @@ export default function App() {
 
   // Artists Listener
   useEffect(() => {
-    const q = query(collection(db, 'profiles'), where('role', '==', 'artist'));
+    const q = query(collection(db, 'profiles'), where('role', '==', 'artist'), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setArtists(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
     });
@@ -488,10 +518,13 @@ export default function App() {
   // History Listener
   useEffect(() => {
     if (user) {
-      const unsubscribe = onSnapshot(collection(db, 'users', user.uid, 'history'), (snapshot) => {
-        const historyData = snapshot.docs
-          .sort((a, b) => (b.data().lastRead?.seconds || 0) - (a.data().lastRead?.seconds || 0))
-          .map(doc => ({ comicId: doc.id, ...doc.data() } as ReadingHistory));
+      const q = query(
+        collection(db, 'users', user.uid, 'history'),
+        orderBy('lastRead', 'desc'),
+        limit(20)
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const historyData = snapshot.docs.map(doc => ({ comicId: doc.id, ...doc.data() } as ReadingHistory));
         setHistory(historyData);
       });
       return () => unsubscribe();
@@ -635,6 +668,36 @@ export default function App() {
     setView('messenger');
     window.scrollTo(0, 0);
     window.history.pushState(null, '', '/messenger');
+  };
+
+  const handleNotificationClick = (notification: AppNotification) => {
+    if (notification.type === 'commission') {
+      // No longer redirecting to my-wall, details are in the notification itself
+      return;
+    } else if (notification.type as string === 'commission_message') {
+      setChatTarget({
+        uid: notification.senderId,
+        displayName: notification.senderName,
+        photoURL: notification.senderPhoto,
+        email: ''
+      } as UserProfile);
+      setView('messenger');
+      window.scrollTo(0, 0);
+      window.history.pushState(null, '', '/messenger');
+    } else if (notification.type === 'follow') {
+      handleArtistClick(notification.senderId);
+    } else if (notification.type === 'like' || notification.type === 'comment' || notification.type === 'new_chapter') {
+      // Find comic by targetId (which could be comicId or chapterId)
+      let comic = comics.find(c => c.id === notification.targetId);
+      
+      if (comic) {
+        handleComicClick(comic);
+      } else {
+        // Try finding by targetTitle or just go to home if not found
+        // In a real app, we might want to fetch the comic by ID here
+        setView('home');
+      }
+    }
   };
 
   const handleRate = async (score: number) => {
@@ -1038,6 +1101,7 @@ export default function App() {
                 user={user}
                 lang={lang}
                 onBack={handleBack}
+                onNotificationClick={handleNotificationClick}
               />
             )}
 
