@@ -284,15 +284,6 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                       {t('editProfile')}
                     </button>
                   )}
-                  {isGuest && user && (
-                    <button
-                      onClick={() => onMessageClick(profile)}
-                      className="mt-4 flex items-center gap-2 px-6 py-2.5 bg-blue-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 mx-auto"
-                    >
-                      <MessageCircle size={14} />
-                      {t('messenger')}
-                    </button>
-                  )}
                 </div>
               )}
               
@@ -437,9 +428,9 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                           e.stopPropagation();
                           onToggleFollow(f.targetId, 'comic');
                         }}
-                        className="px-4 py-2 bg-zinc-900 text-white rounded-xl text-xs font-bold hover:bg-zinc-800 transition-colors"
+                        className="px-4 py-2 bg-pink-500 text-white rounded-xl text-xs font-bold hover:bg-pink-600 transition-colors"
                       >
-                        {t('unfollow')}
+                        {t('following')}
                       </button>
                     </div>
                   );

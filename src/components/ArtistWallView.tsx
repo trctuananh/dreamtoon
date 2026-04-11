@@ -7,7 +7,7 @@ import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick, onToggleFollow, onMessageClick }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onMessageClick: (target: UserProfile) => void }) {
+export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick, onToggleFollow, onMessageClick, onLogin }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onMessageClick: (target: UserProfile) => void, onLogin: () => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   
@@ -886,11 +886,17 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                     )}
                     {activeInfoModal === 'commission' && (
                       <button 
-                        onClick={() => setShowCommissionForm(true)}
+                        onClick={() => {
+                          if (!user) {
+                            onLogin();
+                            return;
+                          }
+                          setShowCommissionForm(true);
+                        }}
                         className="w-full py-3 sm:py-4 bg-zinc-900 text-white rounded-full font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 flex items-center justify-center gap-2"
                       >
                         <Send size={18} />
-                        {t('startNow')}
+                        {user ? t('startNow') : t('loginToSendRequest' as any) || 'Log in to send request'}
                       </button>
                     )}
 

@@ -27,7 +27,7 @@ import {
   User as FirebaseUser 
 } from 'firebase/auth';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronUp } from 'lucide-react';
+import { ChevronUp, X } from 'lucide-react';
 
 // Firebase
 import { 
@@ -223,26 +223,33 @@ export default function App() {
           const userData = snapshot.data() as UserProfile;
           setProfile(userData);
 
-          // Sync public profile only if necessary
+          // Sync public profile
           try {
-            const { email, ...publicProfile } = userData;
-            const profileRef = doc(db, 'profiles', user.uid);
-            const profileSnap = await getDoc(profileRef);
+            const publicProfile: any = {
+              uid: userData.uid,
+              displayName: userData.displayName || 'Anonymous',
+              handle: userData.handle || '',
+              photoURL: userData.photoURL || '',
+              bio: userData.bio || '',
+              pioneerNumber: userData.pioneerNumber || null,
+              role: userData.role || 'user',
+              banned: userData.banned || false,
+              donateInfo: userData.donateInfo || null,
+              commissionInfo: userData.commissionInfo || null,
+              email: userData.email || '',
+              updatedAt: serverTimestamp()
+            };
             
-            let needsSync = true;
-            if (profileSnap.exists()) {
-              const currentProfile = profileSnap.data();
-              // Simple check to avoid redundant writes
-              if (currentProfile.displayName === publicProfile.displayName && 
-                  currentProfile.photoURL === publicProfile.photoURL &&
-                  currentProfile.role === publicProfile.role) {
-                needsSync = false;
-              }
+            // Only include createdAt if it exists to avoid 'undefined' error
+            if (userData.createdAt) {
+              publicProfile.createdAt = userData.createdAt;
+            } else {
+              // Fallback to server timestamp if missing, though it should exist
+              publicProfile.createdAt = serverTimestamp();
             }
 
-            if (needsSync) {
-              await setDoc(profileRef, publicProfile, { merge: true });
-            }
+            const profileRef = doc(db, 'profiles', user.uid);
+            await setDoc(profileRef, publicProfile, { merge: true });
           } catch (e) {
             console.error("Error syncing public profile:", e);
           }
@@ -259,8 +266,7 @@ export default function App() {
           try {
             await setDoc(doc(db, 'users', user.uid), initialProfile);
             // Also create public profile
-            const { email, ...publicProfile } = initialProfile;
-            await setDoc(doc(db, 'profiles', user.uid), publicProfile);
+            await setDoc(doc(db, 'profiles', user.uid), initialProfile);
           } catch (error) {
             console.error("Error creating initial profile:", error);
           }
@@ -626,7 +632,7 @@ export default function App() {
         }
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `following/${followId}`);
+      handleFirestoreError(error, OperationType.WRITE, `follows/${followId}`);
     }
   };
 
@@ -1170,6 +1176,7 @@ export default function App() {
                 onProfileClick={handlePublicProfileClick}
                 onToggleFollow={handleToggleFollow}
                 onMessageClick={handleMessageClick}
+                onLogin={() => setIsLoginModalOpen(true)}
               />
             )}
 

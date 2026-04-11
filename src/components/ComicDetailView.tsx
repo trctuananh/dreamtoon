@@ -150,12 +150,12 @@ export function ComicDetailView({
                   onClick={() => onToggleFollow(comic.id, 'comic', comic.authorUid)}
                   className={`w-full py-2 sm:py-3 rounded-full font-bold text-xs sm:text-sm transition-all shadow-xl flex items-center justify-center gap-2 ${
                     isFollowingComic 
-                      ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200' 
+                      ? 'bg-pink-500 text-white hover:bg-pink-600 shadow-pink-500/20' 
                       : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
                   }`}
                 >
-                  <Heart size={16} className={isFollowingComic ? 'fill-zinc-600' : ''} />
-                  {isFollowingComic ? t('unfollow') : t('follow')}
+                  <Heart size={16} className={isFollowingComic ? 'fill-white' : ''} />
+                  {isFollowingComic ? t('following') : t('favorite')}
                 </button>
                 <button 
                   onClick={() => {

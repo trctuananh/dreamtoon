@@ -12,23 +12,15 @@ async function startServer() {
   app.post("/api/notify-artist", (req, res) => {
     const { artistEmail, guestEmail, guestName, details, type } = req.body;
     
-    console.log("------------------------------------------");
-    console.log(`SERVER: Sending ${type} email notification...`);
-    console.log(`To: ${artistEmail}`);
-    console.log(`From: ${guestEmail} (${guestName})`);
-    console.log(`Details: ${details}`);
-    console.log("------------------------------------------");
-
-    // In a real production app, you would use nodemailer or a service like SendGrid here:
-    /*
-    const transporter = nodemailer.createTransport({...});
-    await transporter.sendMail({
-      from: '"DreamToon" <noreply@dreamtoon.vn>',
-      to: artistEmail,
-      subject: `New ${type} request from ${guestName}`,
-      text: details
-    });
-    */
+    console.log("\n📧 [SIMULATED EMAIL SYSTEM]");
+    console.log(`To: ${artistEmail || 'UNKNOWN ARTIST'}`);
+    console.log(`Subject: New ${type} request from ${guestName}`);
+    console.log(`Body:`);
+    console.log(`  Hello, you have a new ${type} request!`);
+    console.log(`  From: ${guestName} (${guestEmail})`);
+    console.log(`  Details: ${details}`);
+    console.log(`  Please check your DreamToon dashboard to manage this request.`);
+    console.log("------------------------------------------\n");
 
     res.json({ success: true, message: "Notification sent to server" });
   });

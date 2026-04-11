@@ -31,6 +31,8 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
   const infoFileInputRef = useRef<HTMLInputElement>(null);
   const workFileInputRef = useRef<HTMLInputElement>(null);
   const [viewingWorkImage, setViewingWorkImage] = useState<string | null>(null);
+  const [commissionRequests, setCommissionRequests] = useState<CommissionRequest[]>([]);
+  const [commissionTab, setCommissionTab] = useState<'info' | 'requests'>('info');
 
   // Share State
   const [showShareModal, setShowShareModal] = useState(false);
@@ -101,6 +103,27 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
       setCommissionWorks(newWorks);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/commissions`);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, 'commissions'),
+      where('artistUid', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const requests = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CommissionRequest[];
+      setCommissionRequests(requests);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'commissions');
     });
 
     return () => unsubscribe();
@@ -881,17 +904,104 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
               className="bg-white w-full max-w-lg rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
               <div className={`p-2 sm:p-3 flex items-center justify-between text-white flex-shrink-0 ${activeInfoModal === 'donate' ? 'bg-green-500' : 'bg-orange-500'}`}>
-                <h3 className="text-sm sm:text-base font-black uppercase tracking-widest flex items-center gap-2">
-                  {activeInfoModal === 'donate' ? <DollarSign size={16} /> : <Briefcase size={16} />}
-                  {t(activeInfoModal as any)}
-                </h3>
+                <div className="flex items-center gap-4">
+                  <h3 className="text-sm sm:text-base font-black uppercase tracking-widest flex items-center gap-2">
+                    {activeInfoModal === 'donate' ? <DollarSign size={16} /> : <Briefcase size={16} />}
+                    {t(activeInfoModal as any)}
+                  </h3>
+                  {activeInfoModal === 'commission' && (
+                    <div className="flex bg-white/20 rounded-xl p-1">
+                      <button 
+                        onClick={() => setCommissionTab('info')}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${commissionTab === 'info' ? 'bg-white text-orange-500 shadow-sm' : 'text-white hover:bg-white/10'}`}
+                      >
+                        {t('info')}
+                      </button>
+                      <button 
+                        onClick={() => setCommissionTab('requests')}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all relative ${commissionTab === 'requests' ? 'bg-white text-orange-500 shadow-sm' : 'text-white hover:bg-white/10'}`}
+                      >
+                        {t('requests')}
+                        {commissionRequests.filter(r => r.status === 'pending').length > 0 && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <button onClick={() => setActiveInfoModal(null)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
                   <X size={16} />
                 </button>
               </div>
 
               <div className="p-2 sm:p-3 overflow-y-auto no-scrollbar sm:scrollbar-thin scrollbar-thumb-zinc-200">
-                {isEditingInfo ? (
+                {activeInfoModal === 'commission' && commissionTab === 'requests' ? (
+                  <div className="space-y-4">
+                    {commissionRequests.length > 0 ? (
+                      <div className="space-y-3">
+                        {commissionRequests.map((req) => (
+                          <div key={req.id} className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 relative group">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h4 className="text-xs font-black text-zinc-900">{req.guestName}</h4>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{req.guestEmail}</p>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                                req.status === 'pending' ? 'bg-orange-100 text-orange-600' :
+                                req.status === 'accepted' ? 'bg-green-100 text-green-600' :
+                                req.status === 'rejected' ? 'bg-red-100 text-red-600' :
+                                'bg-zinc-100 text-zinc-600'
+                              }`}>
+                                {req.status}
+                              </span>
+                            </div>
+                            <p className="text-xs text-zinc-600 leading-relaxed mb-4 italic">"{req.requestDetails}"</p>
+                            <div className="flex gap-2">
+                              {req.status === 'pending' && (
+                                <>
+                                  <button 
+                                    onClick={async () => {
+                                      await updateDoc(doc(db, 'commissions', req.id), { status: 'accepted' });
+                                    }}
+                                    className="flex-1 py-2 bg-green-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
+                                  >
+                                    {t('accept')}
+                                  </button>
+                                  <button 
+                                    onClick={async () => {
+                                      await updateDoc(doc(db, 'commissions', req.id), { status: 'rejected' });
+                                    }}
+                                    className="flex-1 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                                  >
+                                    {t('reject')}
+                                  </button>
+                                </>
+                              )}
+                              <button 
+                                onClick={() => {
+                                  // Open messenger with guest
+                                  // This would require fetching the guest's profile
+                                  alert('Messenger feature coming soon for guests');
+                                }}
+                                className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all"
+                              >
+                                <MessageCircle size={16} />
+                              </button>
+                            </div>
+                            <p className="mt-3 text-[8px] font-black text-zinc-300 uppercase text-right">
+                              {req.createdAt?.toDate ? req.createdAt.toDate().toLocaleString() : '...'}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
+                        <Briefcase size={32} className="mx-auto text-zinc-300 mb-2" />
+                        <p className="text-zinc-500 text-xs font-black uppercase tracking-widest">{t('noRequests')}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : isEditingInfo ? (
                   <div className="space-y-4">
                     <div>
                       <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">{t('infoText')}</label>

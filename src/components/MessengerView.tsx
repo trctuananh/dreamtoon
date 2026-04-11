@@ -192,7 +192,7 @@ export function MessengerView({
         participants: [user.uid, otherUser.uid],
         participantProfiles: {
           [user.uid]: { displayName: profile?.displayName || 'User', photoURL: profile?.photoURL || '' },
-          [otherUser.uid]: { displayName: otherUser.displayName, photoURL: otherUser.photoURL }
+          [otherUser.uid]: { displayName: otherUser.displayName || 'User', photoURL: otherUser.photoURL || '' }
         },
         unreadCount: {
           [user.uid]: 0,
@@ -222,13 +222,16 @@ export function MessengerView({
     setSelectedImage(null);
 
     try {
-      const messageData: Partial<Message> = {
+      const messageData: any = {
         conversationId: selectedConversation.id,
         senderId: user.uid,
         content: content || (imageUrl ? 'Sent a photo' : ''),
-        imageUrl: imageUrl || undefined,
         createdAt: serverTimestamp()
       };
+
+      if (imageUrl) {
+        messageData.imageUrl = imageUrl;
+      }
 
       await addDoc(collection(db, 'conversations', selectedConversation.id, 'messages'), messageData);
       

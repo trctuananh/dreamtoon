@@ -99,6 +99,7 @@ export async function createNotification({
   if (senderId === recipientId) return;
 
   try {
+    console.log(`Creating notification for ${recipientId}: ${type} from ${senderName}`);
     await addDoc(collection(db, 'users', recipientId, 'notifications'), {
       recipientId,
       senderId,

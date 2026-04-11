@@ -62,9 +62,14 @@ export function HomeView({
     const artistViews: { [uid: string]: number } = {};
     
     comics.forEach(comic => {
-      const updatedAt = comic.updatedAt?.toDate ? comic.updatedAt.toDate() : new Date(comic.updatedAt);
-      if (updatedAt.getTime() > oneWeekAgo && comic.authorUid) {
-        artistViews[comic.authorUid] = (artistViews[comic.authorUid] || 0) + (comic.views || 0);
+      if (!comic.updatedAt) return;
+      try {
+        const updatedAt = comic.updatedAt?.toDate ? comic.updatedAt.toDate() : new Date(comic.updatedAt);
+        if (updatedAt && !isNaN(updatedAt.getTime()) && updatedAt.getTime() > oneWeekAgo && comic.authorUid) {
+          artistViews[comic.authorUid] = (artistViews[comic.authorUid] || 0) + (comic.views || 0);
+        }
+      } catch (e) {
+        console.warn("Error parsing date for comic:", comic.id, e);
       }
     });
 

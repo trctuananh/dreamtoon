@@ -90,11 +90,13 @@ export function NotificationsView({
     }
   };
 
-  const getIcon = (type: AppNotification['type']) => {
-    switch (type) {
+  const getIcon = (notification: AppNotification) => {
+    switch (notification.type) {
       case 'like': return <Heart size={16} className="text-red-500 fill-red-500" />;
       case 'comment': return <MessageCircle size={16} className="text-blue-500 fill-blue-500" />;
-      case 'follow': return <UserPlus size={16} className="text-green-500" />;
+      case 'follow': 
+        if (notification.targetTitle) return <Heart size={16} className="text-pink-500 fill-pink-500" />;
+        return <UserPlus size={16} className="text-green-500" />;
       case 'new_chapter': return <BookOpen size={16} className="text-purple-500" />;
       case 'commission': return <Briefcase size={16} className="text-orange-500" />;
       default: return <Bell size={16} className="text-zinc-400" />;
@@ -105,7 +107,7 @@ export function NotificationsView({
     switch (notification.type) {
       case 'like': return `${t('likedYourPost')} ${notification.targetTitle ? `"${notification.targetTitle}"` : ''}`;
       case 'comment': return `${t('commentedOnYourPost')} ${notification.targetTitle ? `"${notification.targetTitle}"` : ''}`;
-      case 'follow': return t('startedFollowingYou');
+      case 'follow': return notification.targetTitle ? `${t('favoritedYourComic')} "${notification.targetTitle}"` : t('startedFollowingYou');
       case 'new_chapter': return `${t('publishedNewChapter')} ${notification.targetTitle ? `"${notification.targetTitle}"` : ''}`;
       case 'commission': return `${t('newCommissionRequest')} ${notification.targetTitle ? `: ${notification.targetTitle}` : ''}`;
       default: return `sent you a notification`;
@@ -158,7 +160,7 @@ export function NotificationsView({
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-zinc-50">
-                    {getIcon(notification.type)}
+                    {getIcon(notification)}
                   </div>
                 </div>
 
