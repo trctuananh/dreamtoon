@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Image as ImageIcon, Trash2, Heart, ArrowLeft, PenTool, X, Save, DollarSign, Briefcase, Upload, Camera, Share2, Copy, Check, MessageCircle, Plus, Layout } from 'lucide-react';
-import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, serverTimestamp, updateDoc, increment, arrayUnion, arrayRemove, setDoc, limit } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, serverTimestamp, updateDoc, increment, arrayUnion, arrayRemove, setDoc, limit, getDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { View, Post, UserProfile, Donation, CommissionWork, PostComment, CommissionRequest } from '../types';
 import { Language } from '../translations';
@@ -8,7 +8,21 @@ import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, compressImage } from '../lib/utils';
 
-export function MyWallView({ user, profile, lang, onBack, setView }: { user: any, profile: UserProfile | null, lang: Language, onBack: () => void, setView: (v: View) => void }) {
+export function MyWallView({ 
+  user, 
+  profile, 
+  lang, 
+  onBack, 
+  setView,
+  onMessageClick
+}: { 
+  user: any, 
+  profile: UserProfile | null, 
+  lang: Language, 
+  onBack: () => void, 
+  setView: (v: View) => void,
+  onMessageClick?: (target: UserProfile) => void
+}) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   const [content, setContent] = useState('');
@@ -32,6 +46,19 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
   const workFileInputRef = useRef<HTMLInputElement>(null);
   const [viewingWorkImage, setViewingWorkImage] = useState<string | null>(null);
   const [commissionRequests, setCommissionRequests] = useState<CommissionRequest[]>([]);
+  const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
   const [commissionTab, setCommissionTab] = useState<'info' | 'requests'>('info');
 
   // Share State
@@ -248,20 +275,68 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
   };
 
   const handleDelete = async (postId: string) => {
-    if (!window.confirm(t('confirmDelete'))) return;
-    try {
-      await deleteDoc(doc(db, 'posts', postId));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `posts/${postId}`);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: t('delete'),
+      message: t('confirmDelete'),
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'posts', postId));
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `posts/${postId}`);
+        }
+      }
+    });
   };
 
   const handleDeleteDonation = async (donationId: string) => {
-    if (!window.confirm(t('confirmDeleteMessage'))) return;
+    setConfirmModal({
+      isOpen: true,
+      title: t('delete'),
+      message: t('confirmDeleteMessage'),
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'donations', donationId));
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `donations/${donationId}`);
+        }
+      }
+    });
+  };
+
+  const handleDeleteCommissionRequest = async (requestId: string) => {
+    if (!requestId) return;
+    setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, 'donations', donationId));
+      await deleteDoc(doc(db, 'commissions', requestId));
+      setRequestToDelete(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `donations/${donationId}`);
+      handleFirestoreError(error, OperationType.DELETE, `commissions/${requestId}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleOpenChat = async (guestUid: string, guestName: string) => {
+    if (!onMessageClick) return;
+    
+    try {
+      const guestDoc = await getDoc(doc(db, 'profiles', guestUid));
+      if (guestDoc.exists()) {
+        onMessageClick(guestDoc.data() as UserProfile);
+      } else {
+        // Fallback if profile doesn't exist yet
+        onMessageClick({
+          uid: guestUid,
+          displayName: guestName,
+          photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${guestUid}`,
+          email: ''
+        } as UserProfile);
+      }
+    } catch (error) {
+      console.error("Error opening chat:", error);
     }
   };
 
@@ -294,12 +369,20 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
   };
 
   const handleDeleteWork = async (workId: string) => {
-    if (!user || !window.confirm(t('confirmDeleteWork'))) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'commissions', workId));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/commissions/${workId}`);
-    }
+    if (!user) return;
+    setConfirmModal({
+      isOpen: true,
+      title: t('deleteWork'),
+      message: t('confirmDeleteWork'),
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'users', user.uid, 'commissions', workId));
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/commissions/${workId}`);
+        }
+      }
+    });
   };
 
   const handleLike = async (post: Post) => {
@@ -357,15 +440,22 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
   };
 
   const handleDeleteComment = async (postId: string, commentId: string) => {
-    if (!window.confirm(t('confirmDeleteComment'))) return;
-    try {
-      await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
-      await updateDoc(doc(db, 'posts', postId), {
-        comments: increment(-1)
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `posts/${postId}/comments/${commentId}`);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: t('delete'),
+      message: t('confirmDeleteComment'),
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+          await updateDoc(doc(db, 'posts', postId), {
+            comments: increment(-1)
+          });
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `posts/${postId}/comments/${commentId}`);
+        }
+      }
+    });
   };
 
   const shareUrl = `https://dreamtoon.vn/${profile?.handle || user.uid}`;
@@ -956,7 +1046,7 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                               </span>
                             </div>
                             <p className="text-xs text-zinc-600 leading-relaxed mb-4 italic">"{req.requestDetails}"</p>
-                            <div className="flex gap-2">
+                             <div className="flex gap-2">
                               {req.status === 'pending' && (
                                 <>
                                   <button 
@@ -978,14 +1068,18 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                                 </>
                               )}
                               <button 
-                                onClick={() => {
-                                  // Open messenger with guest
-                                  // This would require fetching the guest's profile
-                                  alert('Messenger feature coming soon for guests');
-                                }}
+                                onClick={() => handleOpenChat(req.guestUid, req.guestName)}
                                 className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all"
+                                title={t('message')}
                               >
                                 <MessageCircle size={16} />
+                              </button>
+                              <button 
+                                onClick={() => setRequestToDelete(req.id)}
+                                className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all"
+                                title={t('delete')}
+                              >
+                                <Trash2 size={16} />
                               </button>
                             </div>
                             <p className="mt-3 text-[8px] font-black text-zinc-300 uppercase text-right">
@@ -1207,6 +1301,72 @@ export function MyWallView({ user, profile, lang, onBack, setView }: { user: any
                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">TG</span>
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Commission Request Confirmation Modal */}
+      <AnimatePresence>
+        {requestToDelete && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl p-6"
+            >
+              <h3 className="text-xl font-black text-zinc-900 mb-2 uppercase tracking-tight">{t('delete') || 'Delete'}?</h3>
+              <p className="text-sm text-zinc-500 mb-6">{t('confirmDeleteRequest') || 'Are you sure you want to delete this commission request?'}</p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setRequestToDelete(null)}
+                  disabled={isDeleting}
+                  className="flex-1 py-3 bg-zinc-100 text-zinc-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all disabled:opacity-50"
+                >
+                  {t('cancel')}
+                </button>
+                <button 
+                  onClick={() => handleDeleteCommissionRequest(requestToDelete)}
+                  disabled={isDeleting}
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+                >
+                  {isDeleting ? t('uploading') : t('delete')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Generic Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl p-6"
+            >
+              <h3 className="text-xl font-black text-zinc-900 mb-2 uppercase tracking-tight">{confirmModal.title}</h3>
+              <p className="text-sm text-zinc-500 mb-6">{confirmModal.message}</p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1 py-3 bg-zinc-100 text-zinc-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                >
+                  {t('cancel')}
+                </button>
+                <button 
+                  onClick={confirmModal.onConfirm}
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                >
+                  {t('delete')}
+                </button>
               </div>
             </motion.div>
           </div>

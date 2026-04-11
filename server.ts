@@ -22,8 +22,13 @@ async function startServer() {
 
     if (resend) {
       try {
+        // IMPORTANT: If you haven't verified your domain in Resend, 
+        // you MUST use 'onboarding@resend.dev' as the from address.
+        // Also, you can only send to your own email address until verified.
+        const fromAddress = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+        
         const { data, error } = await resend.emails.send({
-          from: 'DreamToon <notifications@dreamtoon.vn>',
+          from: `DreamToon <${fromAddress}>`,
           to: [artistEmail],
           subject: `New ${type} request from ${guestName}`,
           html: `

@@ -22,6 +22,7 @@ export function NotificationsView({
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCommission, setSelectedCommission] = useState<AppNotification | null>(null);
+  const [notificationToDelete, setNotificationToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -203,7 +204,7 @@ export function NotificationsView({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteNotification(notification.id);
+                    setNotificationToDelete(notification.id);
                   }}
                   className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                 >
@@ -226,6 +227,41 @@ export function NotificationsView({
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {notificationToDelete && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl p-6"
+            >
+              <h3 className="text-xl font-black text-zinc-900 mb-2 uppercase tracking-tight">Delete Notification?</h3>
+              <p className="text-sm text-zinc-500 mb-6">Are you sure you want to remove this notification? This action cannot be undone.</p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setNotificationToDelete(null)}
+                  className="flex-1 py-3 bg-zinc-100 text-zinc-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                >
+                  {t('cancel')}
+                </button>
+                <button 
+                  onClick={() => {
+                    deleteNotification(notificationToDelete);
+                    setNotificationToDelete(null);
+                  }}
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                >
+                  {t('delete' as any) || 'Delete'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Commission Detail Modal */}
       <AnimatePresence>

@@ -33,6 +33,17 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   const [copied, setCopied] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [viewingWorkImage, setViewingWorkImage] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   // Comment State
   const [activePostId, setActivePostId] = useState<string | null>(null);
@@ -220,7 +231,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       
       // Notify the artist via server (Real email via Resend)
       try {
-        await fetch('/api/notify-artist', {
+        const response = await fetch('/api/notify-artist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -231,8 +242,19 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
             type: 'commission'
           })
         });
+        
+        const result = await response.json();
+        if (!result.success) {
+          console.error("Email notification failed:", result.error);
+          // We don't alert the user here to not disrupt the flow, 
+          // but we log it for the developer.
+        } else if (result.simulated) {
+          console.log("Notification simulated (No API Key)");
+        } else {
+          console.log("Email notification sent successfully");
+        }
       } catch (e) {
-        console.error("Failed to send email notification:", e);
+        console.error("Failed to call notify-artist API:", e);
       }
 
       // Create a notification for the artist
@@ -318,12 +340,19 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   };
 
   const handleDeleteDonation = async (donationId: string) => {
-    if (!window.confirm(t('confirmDeleteMessage'))) return;
-    try {
-      await deleteDoc(doc(db, 'donations', donationId));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `donations/${donationId}`);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: t('delete'),
+      message: t('confirmDeleteMessage'),
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'donations', donationId));
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `donations/${donationId}`);
+        }
+      }
+    });
   };
 
   const handleAddComment = async (postId: string) => {
@@ -366,15 +395,22 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   };
 
   const handleDeleteComment = async (postId: string, commentId: string) => {
-    if (!window.confirm(t('confirmDeleteComment'))) return;
-    try {
-      await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
-      await updateDoc(doc(db, 'posts', postId), {
-        comments: increment(-1)
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `posts/${postId}/comments/${commentId}`);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: t('delete'),
+      message: t('confirmDeleteComment'),
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+          await updateDoc(doc(db, 'posts', postId), {
+            comments: increment(-1)
+          });
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `posts/${postId}/comments/${commentId}`);
+        }
+      }
+    });
   };
 
   return (
@@ -1025,6 +1061,38 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">TG</span>
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Generic Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl p-6"
+            >
+              <h3 className="text-xl font-black text-zinc-900 mb-2 uppercase tracking-tight">{confirmModal.title}</h3>
+              <p className="text-sm text-zinc-500 mb-6">{confirmModal.message}</p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1 py-3 bg-zinc-100 text-zinc-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                >
+                  {t('cancel')}
+                </button>
+                <button 
+                  onClick={confirmModal.onConfirm}
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                >
+                  {t('delete')}
+                </button>
               </div>
             </motion.div>
           </div>

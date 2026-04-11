@@ -8,20 +8,22 @@ import {
   updateDoc, 
   where,
   limit,
-  getDocs
+  getDocs,
+  writeBatch
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion } from 'motion/react';
-import { Search, Shield, ShieldAlert, UserMinus, UserCheck, Mail, Hash } from 'lucide-react';
+import { Search, Shield, ShieldAlert, UserMinus, UserCheck, Mail, Hash, Trash2 } from 'lucide-react';
 
 export function AdminUserManagementView({ lang }: { lang: Language }) {
   const { t } = useTranslation(lang);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deletingUid, setDeletingUid] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(
@@ -65,6 +67,80 @@ export function AdminUserManagementView({ lang }: { lang: Language }) {
       await updateDoc(doc(db, 'profiles', uid), { banned: !currentlyBanned });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
+    }
+  };
+
+  const handleDeleteUser = async (uid: string) => {
+    if (!window.confirm(t('confirmDeleteUserAccount'))) return;
+    
+    setDeletingUid(uid);
+    try {
+      const batch = writeBatch(db);
+
+      // 1. Delete user comics and their chapters
+      const comicsQuery = query(collection(db, 'comics'), where('authorUid', '==', uid));
+      const comicsSnap = await getDocs(comicsQuery);
+      for (const comicDoc of comicsSnap.docs) {
+        const chaptersQuery = query(collection(db, 'comics', comicDoc.id, 'chapters'));
+        const chaptersSnap = await getDocs(chaptersQuery);
+        chaptersSnap.docs.forEach(chapterDoc => {
+          batch.delete(doc(db, 'comics', comicDoc.id, 'chapters', chapterDoc.id));
+        });
+        const ratingsQuery = query(collection(db, 'comics', comicDoc.id, 'ratings'));
+        const ratingsSnap = await getDocs(ratingsQuery);
+        ratingsSnap.docs.forEach(ratingDoc => {
+          batch.delete(doc(db, 'comics', comicDoc.id, 'ratings', ratingDoc.id));
+        });
+        batch.delete(doc(db, 'comics', comicDoc.id));
+      }
+
+      // 2. Delete user posts and their comments
+      const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', uid));
+      const postsSnap = await getDocs(postsQuery);
+      for (const postDoc of postsSnap.docs) {
+        const commentsQuery = query(collection(db, 'posts', postDoc.id, 'comments'));
+        const commentsSnap = await getDocs(commentsQuery);
+        commentsSnap.docs.forEach(commentDoc => {
+          batch.delete(doc(db, 'posts', postDoc.id, 'comments', commentDoc.id));
+        });
+        batch.delete(doc(db, 'posts', postDoc.id));
+      }
+
+      // 3. Delete user articles
+      const articlesQuery = query(collection(db, 'articles'), where('authorUid', '==', uid));
+      const articlesSnap = await getDocs(articlesQuery);
+      articlesSnap.docs.forEach(articleDoc => {
+        batch.delete(doc(db, 'articles', articleDoc.id));
+      });
+
+      // 4. Delete user profile and user document
+      batch.delete(doc(db, 'users', uid));
+      batch.delete(doc(db, 'profiles', uid));
+
+      // 5. Delete follows
+      const followsQuery1 = query(collection(db, 'follows'), where('userId', '==', uid));
+      const followsSnap1 = await getDocs(followsQuery1);
+      followsSnap1.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
+
+      const followsQuery2 = query(collection(db, 'follows'), where('targetId', '==', uid));
+      const followsSnap2 = await getDocs(followsQuery2);
+      followsSnap2.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
+
+      // 6. Delete notifications
+      const notifsQuery = query(collection(db, 'notifications'), where('recipientId', '==', uid));
+      const notifsSnap = await getDocs(notifsQuery);
+      notifsSnap.docs.forEach(nDoc => batch.delete(doc(db, 'notifications', nDoc.id)));
+
+      await batch.commit();
+      
+      // Note: Admin cannot delete user from Firebase Auth via client SDK.
+      // This requires Firebase Admin SDK or a Cloud Function.
+      // For now, we delete all their data and they won't be able to do anything.
+      alert('User data deleted from Firestore. Note: Auth account remains (Admin SDK required for full deletion).');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${uid}`);
+    } finally {
+      setDeletingUid(null);
     }
   };
 
@@ -171,6 +247,17 @@ export function AdminUserManagementView({ lang }: { lang: Language }) {
                   >
                     {user.banned ? <UserCheck size={14} /> : <UserMinus size={14} />}
                     {user.banned ? t('unbanUser') : t('banUser')}
+                  </button>
+
+                  {/* Delete User */}
+                  <button 
+                    onClick={() => handleDeleteUser(user.uid)}
+                    disabled={deletingUid === user.uid}
+                    className="flex items-center gap-2 px-4 py-2 bg-zinc-100 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all disabled:opacity-50"
+                    title={t('deleteUserAccount')}
+                  >
+                    <Trash2 size={14} />
+                    {deletingUid === user.uid ? '...' : t('delete')}
                   </button>
                 </div>
               </div>

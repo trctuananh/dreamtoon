@@ -24,6 +24,7 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   updateProfile, 
+  sendPasswordResetEmail,
   User as FirebaseUser 
 } from 'firebase/auth';
 import { AnimatePresence, motion } from 'motion/react';
@@ -480,6 +481,18 @@ export default function App() {
       let message = t('errorOccurred');
       if (error.code === 'auth/email-already-in-use') message = t('emailInUse');
       if (error.code === 'auth/weak-password') message = t('weakPassword');
+      if (error.code === 'auth/invalid-email') message = t('invalidEmail');
+      throw new Error(message);
+    }
+  };
+
+  const handleForgotPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+      console.error('Password reset failed:', error);
+      let message = t('errorOccurred');
+      if (error.code === 'auth/user-not-found') message = t('userNotFound');
       if (error.code === 'auth/invalid-email') message = t('invalidEmail');
       throw new Error(message);
     }
@@ -1161,6 +1174,7 @@ export default function App() {
                 lang={lang}
                 onBack={handleBack}
                 setView={setView}
+                onMessageClick={handleMessageClick}
               />
             )}
 
@@ -1223,6 +1237,7 @@ export default function App() {
             onLogin={handleLogin}
             onEmailLogin={handleEmailLogin}
             onEmailRegister={handleEmailRegister}
+            onForgotPassword={handleForgotPassword}
             lang={lang}
           />
 

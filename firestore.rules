@@ -499,7 +499,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (request.auth.uid == resource.data.guestUid || request.auth.uid == resource.data.artistUid || isAdmin());
       allow create: if isAuthenticated() && isValidCommissionRequest(request.resource.data);
       allow update: if isAuthenticated() && (request.auth.uid == resource.data.artistUid || isAdmin());
-      allow delete: if isAdmin();
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.artistUid || request.auth.uid == resource.data.guestUid || isAdmin());
     }
 
     match /conversations/{conversationId} {

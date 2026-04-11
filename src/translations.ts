@@ -276,7 +276,16 @@ export const translations = {
     messenger: "Messenger",
     noConversations: "No conversations yet",
     typeAMessage: "Type a message...",
-    selectAConversation: "Select a conversation to start chatting"
+    selectAConversation: "Select a conversation to start chatting",
+    deleteAccount: "Delete Account",
+    confirmDeleteAccount: "Are you sure you want to delete your account? This action is permanent and will delete all your data, including comics, posts, and profile information.",
+    deleteUserAccount: "Delete User Account",
+    confirmDeleteUserAccount: "Are you sure you want to delete this user's account? This action is permanent.",
+    forgotPassword: "Forgot Password?",
+    passwordResetSent: "Password reset email sent! Please check your inbox.",
+    enterEmailToReset: "Enter your email to receive a password reset link.",
+    backToLogin: "Back to Login",
+    send: "Send"
   },
   vi: {
     home: "Trang chủ",
@@ -555,7 +564,16 @@ export const translations = {
     messenger: "Tin nhắn",
     noConversations: "Chưa có cuộc hội thoại nào",
     typeAMessage: "Nhập tin nhắn...",
-    selectAConversation: "Chọn một cuộc hội thoại để bắt đầu trò chuyện"
+    selectAConversation: "Chọn một cuộc hội thoại để bắt đầu trò chuyện",
+    deleteAccount: "Xóa tài khoản",
+    confirmDeleteAccount: "Bạn có chắc chắn muốn xóa tài khoản của mình không? Hành động này là vĩnh viễn và sẽ xóa tất cả dữ liệu của bạn, bao gồm truyện, bài viết và thông tin hồ sơ.",
+    deleteUserAccount: "Xóa tài khoản người dùng",
+    confirmDeleteUserAccount: "Bạn có chắc chắn muốn xóa tài khoản của người dùng này không? Hành động này là vĩnh viễn.",
+    forgotPassword: "Quên mật khẩu?",
+    passwordResetSent: "Email đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra hộp thư của bạn.",
+    enterEmailToReset: "Nhập email của bạn để nhận liên kết đặt lại mật khẩu.",
+    backToLogin: "Quay lại Đăng nhập",
+    send: "Gửi"
   }
 };
 

@@ -10,6 +10,7 @@ export function LoginModal({
   onLogin, 
   onEmailLogin, 
   onEmailRegister, 
+  onForgotPassword,
   lang 
 }: { 
   isOpen: boolean, 
@@ -17,27 +18,35 @@ export function LoginModal({
   onLogin: (provider: 'google' | 'facebook') => void,
   onEmailLogin: (email: string, pass: string) => Promise<void>,
   onEmailRegister: (email: string, pass: string, name: string) => Promise<void>,
+  onForgotPassword: (email: string) => Promise<void>,
   lang: Language 
 }) {
   const { t } = useTranslation(lang);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setSuccessMessage(null);
     try {
-      if (isRegistering) {
+      if (isForgotPassword) {
+        await onForgotPassword(email);
+        setSuccessMessage(t('passwordResetSent'));
+      } else if (isRegistering) {
         await onEmailRegister(email, password, name);
+        onClose();
       } else {
         await onEmailLogin(email, password);
+        onClose();
       }
-      onClose();
     } catch (err: any) {
       setError(err.message || t('errorOccurred'));
     } finally {
@@ -75,9 +84,11 @@ export function LoginModal({
                 <span className="text-3xl font-black text-blue-600">D</span>
               </div>
               <h2 className="text-2xl font-black text-zinc-900 mb-1 tracking-tight leading-none">
-                {isRegistering ? t('register') : t('welcomeBack')}
+                {isForgotPassword ? t('forgotPassword') : (isRegistering ? t('register') : t('welcomeBack'))}
               </h2>
-              <p className="text-zinc-500 text-sm font-medium">{t('loginToContinue')}</p>
+              <p className="text-zinc-500 text-sm font-medium">
+                {isForgotPassword ? t('enterEmailToReset') : t('loginToContinue')}
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 mb-6">
@@ -105,20 +116,26 @@ export function LoginModal({
                   className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl pl-12 pr-4 py-3 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                <input 
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('password')}
-                  className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl pl-12 pr-4 py-3 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
+              {!isForgotPassword && (
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                  <input 
+                    required
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t('password')}
+                    className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl pl-12 pr-4 py-3 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              )}
 
               {error && (
                 <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">{error}</p>
+              )}
+
+              {successMessage && (
+                <p className="text-green-500 text-[10px] font-black uppercase tracking-widest text-center">{successMessage}</p>
               )}
 
               <button 
@@ -126,40 +143,73 @@ export function LoginModal({
                 disabled={isLoading}
                 className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-900/20 disabled:opacity-50"
               >
-                {isLoading ? '...' : (isRegistering ? t('register') : t('login'))}
+                {isLoading ? '...' : (isForgotPassword ? t('send') : (isRegistering ? t('register') : t('login')))}
               </button>
             </form>
 
-            <div className="relative flex items-center gap-4 mb-6">
-              <div className="flex-1 h-px bg-zinc-100" />
-              <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">OR</span>
-              <div className="flex-1 h-px bg-zinc-100" />
-            </div>
+            {!isForgotPassword && (
+              <>
+                <div className="relative flex items-center gap-4 mb-6">
+                  <div className="flex-1 h-px bg-zinc-100" />
+                  <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">OR</span>
+                  <div className="flex-1 h-px bg-zinc-100" />
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <button 
-                onClick={() => onLogin('google')}
-                className="flex items-center justify-center gap-2 p-3 bg-white border-2 border-zinc-100 rounded-2xl font-bold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-200 transition-all group"
-              >
-                <img src="https://www.google.com/favicon.ico" className="w-4 h-4 grayscale group-hover:grayscale-0 transition-all" alt="Google" referrerPolicy="no-referrer" />
-                <span className="text-xs">Google</span>
-              </button>
-              <button 
-                onClick={() => onLogin('facebook')}
-                className="flex items-center justify-center gap-2 p-3 bg-[#1877F2] text-white rounded-2xl font-bold hover:bg-[#166fe5] transition-all shadow-xl shadow-blue-600/20"
-              >
-                <img src="https://www.facebook.com/favicon.ico" className="w-4 h-4 brightness-0 invert" alt="Facebook" referrerPolicy="no-referrer" />
-                <span className="text-xs">Facebook</span>
-              </button>
-            </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => onLogin('google')}
+                    className="flex items-center justify-center gap-2 p-3 bg-white border-2 border-zinc-100 rounded-2xl font-bold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-200 transition-all group"
+                  >
+                    <img src="https://www.google.com/favicon.ico" className="w-4 h-4 grayscale group-hover:grayscale-0 transition-all" alt="Google" referrerPolicy="no-referrer" />
+                    <span className="text-xs">Google</span>
+                  </button>
+                  <button 
+                    onClick={() => onLogin('facebook')}
+                    className="flex items-center justify-center gap-2 p-3 bg-[#1877F2] text-white rounded-2xl font-bold hover:bg-[#166fe5] transition-all shadow-xl shadow-blue-600/20"
+                  >
+                    <img src="https://www.facebook.com/favicon.ico" className="w-4 h-4 brightness-0 invert" alt="Facebook" referrerPolicy="no-referrer" />
+                    <span className="text-xs">Facebook</span>
+                  </button>
+                </div>
+              </>
+            )}
 
-            <div className="mt-8 text-center">
-              <button 
-                onClick={() => setIsRegistering(!isRegistering)}
-                className="text-xs font-bold text-zinc-500 hover:text-zinc-900 transition-colors"
-              >
-                {isRegistering ? t('alreadyHaveAccount') : t('noAccount')}
-              </button>
+            <div className="mt-8 flex flex-col items-center gap-2">
+              {!isForgotPassword && !isRegistering && (
+                <button 
+                  onClick={() => setIsForgotPassword(true)}
+                  className="text-xs font-bold text-blue-500 hover:text-blue-600 transition-colors"
+                >
+                  {t('forgotPassword')}
+                </button>
+              )}
+              
+              {(isForgotPassword || isRegistering) && (
+                <button 
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setIsRegistering(false);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="text-xs font-bold text-zinc-500 hover:text-zinc-900 transition-colors"
+                >
+                  {t('backToLogin')}
+                </button>
+              )}
+
+              {!isForgotPassword && (
+                <button 
+                  onClick={() => {
+                    setIsRegistering(!isRegistering);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="text-xs font-bold text-zinc-500 hover:text-zinc-900 transition-colors"
+                >
+                  {isRegistering ? t('alreadyHaveAccount') : t('noAccount')}
+                </button>
+              )}
             </div>
 
             <p className="mt-8 text-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-relaxed">

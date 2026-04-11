@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Layout, Compass, Star, Plus, Trash2, Library, Heart, LogOut, Camera, MessageCircle } from 'lucide-react';
 import { motion } from 'motion/react';
-import { collection, query, where, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { updateProfile } from 'firebase/auth';
+import { collection, query, where, getDocs, setDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { updateProfile, deleteUser } from 'firebase/auth';
 import { db, handleFirestoreError, OperationType, auth } from '../firebase';
 import { Comic, Following } from '../types';
 import { Language, translations } from '../translations';
@@ -19,6 +19,8 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
   const [photoURL, setPhotoURL] = useState(profile?.photoURL || user.photoURL || '');
   const [handleError, setHandleError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -131,6 +133,88 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!auth.currentUser) return;
+    setIsDeletingAccount(true);
+    try {
+      const batch = writeBatch(db);
+      const uid = user.uid;
+
+      // 1. Delete user comics and their chapters
+      const comicsQuery = query(collection(db, 'comics'), where('authorUid', '==', uid));
+      const comicsSnap = await getDocs(comicsQuery);
+      for (const comicDoc of comicsSnap.docs) {
+        // Delete chapters subcollection
+        const chaptersQuery = query(collection(db, 'comics', comicDoc.id, 'chapters'));
+        const chaptersSnap = await getDocs(chaptersQuery);
+        chaptersSnap.docs.forEach(chapterDoc => {
+          batch.delete(doc(db, 'comics', comicDoc.id, 'chapters', chapterDoc.id));
+        });
+        // Delete ratings subcollection
+        const ratingsQuery = query(collection(db, 'comics', comicDoc.id, 'ratings'));
+        const ratingsSnap = await getDocs(ratingsQuery);
+        ratingsSnap.docs.forEach(ratingDoc => {
+          batch.delete(doc(db, 'comics', comicDoc.id, 'ratings', ratingDoc.id));
+        });
+        batch.delete(doc(db, 'comics', comicDoc.id));
+      }
+
+      // 2. Delete user posts and their comments
+      const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', uid));
+      const postsSnap = await getDocs(postsQuery);
+      for (const postDoc of postsSnap.docs) {
+        const commentsQuery = query(collection(db, 'posts', postDoc.id, 'comments'));
+        const commentsSnap = await getDocs(commentsQuery);
+        commentsSnap.docs.forEach(commentDoc => {
+          batch.delete(doc(db, 'posts', postDoc.id, 'comments', commentDoc.id));
+        });
+        batch.delete(doc(db, 'posts', postDoc.id));
+      }
+
+      // 3. Delete user articles
+      const articlesQuery = query(collection(db, 'articles'), where('authorUid', '==', uid));
+      const articlesSnap = await getDocs(articlesQuery);
+      articlesSnap.docs.forEach(articleDoc => {
+        batch.delete(doc(db, 'articles', articleDoc.id));
+      });
+
+      // 4. Delete user profile and user document
+      batch.delete(doc(db, 'users', uid));
+      batch.delete(doc(db, 'profiles', uid));
+
+      // 5. Delete follows (where user is follower or target)
+      const followsQuery1 = query(collection(db, 'follows'), where('userId', '==', uid));
+      const followsSnap1 = await getDocs(followsQuery1);
+      followsSnap1.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
+
+      const followsQuery2 = query(collection(db, 'follows'), where('targetId', '==', uid));
+      const followsSnap2 = await getDocs(followsQuery2);
+      followsSnap2.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
+
+      // 6. Delete notifications
+      const notifsQuery = query(collection(db, 'notifications'), where('recipientId', '==', uid));
+      const notifsSnap = await getDocs(notifsQuery);
+      notifsSnap.docs.forEach(nDoc => batch.delete(doc(db, 'notifications', nDoc.id)));
+
+      // Commit all Firestore deletions
+      await batch.commit();
+
+      // 7. Delete Firebase Auth user
+      await deleteUser(auth.currentUser);
+      
+      onLogout();
+    } catch (error: any) {
+      if (error.code === 'auth/requires-recent-login') {
+        alert('Please log out and log in again to delete your account for security reasons.');
+      } else {
+        handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}`);
+      }
+    } finally {
+      setIsDeletingAccount(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -305,6 +389,18 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   <p className="text-[7px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('role')}</p>
                 </div>
               </div>
+
+              {!isGuest && (
+                <div className="w-full mt-8 pt-8 border-t border-zinc-50">
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-50 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all"
+                  >
+                    <Trash2 size={16} />
+                    {t('deleteAccount')}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -467,6 +563,40 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
           )}
         </div>
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl p-8"
+          >
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
+              <Trash2 className="text-red-500" size={32} />
+            </div>
+            <h3 className="text-xl font-black text-zinc-900 mb-2 uppercase tracking-tight">{t('deleteAccount')}?</h3>
+            <p className="text-sm text-zinc-500 mb-8 leading-relaxed">{t('confirmDeleteAccount')}</p>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeletingAccount}
+                className="flex-1 py-4 bg-zinc-100 text-zinc-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all disabled:opacity-50"
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                onClick={handleDeleteAccount}
+                disabled={isDeletingAccount}
+                className="flex-1 py-4 bg-red-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+              >
+                {isDeletingAccount ? '...' : t('delete')}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
