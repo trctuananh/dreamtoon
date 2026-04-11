@@ -54,6 +54,7 @@ export function MessengerView({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const lastConvIdRef = useRef<string | null>(null);
 
   const emojis = ['😀', '😂', '😍', '🥰', '😎', '🤔', '😢', '😡', '👍', '❤️', '🔥', '✨', '🙌', '👏', '🎉', '💯', '🙏', '💪', '👀', '🚀'];
 
@@ -76,28 +77,43 @@ export function MessengerView({
     }
   }, [chatTarget, user]);
 
-  // Scroll to bottom when messages change - only if already near bottom
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
+      
+      // Check if this is a new conversation being opened
+      const isNewConversation = selectedConversation?.id !== lastConvIdRef.current;
+      
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
       
-      // If near bottom, scroll to bottom. Otherwise stay fixed.
-      if (isNearBottom) {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: 'instant'
-        });
+      // Scroll to bottom if:
+      // 1. It's a new conversation (force scroll to most recent)
+      // 2. User is already near the bottom (auto-scroll for new messages)
+      if (isNewConversation || isNearBottom) {
+        // Use a tiny timeout to ensure DOM has rendered the new messages
+        setTimeout(() => {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: isNewConversation ? 'instant' : 'smooth'
+          });
+        }, 50);
+        
+        if (isNewConversation) {
+          lastConvIdRef.current = selectedConversation?.id || null;
+        }
       }
     }
-  }, [messages]);
+  }, [messages, selectedConversation?.id]);
 
-  // Scroll to bottom immediately when switching conversations
+  // Mark as read when messages change and we are active
   useEffect(() => {
-    if (selectedConversation && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    if (user && selectedConversation && messages.length > 0) {
+      if (selectedConversation.unreadCount?.[user.uid]) {
+        markAsRead(selectedConversation.id);
+      }
     }
-  }, [selectedConversation?.id]);
+  }, [messages, selectedConversation?.id, user?.uid]);
 
   // Listen to conversations
   useEffect(() => {
