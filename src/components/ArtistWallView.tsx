@@ -218,7 +218,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
       await addDoc(collection(db, 'commissions'), commissionData);
       
-      // Notify the artist via server (Email simulation)
+      // Notify the artist via server (Real email via Resend)
       try {
         await fetch('/api/notify-artist', {
           method: 'POST',
@@ -247,10 +247,9 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
         senderPhoto: profile?.photoURL || user.photoURL || ''
       });
 
-      // NOTE: Real email sending would require a server-side function (e.g. Firebase Functions)
-      // or a third-party service like SendGrid/Mailgun.
-      // For now, we simulate the intent.
-      console.log(`Email would be sent to ${artistProfile.email} about new commission from ${guestEmail}`);
+      // Real email sending is handled by the server using Resend.
+      // Ensure RESEND_API_KEY is set in the environment secrets.
+      console.log(`Notification request sent for artist ${artistProfile.email}`);
 
       setSubmitSuccess(true);
       // Don't close immediately so they can see the success message

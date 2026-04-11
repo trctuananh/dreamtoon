@@ -14,7 +14,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Search, Shield, ShieldAlert, UserMinus, UserCheck, Mail, Hash } from 'lucide-react';
 
 export function AdminUserManagementView({ lang }: { lang: Language }) {

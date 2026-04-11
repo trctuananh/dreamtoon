@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, User, ChevronLeft, MoreVertical, Image as ImageIcon, Smile, MessageCircle, Trash2, ImagePlus, X } from 'lucide-react';
+import { Search, Send, User, ChevronLeft, MoreVertical, Image as ImageIcon, Smile, MessageCircle, Trash2, ImagePlus, X, Loader2 } from 'lucide-react';
 import { 
   collection, 
   query, 
@@ -21,7 +21,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, Conversation, Message } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { validateImage, compressImage } from '../lib/utils';
 
 export function MessengerView({ 
@@ -50,7 +50,23 @@ export function MessengerView({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  const emojis = ['😀', '😂', '😍', '🥰', '😎', '🤔', '😢', '😡', '👍', '❤️', '🔥', '✨', '🙌', '👏', '🎉', '💯', '🙏', '💪', '👀', '🚀'];
+
+  // Handle click outside emoji picker
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Handle chat target from props
   useEffect(() => {
@@ -60,10 +76,28 @@ export function MessengerView({
     }
   }, [chatTarget, user]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change - only if already near bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      
+      // If near bottom, scroll to bottom. Otherwise stay fixed.
+      if (isNearBottom) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'instant'
+        });
+      }
+    }
   }, [messages]);
+
+  // Scroll to bottom immediately when switching conversations
+  useEffect(() => {
+    if (selectedConversation && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [selectedConversation?.id]);
 
   // Listen to conversations
   useEffect(() => {
@@ -220,6 +254,7 @@ export function MessengerView({
     const imageUrl = selectedImage;
     setNewMessage('');
     setSelectedImage(null);
+    setShowEmojiPicker(false);
 
     try {
       const messageData: any = {
@@ -304,7 +339,8 @@ export function MessengerView({
 
     setIsUploadingImage(true);
     try {
-      const compressed = await compressImage(file, 800, 0.6);
+      // No pixel limit (undefined), standard web quality (0.7)
+      const compressed = await compressImage(file, undefined, 0.7);
       
       // Check if base64 string length is > 1048576 (Firestore rule limit)
       if (compressed.length > 1048576) {
@@ -485,7 +521,10 @@ export function MessengerView({
             </AnimatePresence>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div 
+              ref={scrollContainerRef}
+              className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
+            >
               {messages.map((msg, idx) => {
                 const isMe = msg.senderId === user.uid;
                 const showAvatar = idx === 0 || messages[idx - 1].senderId !== msg.senderId;
@@ -505,7 +544,10 @@ export function MessengerView({
                         : 'bg-white text-zinc-900 rounded-bl-none border border-zinc-100'
                     }`}>
                       {msg.imageUrl && (
-                        <div className="mb-2 rounded-lg overflow-hidden border border-white/20">
+                        <div 
+                          className="mb-2 rounded-lg overflow-hidden border border-white/20 cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => setFullscreenImage(msg.imageUrl!)}
+                        >
                           <img src={msg.imageUrl} alt="Sent photo" className="w-full h-auto max-h-60 object-cover" referrerPolicy="no-referrer" />
                         </div>
                       )}
@@ -517,7 +559,6 @@ export function MessengerView({
                   </div>
                 );
               })}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}
@@ -534,13 +575,44 @@ export function MessengerView({
                 </div>
               )}
               <form onSubmit={sendMessage} className="flex items-center gap-2">
-                <label className="p-2 text-zinc-400 hover:text-blue-500 transition-colors cursor-pointer">
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-                  <ImagePlus size={20} />
+                <label className={`p-2 transition-colors cursor-pointer ${isUploadingImage ? 'text-blue-500 animate-pulse' : 'text-zinc-400 hover:text-blue-500'}`}>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} disabled={isUploadingImage} />
+                  {isUploadingImage ? <Loader2 size={20} className="animate-spin" /> : <ImagePlus size={20} />}
                 </label>
-                <button type="button" className="p-2 text-zinc-400 hover:text-blue-500 transition-colors">
-                  <Smile size={20} />
-                </button>
+                <div className="relative" ref={emojiPickerRef}>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className={`p-2 transition-colors ${showEmojiPicker ? 'text-blue-500' : 'text-zinc-400 hover:text-blue-500'}`}
+                  >
+                    <Smile size={20} />
+                  </button>
+                  
+                  <AnimatePresence>
+                    {showEmojiPicker && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute bottom-full left-0 mb-2 p-2 bg-white rounded-2xl shadow-xl border border-zinc-100 grid grid-cols-5 gap-1 z-50 w-48"
+                      >
+                        {emojis.map(emoji => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              setNewMessage(prev => prev + emoji);
+                              // Keep picker open for multiple emojis
+                            }}
+                            className="w-8 h-8 flex items-center justify-center hover:bg-zinc-50 rounded-lg transition-colors text-lg"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <input 
                   type="text"
                   placeholder={t('typeAMessage')}
@@ -568,6 +640,36 @@ export function MessengerView({
           </div>
         )}
       </div>
+
+      {/* Fullscreen Image Modal */}
+      <AnimatePresence>
+        {fullscreenImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 md:p-10"
+            onClick={() => setFullscreenImage(null)}
+          >
+            <button 
+              className="absolute top-6 right-6 text-white/70 hover:text-white p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all"
+              onClick={() => setFullscreenImage(null)}
+            >
+              <X size={24} />
+            </button>
+            <motion.img
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              src={fullscreenImage}
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              alt="Fullscreen"
+              referrerPolicy="no-referrer"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

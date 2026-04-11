@@ -30,10 +30,10 @@ export const validateImage = async (file: File): Promise<{ valid: boolean; error
     img.src = objectUrl;
   });
 
-  return dimensions.width > 800 ? { valid: false, error: `Image width (${dimensions.width}px) exceeds 800px limit.` } : { valid: true };
+  return dimensions.width > 0 ? { valid: true } : { valid: false, error: 'Invalid image file.' };
 };
 
-export const compressImage = async (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+export const compressImage = async (file: File, maxWidth?: number, quality = 0.7): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -45,7 +45,7 @@ export const compressImage = async (file: File, maxWidth = 800, quality = 0.7): 
         let width = img.width;
         let height = img.height;
 
-        if (width > maxWidth) {
+        if (maxWidth && width > maxWidth) {
           height = (height * maxWidth) / width;
           width = maxWidth;
         }

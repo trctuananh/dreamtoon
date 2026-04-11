@@ -26,7 +26,7 @@ import {
   updateProfile, 
   User as FirebaseUser 
 } from 'firebase/auth';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'motion/react';
 import { ChevronUp, X } from 'lucide-react';
 
 // Firebase
