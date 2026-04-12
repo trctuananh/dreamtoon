@@ -100,18 +100,21 @@ export async function createNotification({
 
   try {
     console.log(`Creating notification for ${recipientId}: ${type} from ${senderName}`);
-    await addDoc(collection(db, 'users', recipientId, 'notifications'), {
+    const notificationData: any = {
       recipientId,
       senderId,
       senderName,
       senderPhoto,
       type,
       targetId,
-      targetTitle,
-      content,
       read: false,
       createdAt: serverTimestamp()
-    });
+    };
+
+    if (targetTitle !== undefined) notificationData.targetTitle = targetTitle;
+    if (content !== undefined) notificationData.content = content;
+
+    await addDoc(collection(db, 'users', recipientId, 'notifications'), notificationData);
   } catch (error) {
     console.error("Error creating notification:", error);
   }

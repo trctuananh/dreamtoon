@@ -16,7 +16,7 @@ import { UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion } from 'motion/react';
-import { Search, Shield, ShieldAlert, UserMinus, UserCheck, Mail, Hash, Trash2 } from 'lucide-react';
+import { Search, Shield, ShieldAlert, UserMinus, UserCheck, Mail, Hash, Trash2, Activity, Send } from 'lucide-react';
 
 export function AdminUserManagementView({ lang }: { lang: Language }) {
   const { t } = useTranslation(lang);
@@ -24,6 +24,9 @@ export function AdminUserManagementView({ lang }: { lang: Language }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean, message: string } | null>(null);
+  const [testEmailInput, setTestEmailInput] = useState('');
 
   useEffect(() => {
     const q = query(
@@ -144,6 +147,31 @@ export function AdminUserManagementView({ lang }: { lang: Language }) {
     }
   };
 
+  const handleTestEmail = async () => {
+    if (!testEmailInput) return;
+
+    setIsTestingEmail(true);
+    setTestEmailResult(null);
+    try {
+      const response = await fetch('/api/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: testEmailInput })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setTestEmailResult({ success: true, message: `Test email sent to ${testEmailInput}!` });
+        setTestEmailInput('');
+      } else {
+        setTestEmailResult({ success: false, message: data.error || 'Failed to send test email.' });
+      }
+    } catch (error) {
+      setTestEmailResult({ success: false, message: 'Network error or server unavailable.' });
+    } finally {
+      setIsTestingEmail(false);
+    }
+  };
+
   const filteredUsers = users.filter(user => 
     user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -161,6 +189,45 @@ export function AdminUserManagementView({ lang }: { lang: Language }) {
         <div className="bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100">
           <span className="text-blue-600 font-black text-sm uppercase tracking-widest">Admin Panel</span>
         </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <Activity className="text-blue-500" size={20} />
+          <h2 className="text-lg font-black tracking-tight text-zinc-900">System Health</h2>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex-1 w-full sm:max-w-md flex gap-2">
+            <input 
+              type="email"
+              placeholder="Enter email for testing..."
+              value={testEmailInput}
+              onChange={(e) => setTestEmailInput(e.target.value)}
+              className="flex-1 px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
+            <button 
+              onClick={handleTestEmail}
+              disabled={isTestingEmail || !testEmailInput}
+              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all disabled:opacity-50 shadow-lg shadow-zinc-900/10 whitespace-nowrap"
+            >
+              {isTestingEmail ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={14} />}
+              {isTestingEmail ? 'Sending...' : 'Test Email'}
+            </button>
+          </div>
+          
+          {testEmailResult && (
+            <motion.div 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl ${testEmailResult.success ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}
+            >
+              {testEmailResult.message}
+            </motion.div>
+          )}
+        </div>
+        <p className="mt-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+          Tip: Ensure RESEND_API_KEY and RESEND_FROM_EMAIL are set in settings.
+        </p>
       </div>
 
       <div className="relative mb-6">

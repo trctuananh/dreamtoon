@@ -230,31 +230,32 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       await addDoc(collection(db, 'commissions'), commissionData);
       
       // Notify the artist via server (Real email via Resend)
-      try {
-        const response = await fetch('/api/notify-artist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            artistEmail: artistProfile.email,
-            guestEmail,
-            guestName,
-            details: requestDetails,
-            type: 'commission'
-          })
-        });
-        
-        const result = await response.json();
-        if (!result.success) {
-          console.error("Email notification failed:", result.error);
-          // We don't alert the user here to not disrupt the flow, 
-          // but we log it for the developer.
-        } else if (result.simulated) {
-          console.log("Notification simulated (No API Key)");
-        } else {
-          console.log("Email notification sent successfully");
+      if (artistProfile.email) {
+        try {
+          console.log(`📤 Attempting to send commission email to artist: ${artistProfile.email}`);
+          const response = await fetch('/api/notify-artist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              artistEmail: artistProfile.email,
+              guestEmail,
+              guestName,
+              details: requestDetails,
+              type: 'commission'
+            })
+          });
+          
+          const result = await response.json();
+          if (!result.success) {
+            console.error("❌ Email notification failed:", result.error);
+          } else {
+            console.log("✅ Email notification sent successfully");
+          }
+        } catch (e) {
+          console.error("❌ Failed to call notify-artist API:", e);
         }
-      } catch (e) {
-        console.error("Failed to call notify-artist API:", e);
+      } else {
+        console.warn("⚠️ Artist email missing, skipping email notification.");
       }
 
       // Create a notification for the artist
@@ -302,21 +303,27 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
         createdAt: serverTimestamp()
       });
 
-      // Notify the artist via server (Email simulation)
-      try {
-        await fetch('/api/notify-artist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            artistEmail: artistProfile.email,
-            guestEmail: user?.email || 'anonymous',
-            guestName: donorName.trim(),
-            details: donorMessage.trim(),
-            type: 'donation'
-          })
-        });
-      } catch (e) {
-        console.error("Failed to send email notification:", e);
+      // Notify the artist via server (Real email via Resend)
+      if (artistProfile.email) {
+        try {
+          console.log(`📤 Attempting to send donation email to artist: ${artistProfile.email}`);
+          await fetch('/api/notify-artist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              artistEmail: artistProfile.email,
+              guestEmail: user?.email || 'anonymous',
+              guestName: donorName.trim(),
+              details: donorMessage.trim(),
+              type: 'donation'
+            })
+          });
+          console.log("✅ Email notification sent successfully");
+        } catch (e) {
+          console.error("❌ Failed to send email notification:", e);
+        }
+      } else {
+        console.warn("⚠️ Artist email missing, skipping email notification.");
       }
 
       // Create a notification for the artist
@@ -350,6 +357,22 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
         } catch (error) {
           handleFirestoreError(error, OperationType.DELETE, `donations/${donationId}`);
+        }
+      }
+    });
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: t('delete'),
+      message: t('confirmDelete'),
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'posts', postId));
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `posts/${postId}`);
         }
       }
     });
@@ -414,7 +437,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   };
 
   return (
-    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
+    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl lg:max-w-4xl">
       <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-zinc-100 shadow-sm mb-6 sm:mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-center gap-4 sm:gap-6">
@@ -602,6 +625,14 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                     </p>
                   </div>
                 </div>
+                {user && (user.uid === post.authorUid || isAdmin) && (
+                  <button 
+                    onClick={() => handleDeletePost(post.id)}
+                    className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all sm:opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
 
               <div className="text-zinc-700 text-sm leading-relaxed mb-2 font-medium whitespace-pre-wrap">
@@ -742,7 +773,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                               {(user?.uid === comment.uid || user?.uid === artistUid || isAdmin) && (
                                 <button 
                                   onClick={() => handleDeleteComment(post.id, comment.id)}
-                                  className="absolute top-2 right-2 p-1 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                  className="absolute top-2 right-2 p-1 text-zinc-300 hover:text-red-500 sm:opacity-0 group-hover:opacity-100 transition-all"
                                 >
                                   <Trash2 size={12} />
                                 </button>

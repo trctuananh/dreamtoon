@@ -1,16 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Heart, PenTool } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, updateDoc, increment } from 'firebase/firestore';
+import { Trash2, Heart, PenTool, MessageCircle, Send } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, updateDoc, increment, arrayUnion, arrayRemove, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
-import { View, Post, Comic, Following } from '../types';
+import { View, Post, Comic, Following, UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function CommunityView({ user, comics, following = [], lang, searchQuery = '', onBack, onArtistClick, onLogin, setView }: { user: any, comics: Comic[], following?: Following[], lang: Language, searchQuery?: string, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void }) {
+export function CommunityView({ user, isAdmin, comics, following = [], lang, searchQuery = '', onBack, onArtistClick, onLogin, setView, onMessageClick }: { user: any, isAdmin: boolean, comics: Comic[], following?: Following[], lang: Language, searchQuery?: string, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void, onMessageClick?: (target: UserProfile) => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   const [feedTab, setFeedTab] = useState<'all' | 'following'>('all');
+  const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [postComments, setPostComments] = useState<any[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+    const unsubscribe = onSnapshot(doc(db, 'profiles', user.uid), (doc) => {
+      if (doc.exists()) setProfile(doc.data());
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!activePostId) {
+      setPostComments([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'posts', activePostId, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPostComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
+    });
+
+    return () => unsubscribe();
+  }, [activePostId]);
 
   // Search filtering for posts
   const filteredPosts = posts.filter(post => {
@@ -59,9 +95,12 @@ export function CommunityView({ user, comics, following = [], lang, searchQuery 
       onLogin();
       return;
     }
+    if (post.likedBy?.includes(user.uid)) return;
+    
     try {
       await updateDoc(doc(db, 'posts', post.id), {
-        likes: increment(1)
+        likes: increment(1),
+        likedBy: arrayUnion(user.uid)
       });
 
       // Notify author
@@ -80,8 +119,90 @@ export function CommunityView({ user, comics, following = [], lang, searchQuery 
     }
   };
 
+  const handleUnlike = async (post: Post) => {
+    if (!user || !post.likedBy?.includes(user.uid)) return;
+    try {
+      await updateDoc(doc(db, 'posts', post.id), {
+        likes: increment(-1),
+        likedBy: arrayRemove(user.uid)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
+    }
+  };
+
+  const handleAddComment = async (postId: string) => {
+    if (!user || !newCommentText.trim()) return;
+    setIsPostingComment(true);
+    try {
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
+      await addDoc(collection(db, 'posts', postId, 'comments'), {
+        uid: user.uid,
+        userName: profile?.displayName || user.displayName || 'Anonymous',
+        userPhoto: profile?.photoURL || user.photoURL || '',
+        userPioneerNumber: profile?.pioneerNumber || null,
+        content: newCommentText.trim(),
+        createdAt: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, 'posts', postId), {
+        comments: increment(1)
+      });
+
+      // Notify author
+      if (user.uid !== post.authorUid) {
+        createNotification({
+          recipientId: post.authorUid,
+          type: 'comment',
+          targetId: postId,
+          senderId: user.uid,
+          senderName: profile?.displayName || user.displayName || 'Anonymous',
+          senderPhoto: profile?.photoURL || user.photoURL || ''
+        });
+      }
+
+      setNewCommentText('');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `posts/${postId}/comments`);
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    if (!window.confirm(t('confirmDelete'))) return;
+    try {
+      await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+      await updateDoc(doc(db, 'posts', postId), {
+        comments: increment(-1)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `posts/${postId}/comments/${commentId}`);
+    }
+  };
+
+  const handleChatAuthor = async (post: Post) => {
+    if (!onMessageClick) return;
+    if (!user) {
+      onLogin();
+      return;
+    }
+    
+    // Create a temporary profile object for the author
+    const authorProfile: UserProfile = {
+      uid: post.authorUid,
+      displayName: post.authorName,
+      photoURL: post.authorPhoto,
+      email: '' // We don't have the email here, but MessengerView handles it
+    };
+    
+    onMessageClick(authorProfile);
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
+    <div className="container mx-auto px-4 py-8 max-w-2xl lg:max-w-4xl">
       {/* Dream World Section */}
       <div className="mb-6 border-b border-zinc-100">
         <div className="flex items-center gap-8">
@@ -153,10 +274,10 @@ export function CommunityView({ user, comics, following = [], lang, searchQuery 
                       </p>
                     </div>
                   </div>
-                  {user && user.uid === post.authorUid && (
+                  {user && (user.uid === post.authorUid || isAdmin) && (
                     <button 
                       onClick={() => handleDelete(post.id)}
-                      className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                      className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all sm:opacity-0 group-hover:opacity-100"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -203,14 +324,118 @@ export function CommunityView({ user, comics, following = [], lang, searchQuery 
                 <div className="flex items-center gap-6 pt-2 border-t border-zinc-50">
                   <button 
                     onClick={() => handleLike(post)}
-                    className="flex items-center gap-2 text-zinc-400 hover:text-red-500 transition-all text-xs font-black uppercase tracking-wider"
+                    onDoubleClick={() => handleUnlike(post)}
+                    className={`flex items-center gap-2 transition-all text-xs font-black uppercase tracking-wider ${post.likedBy?.includes(user?.uid) ? 'text-red-500' : 'text-zinc-400 hover:text-red-500'}`}
                   >
-                    <div className="p-2 rounded-full hover:bg-red-50 transition-colors">
-                      <Heart size={18} />
+                    <div className={`p-2 rounded-full transition-colors ${post.likedBy?.includes(user?.uid) ? 'bg-red-50' : 'hover:bg-red-50'}`}>
+                      <Heart size={18} fill={post.likedBy?.includes(user?.uid) ? "currentColor" : "none"} />
                     </div>
                     {post.likes || 0}
                   </button>
+
+                  <button 
+                    onClick={() => setActivePostId(activePostId === post.id ? null : post.id)}
+                    className={`flex items-center gap-2 transition-all text-xs font-black uppercase tracking-wider ${activePostId === post.id ? 'text-blue-500' : 'text-zinc-400 hover:text-blue-500'}`}
+                  >
+                    <div className={`p-2 rounded-full transition-colors ${activePostId === post.id ? 'bg-blue-50' : 'hover:bg-blue-50'}`}>
+                      <MessageCircle size={18} />
+                    </div>
+                    {post.comments || 0}
+                  </button>
+
+                  {user?.uid !== post.authorUid && (
+                    <button 
+                      onClick={() => handleChatAuthor(post)}
+                      className="flex items-center gap-2 text-zinc-400 hover:text-indigo-500 transition-all text-xs font-black uppercase tracking-wider"
+                    >
+                      <div className="p-2 rounded-full hover:bg-indigo-50 transition-colors">
+                        <MessageCircle size={18} />
+                      </div>
+                      {t('messenger')}
+                    </button>
+                  )}
                 </div>
+
+                {/* Comments Section */}
+                <AnimatePresence>
+                  {activePostId === post.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-6 space-y-4">
+                        {/* Comment Input */}
+                        {user ? (
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={user.photoURL || undefined} 
+                              alt={user.displayName} 
+                              className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="flex-1 relative">
+                              <input
+                                type="text"
+                                value={newCommentText}
+                                onChange={(e) => setNewCommentText(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
+                                placeholder={t('addComment')}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors"
+                              />
+                              <button
+                                onClick={() => handleAddComment(post.id)}
+                                disabled={isPostingComment || !newCommentText.trim()}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                              >
+                                <Send size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-zinc-50 rounded-xl p-4 text-center">
+                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t('loginToComment')}</p>
+                          </div>
+                        )}
+
+                        {/* Comments List */}
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
+                          {postComments.map((comment) => (
+                            <div key={comment.id} className="flex gap-3 group/comment">
+                              <img 
+                                src={comment.userPhoto} 
+                                alt={comment.userName} 
+                                className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="flex-1 bg-zinc-50 rounded-2xl p-3 relative">
+                                <div className="flex justify-between items-start mb-1">
+                                  <span className="text-[10px] font-black text-zinc-900">{comment.userName}</span>
+                                  <span className="text-[8px] font-black text-zinc-300 uppercase">
+                                    {comment.createdAt?.toDate ? comment.createdAt.toDate().toLocaleDateString() : '...'}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-zinc-600 leading-relaxed">{comment.content}</p>
+                                {(user?.uid === comment.uid || user?.uid === post.authorUid || isAdmin) && (
+                                  <button 
+                                    onClick={() => handleDeleteComment(post.id, comment.id)}
+                                    className="absolute top-2 right-2 p-1 text-zinc-300 hover:text-red-500 sm:opacity-0 group-hover/comment:opacity-100 transition-all"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {postComments.length === 0 && (
+                            <p className="text-center py-4 text-[10px] font-black text-zinc-300 uppercase tracking-widest">{t('noCommentsYet')}</p>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             ))}
           </AnimatePresence>

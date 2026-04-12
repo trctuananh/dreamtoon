@@ -285,7 +285,8 @@ export const translations = {
     passwordResetSent: "Password reset email sent! Please check your inbox.",
     enterEmailToReset: "Enter your email to receive a password reset link.",
     backToLogin: "Back to Login",
-    send: "Send"
+    send: "Send",
+    socialLoginHint: "If you signed up with Google or Facebook, you don't need to reset your password here. Just use the social login button."
   },
   vi: {
     home: "Trang chủ",
@@ -573,7 +574,8 @@ export const translations = {
     passwordResetSent: "Email đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra hộp thư của bạn.",
     enterEmailToReset: "Nhập email của bạn để nhận liên kết đặt lại mật khẩu.",
     backToLogin: "Quay lại Đăng nhập",
-    send: "Gửi"
+    send: "Gửi",
+    socialLoginHint: "Nếu bạn đã đăng ký bằng Google hoặc Facebook, bạn không cần đặt lại mật khẩu tại đây. Chỉ cần sử dụng nút đăng nhập mạng xã hội."
   }
 };
 

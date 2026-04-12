@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
+import { getCommissionTemplate, getTestTemplate } from './src/lib/emailTemplates';
 
 dotenv.config();
 
@@ -22,41 +23,26 @@ async function startServer() {
 
     if (resend) {
       try {
-        // IMPORTANT: If you haven't verified your domain in Resend, 
-        // you MUST use 'onboarding@resend.dev' as the from address.
-        // Also, you can only send to your own email address until verified.
-        const fromAddress = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+        const rawFrom = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+        const from = rawFrom.includes('<') ? rawFrom : `DreamToon <${rawFrom}>`;
+        const siteName = 'DreamToon';
         
         const { data, error } = await resend.emails.send({
-          from: `DreamToon <${fromAddress}>`,
+          from: from,
           to: [artistEmail],
           subject: `New ${type} request from ${guestName}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; rounded: 12px;">
-              <h2 style="color: #111; font-weight: 900; text-transform: uppercase; letter-spacing: -0.025em;">New ${type} Request!</h2>
-              <p style="color: #666; line-height: 1.5;">Hello, you have received a new ${type} request on DreamToon.</p>
-              <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0; font-weight: bold; color: #111;">From: ${guestName}</p>
-                <p style="margin: 5px 0; color: #666;">Email: ${guestEmail}</p>
-                <hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;" />
-                <p style="margin: 0; font-weight: bold; color: #111;">Details:</p>
-                <p style="margin: 5px 0; color: #666; white-space: pre-wrap;">${details}</p>
-              </div>
-              <p style="color: #666; font-size: 14px;">Please log in to your dashboard at <a href="https://dreamtoon.vn" style="color: #3b82f6; text-decoration: none; font-weight: bold;">dreamtoon.vn</a> to manage this request.</p>
-              <p style="color: #999; font-size: 12px; margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">This is an automated notification from DreamToon.</p>
-            </div>
-          `,
+          html: getCommissionTemplate(guestName, guestEmail, details, type),
         });
 
         if (error) {
-          console.error("Resend Error:", error);
+          console.error("❌ Resend Error:", JSON.stringify(error, null, 2));
           return res.status(500).json({ success: false, error: error.message });
         }
 
         console.log("✅ Email sent successfully via Resend:", data?.id);
         return res.json({ success: true, message: "Email sent successfully" });
       } catch (err) {
-        console.error("Failed to send email via Resend:", err);
+        console.error("❌ Failed to send email via Resend:", err);
         return res.status(500).json({ success: false, error: "Internal server error" });
       }
     } else {
@@ -73,6 +59,47 @@ async function startServer() {
         message: "Simulated notification (Add RESEND_API_KEY for real emails)",
         simulated: true 
       });
+    }
+  });
+
+  app.post("/api/test-email", async (req, res) => {
+    const { email } = req.body;
+    console.log(`\n🧪 Received test email request for: ${email}`);
+    
+    if (!resend) {
+      console.log("❌ RESEND_API_KEY is not configured");
+      return res.status(400).json({ success: false, error: "RESEND_API_KEY is not configured" });
+    }
+
+    try {
+      const rawFrom = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+      // Ensure the from address is in the correct format: "Name <email@domain.com>"
+      const from = rawFrom.includes('<') ? rawFrom : `DreamToon <${rawFrom}>`;
+      
+      console.log(`📤 Sending test email from: ${from}`);
+      
+      const { data, error } = await resend.emails.send({
+        from: from,
+        to: email,
+        subject: "Test Email from DreamToon",
+        html: getTestTemplate(email),
+      });
+
+      if (error) {
+        console.error("❌ Resend Test Error:", JSON.stringify(error, null, 2));
+        // Provide a more helpful message for common validation errors
+        let errorMessage = error.message;
+        if (error.name === 'validation_error') {
+          errorMessage = `Validation Error: Please ensure "${rawFrom}" is a verified domain/email in your Resend dashboard. If using onboarding@resend.dev, you can only send to your own account email.`;
+        }
+        return res.status(500).json({ success: false, error: errorMessage });
+      }
+      
+      console.log("✅ Test email sent successfully:", data?.id);
+      return res.json({ success: true, data });
+    } catch (err) {
+      console.error("❌ Failed to send test email:", err);
+      return res.status(500).json({ success: false, error: "Internal server error" });
     }
   });
 

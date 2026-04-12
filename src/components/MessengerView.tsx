@@ -358,9 +358,9 @@ export function MessengerView({
       // No pixel limit (undefined), standard web quality (0.7)
       const compressed = await compressImage(file, undefined, 0.7);
       
-      // Check if base64 string length is > 1048576 (Firestore rule limit)
-      if (compressed.length > 1048576) {
-        alert('Image is too complex and exceeds the 1MB limit after compression. Please try a simpler image.');
+      // Check if base64 string length is > 2097152 (Firestore rule limit)
+      if (compressed.length > 2097152) {
+        alert('Image is too complex and exceeds the 2MB limit after compression. Please try a simpler image.');
         return;
       }
       

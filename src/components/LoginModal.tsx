@@ -131,7 +131,14 @@ export function LoginModal({
               )}
 
               {error && (
-                <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">{error}</p>
+                <div className="space-y-2">
+                  <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">{error}</p>
+                  {isForgotPassword && error === t('userNotFound') && (
+                    <p className="text-zinc-400 text-[9px] font-bold text-center leading-relaxed px-4">
+                      {t('socialLoginHint')}
+                    </p>
+                  )}
+                </div>
               )}
 
               {successMessage && (

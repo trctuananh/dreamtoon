@@ -488,10 +488,22 @@ export default function App() {
 
   const handleForgotPassword = async (email: string) => {
     try {
+      // Check if user exists in Firestore first
+      const q = query(collection(db, 'users'), where('email', '==', email), limit(1));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        throw new Error(t('userNotFound'));
+      }
+
+      // Optional: Check if they are a social login user (if we store that info)
+      // For now, we'll just try to send the email. 
+      // Firebase will handle it if they don't have a password set.
+      
       await sendPasswordResetEmail(auth, email);
     } catch (error: any) {
       console.error('Password reset failed:', error);
-      let message = t('errorOccurred');
+      let message = error.message || t('errorOccurred');
       if (error.code === 'auth/user-not-found') message = t('userNotFound');
       if (error.code === 'auth/invalid-email') message = t('invalidEmail');
       throw new Error(message);
@@ -1182,7 +1194,7 @@ export default function App() {
               <ArtistWallView 
                 user={user}
                 profile={profile}
-                isAdmin={profile?.role === 'admin'}
+                isAdmin={profile?.role === 'admin' || user?.email === 'tr.c.tuananh@gmail.com'}
                 artistUid={selectedArtist.uid}
                 artistProfile={selectedArtist.profile}
                 lang={lang}
@@ -1197,6 +1209,7 @@ export default function App() {
             {view === 'community' && (
               <CommunityView 
                 user={user}
+                isAdmin={profile?.role === 'admin' || user?.email === 'tr.c.tuananh@gmail.com'}
                 comics={comics}
                 following={following}
                 lang={lang}
@@ -1205,6 +1218,7 @@ export default function App() {
                 onArtistClick={handleArtistClick}
                 onLogin={() => setIsLoginModalOpen(true)}
                 setView={setView}
+                onMessageClick={handleMessageClick}
               />
             )}
 
