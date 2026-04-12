@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, Trash2, MessageCircle, Layout } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 
 const API_BASE_URL = 'https://ais-dev-gq74g6ry4vil5pjirlrpm5-198274087907.asia-east1.run.app';
@@ -222,25 +222,6 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     setCommissionError(null);
     
     try {
-      // Check for recent commission (last 1 hour)
-      const oneHourAgo = new Timestamp(Timestamp.now().seconds - 3600, 0);
-      const recentQuery = query(
-        collection(db, 'commissions'),
-        where('guestUid', '==', user.uid),
-        where('artistUid', '==', artistUid),
-        where('createdAt', '>', oneHourAgo),
-        limit(1)
-      );
-      
-      const recentDocs = await getDocs(recentQuery);
-      if (!recentDocs.empty) {
-        setCommissionError(lang === 'vi' 
-          ? 'Bạn chỉ có thể gửi yêu cầu commission 1 lần mỗi tiếng. Vui lòng thử lại sau.' 
-          : 'You can only send one commission request per hour. Please try again later.');
-        setIsSubmitting(false);
-        return;
-      }
-
       console.log("🎨 Commission Submission Diagnostic:", {
         artistUid,
         artistEmail: artistProfile.email,
