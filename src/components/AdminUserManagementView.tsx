@@ -13,7 +13,9 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 
-const API_BASE_URL = 'https://ais-dev-gq74g6ry4vil5pjirlrpm5-198274087907.asia-east1.run.app';
+const API_BASE_URL = window.location.hostname.includes('run.app') 
+  ? '' 
+  : 'https://ais-dev-gq74g6ry4vil5pjirlrpm5-198274087907.asia-east1.run.app';
 import { UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';

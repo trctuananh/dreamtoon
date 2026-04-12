@@ -3,7 +3,9 @@ import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, 
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 
-const API_BASE_URL = 'https://ais-dev-gq74g6ry4vil5pjirlrpm5-198274087907.asia-east1.run.app';
+const API_BASE_URL = window.location.hostname.includes('run.app') 
+  ? '' 
+  : 'https://ais-dev-gq74g6ry4vil5pjirlrpm5-198274087907.asia-east1.run.app';
 import { Post, UserProfile, Donation, CommissionWork, Following, PostComment } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -280,11 +282,11 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
               setRequestDetails('');
             }, 4000);
           }
-        } catch (e) {
+        } catch (e: any) {
           console.error("❌ Failed to call notify-artist API:", e);
           setCommissionError(lang === 'vi' 
-            ? 'Không thể kết nối với máy chủ gửi email.' 
-            : 'Could not connect to the email server.');
+            ? `Không thể kết nối với máy chủ gửi email. (${e.message || 'Lỗi mạng'})` 
+            : `Could not connect to the email server. (${e.message || 'Network error'})`);
         }
       } else {
         console.warn("⚠️ Artist email missing, skipping email notification.");

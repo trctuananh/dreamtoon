@@ -34,6 +34,7 @@ export function LoginModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
@@ -50,6 +51,28 @@ export function LoginModal({
       }
     } catch (err: any) {
       setError(err.message || t('errorOccurred'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    if (isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      await onLogin(provider);
+    } catch (err: any) {
+      console.error('Social login error:', err);
+      if (err.code === 'auth/popup-blocked') {
+        setError(lang === 'vi' ? 'Trình duyệt đã chặn cửa sổ đăng nhập. Vui lòng cho phép hiện popup.' : 'Popup blocked by browser. Please allow popups for this site.');
+      } else if (err.code === 'auth/cancelled-popup-request') {
+        setError(lang === 'vi' ? 'Yêu cầu đăng nhập bị hủy do có yêu cầu mới.' : 'Login cancelled due to a new request.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError(lang === 'vi' ? 'Cửa sổ đăng nhập đã bị đóng.' : 'Login popup closed by user.');
+      } else {
+        setError(err.message || t('errorOccurred'));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -172,15 +195,17 @@ export function LoginModal({
 
                 <div className="grid grid-cols-2 gap-4">
                   <button 
-                    onClick={() => onLogin('google')}
-                    className="flex items-center justify-center gap-2 p-3 bg-white border-2 border-zinc-100 rounded-2xl font-bold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-200 transition-all group"
+                    onClick={() => handleSocialLogin('google')}
+                    disabled={isLoading}
+                    className="flex items-center justify-center gap-2 p-3 bg-white border-2 border-zinc-100 rounded-2xl font-bold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-200 transition-all group disabled:opacity-50"
                   >
                     <img src="https://www.google.com/favicon.ico" className="w-4 h-4 grayscale group-hover:grayscale-0 transition-all" alt="Google" referrerPolicy="no-referrer" />
                     <span className="text-xs">Google</span>
                   </button>
                   <button 
-                    onClick={() => onLogin('facebook')}
-                    className="flex items-center justify-center gap-2 p-3 bg-[#1877F2] text-white rounded-2xl font-bold hover:bg-[#166fe5] transition-all shadow-xl shadow-blue-600/20"
+                    onClick={() => handleSocialLogin('facebook')}
+                    disabled={isLoading}
+                    className="flex items-center justify-center gap-2 p-3 bg-[#1877F2] text-white rounded-2xl font-bold hover:bg-[#166fe5] transition-all shadow-xl shadow-blue-600/20 disabled:opacity-50"
                   >
                     <img src="https://www.facebook.com/favicon.ico" className="w-4 h-4 brightness-0 invert" alt="Facebook" referrerPolicy="no-referrer" />
                     <span className="text-xs">Facebook</span>

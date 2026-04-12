@@ -445,13 +445,9 @@ export default function App() {
 
   // Handlers
   const handleLogin = async (providerType: 'google' | 'facebook' = 'google') => {
-    try {
-      const provider = providerType === 'google' ? googleProvider : facebookProvider;
-      await signInWithPopup(auth, provider);
-      setIsLoginModalOpen(false);
-    } catch (error) {
-      console.error('Login failed:', error);
-    }
+    const provider = providerType === 'google' ? googleProvider : facebookProvider;
+    await signInWithPopup(auth, provider);
+    setIsLoginModalOpen(false);
   };
 
   const handleEmailLogin = async (email: string, pass: string) => {
