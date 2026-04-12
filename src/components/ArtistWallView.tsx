@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, Trash2, MessageCircle, Layout } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit, getDocs, Timestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
+
+const API_BASE_URL = 'https://ais-dev-gq74g6ry4vil5pjirlrpm5-198274087907.asia-east1.run.app';
 import { Post, UserProfile, Donation, CommissionWork, Following, PostComment } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -19,6 +21,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   const [guestName, setGuestName] = useState(user?.displayName || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [commissionError, setCommissionError] = useState<string | null>(null);
 
   // Donation Message State
   const [donationMessages, setDonationMessages] = useState<Donation[]>([]);
@@ -216,7 +219,36 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     e.preventDefault();
     if (!user) return;
     setIsSubmitting(true);
+    setCommissionError(null);
+    
     try {
+      // Check for recent commission (last 1 hour)
+      const oneHourAgo = new Timestamp(Timestamp.now().seconds - 3600, 0);
+      const recentQuery = query(
+        collection(db, 'commissions'),
+        where('guestUid', '==', user.uid),
+        where('artistUid', '==', artistUid),
+        where('createdAt', '>', oneHourAgo),
+        limit(1)
+      );
+      
+      const recentDocs = await getDocs(recentQuery);
+      if (!recentDocs.empty) {
+        setCommissionError(lang === 'vi' 
+          ? 'Bạn chỉ có thể gửi yêu cầu commission 1 lần mỗi tiếng. Vui lòng thử lại sau.' 
+          : 'You can only send one commission request per hour. Please try again later.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log("🎨 Commission Submission Diagnostic:", {
+        artistUid,
+        artistEmail: artistProfile.email,
+        guestName,
+        guestEmail,
+        requestDetails
+      });
+
       const commissionData = {
         artistUid,
         guestUid: user.uid,
@@ -233,7 +265,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       if (artistProfile.email) {
         try {
           console.log(`📤 Attempting to send commission email to artist: ${artistProfile.email}`);
-          const response = await fetch('/api/notify-artist', {
+          const response = await fetch(`${API_BASE_URL}/api/notify-artist`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -245,17 +277,46 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
             })
           });
           
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server responded with ${response.status}: ${errorText.substring(0, 100)}`);
+          }
+          
           const result = await response.json();
           if (!result.success) {
             console.error("❌ Email notification failed:", result.error);
+            setCommissionError(lang === 'vi' 
+              ? `Lỗi gửi email: ${result.error || 'Không xác định'}` 
+              : `Email error: ${result.error || 'Unknown'}`);
           } else {
             console.log("✅ Email notification sent successfully");
+            setSubmitSuccess(true);
+            // Don't close immediately so they can see the success message
+            setTimeout(() => {
+              setSubmitSuccess(false);
+              setShowCommissionForm(false);
+              setActiveInfoModal(null);
+              setRequestDetails('');
+            }, 4000);
           }
         } catch (e) {
           console.error("❌ Failed to call notify-artist API:", e);
+          setCommissionError(lang === 'vi' 
+            ? 'Không thể kết nối với máy chủ gửi email.' 
+            : 'Could not connect to the email server.');
         }
       } else {
         console.warn("⚠️ Artist email missing, skipping email notification.");
+        setCommissionError(lang === 'vi' 
+          ? 'Artist này chưa cập nhật email nên không thể nhận thông báo. Yêu cầu của bạn vẫn được lưu vào hệ thống.' 
+          : 'This artist has not set up their email, so they cannot receive notifications. Your request is still saved in the system.');
+        setSubmitSuccess(true);
+        setTimeout(() => {
+          setSubmitSuccess(false);
+          setShowCommissionForm(false);
+          setActiveInfoModal(null);
+          setRequestDetails('');
+        }, 6000);
       }
 
       // Create a notification for the artist
@@ -273,15 +334,6 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       // Real email sending is handled by the server using Resend.
       // Ensure RESEND_API_KEY is set in the environment secrets.
       console.log(`Notification request sent for artist ${artistProfile.email}`);
-
-      setSubmitSuccess(true);
-      // Don't close immediately so they can see the success message
-      setTimeout(() => {
-        setSubmitSuccess(false);
-        setShowCommissionForm(false);
-        setActiveInfoModal(null);
-        setRequestDetails('');
-      }, 4000);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'commissions');
     } finally {
@@ -294,6 +346,14 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     if (!donorMessage.trim() || !donorName.trim()) return;
 
     setIsPostingDonation(true);
+    
+    console.log("🎁 Donation Submission Diagnostic:", {
+      artistUid,
+      artistEmail: artistProfile.email,
+      donorName: donorName.trim(),
+      donorMessage: donorMessage.trim()
+    });
+
     try {
       await addDoc(collection(db, 'donations'), {
         artistUid,
@@ -307,7 +367,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       if (artistProfile.email) {
         try {
           console.log(`📤 Attempting to send donation email to artist: ${artistProfile.email}`);
-          await fetch('/api/notify-artist', {
+          const response = await fetch(`${API_BASE_URL}/api/notify-artist`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -318,7 +378,13 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
               type: 'donation'
             })
           });
-          console.log("✅ Email notification sent successfully");
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`❌ Email notification failed (${response.status}):`, errorText);
+          } else {
+            console.log("✅ Email notification sent successfully");
+          }
         } catch (e) {
           console.error("❌ Failed to send email notification:", e);
         }
@@ -883,6 +949,14 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                             />
                           </div>
                         </div>
+                        
+                        {commissionError && (
+                          <div className="p-3 bg-red-50 border border-red-100 rounded-xl">
+                            <p className="text-[10px] text-red-500 font-bold text-center leading-tight">
+                              {commissionError}
+                            </p>
+                          </div>
+                        )}
 
                         <button 
                           type="submit"

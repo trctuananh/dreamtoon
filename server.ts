@@ -3,17 +3,32 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
+import cors from 'cors';
 import { getCommissionTemplate, getTestTemplate } from './src/lib/emailTemplates';
 
 dotenv.config();
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// Helper to get Resend instance
+function getResend() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  return new Resend(apiKey);
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.use(cors());
   app.use(express.json());
+
+  // Request logging middleware
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    }
+    next();
+  });
 
   // API Route for sending emails
   app.post("/api/notify-artist", async (req, res) => {
@@ -21,28 +36,35 @@ async function startServer() {
     
     console.log(`\n📧 Processing ${type} notification for: ${artistEmail}`);
 
-    if (resend) {
+    if (!artistEmail) {
+      console.error("❌ Error: artistEmail is missing in request body");
+      return res.status(400).json({ success: false, error: "Artist email is required" });
+    }
+
+    const resendInstance = getResend();
+    if (resendInstance) {
       try {
         const rawFrom = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
         const from = rawFrom.includes('<') ? rawFrom : `DreamToon <${rawFrom}>`;
-        const siteName = 'DreamToon';
         
-        const { data, error } = await resend.emails.send({
+        console.log(`📤 Sending ${type} email from: ${from} to: ${artistEmail}`);
+        
+        const { data, error } = await resendInstance.emails.send({
           from: from,
-          to: [artistEmail],
+          to: artistEmail, // Changed from [artistEmail] to artistEmail for simplicity
           subject: `New ${type} request from ${guestName}`,
           html: getCommissionTemplate(guestName, guestEmail, details, type),
         });
 
         if (error) {
-          console.error("❌ Resend Error:", JSON.stringify(error, null, 2));
-          return res.status(500).json({ success: false, error: error.message });
+          console.error("❌ Resend Error Details:", JSON.stringify(error, null, 2));
+          return res.status(500).json({ success: false, error: error.message, code: error.name });
         }
 
         console.log("✅ Email sent successfully via Resend:", data?.id);
-        return res.json({ success: true, message: "Email sent successfully" });
+        return res.json({ success: true, message: "Email sent successfully", id: data?.id });
       } catch (err) {
-        console.error("❌ Failed to send email via Resend:", err);
+        console.error("❌ Critical Failure in notify-artist:", err);
         return res.status(500).json({ success: false, error: "Internal server error" });
       }
     } else {
@@ -66,7 +88,8 @@ async function startServer() {
     const { email } = req.body;
     console.log(`\n🧪 Received test email request for: ${email}`);
     
-    if (!resend) {
+    const resendInstance = getResend();
+    if (!resendInstance) {
       console.log("❌ RESEND_API_KEY is not configured");
       return res.status(400).json({ success: false, error: "RESEND_API_KEY is not configured" });
     }
@@ -78,7 +101,7 @@ async function startServer() {
       
       console.log(`📤 Sending test email from: ${from}`);
       
-      const { data, error } = await resend.emails.send({
+      const { data, error } = await resendInstance.emails.send({
         from: from,
         to: email,
         subject: "Test Email from DreamToon",
@@ -101,6 +124,18 @@ async function startServer() {
       console.error("❌ Failed to send test email:", err);
       return res.status(500).json({ success: false, error: "Internal server error" });
     }
+  });
+
+  app.get("/api/config-check", (req, res) => {
+    const hasApiKey = !!process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    
+    res.json({
+      resendConfigured: hasApiKey,
+      fromEmail: fromEmail,
+      nodeEnv: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
   });
 
   // Vite middleware for development
