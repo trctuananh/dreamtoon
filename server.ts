@@ -4,7 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import { getCommissionTemplate, getTestTemplate } from './src/lib/emailTemplates';
+import { getCommissionTemplate, getTestTemplate } from './src/lib/emailTemplates.ts';
 
 dotenv.config();
 
