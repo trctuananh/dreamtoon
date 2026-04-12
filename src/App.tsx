@@ -218,7 +218,7 @@ export default function App() {
 
   // Profile Listener
   useEffect(() => {
-    if (user) {
+    if (isAuthReady && user) {
       const unsubscribe = onSnapshot(doc(db, 'users', user.uid), async (snapshot) => {
         if (snapshot.exists()) {
           const userData = snapshot.data() as UserProfile;
@@ -272,16 +272,20 @@ export default function App() {
             console.error("Error creating initial profile:", error);
           }
         }
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
       });
       return () => unsubscribe();
     }
-  }, [user]);
+  }, [user, isAuthReady]);
 
   // Comics Listener
   useEffect(() => {
     const q = query(collection(db, 'comics'), orderBy('createdAt', 'desc'), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setComics(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'comics');
     });
     return () => unsubscribe();
   }, []);
@@ -291,6 +295,8 @@ export default function App() {
     const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'), limit(20));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setArticles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'articles');
     });
     return () => unsubscribe();
   }, []);
@@ -300,6 +306,8 @@ export default function App() {
     const q = query(collection(db, 'featured'), orderBy('createdAt', 'desc'), limit(10));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setFeaturedItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeaturedItem)));
+    }, (error) => {
+      console.error("Error listening to featured items:", error);
     });
     return () => unsubscribe();
   }, []);
@@ -310,6 +318,8 @@ export default function App() {
       const q = query(collection(db, 'comics', selectedComic.id, 'chapters'), orderBy('number', 'asc'));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setChapters(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Chapter)));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `comics/${selectedComic.id}/chapters`);
       });
       return () => unsubscribe();
     }
@@ -325,6 +335,8 @@ export default function App() {
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment)));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `comics/${selectedComic.id}/chapters/${selectedChapter.id}/comments`);
       });
       return () => unsubscribe();
     }
@@ -339,6 +351,8 @@ export default function App() {
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setLikes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Like)));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `comics/${selectedComic.id}/chapters/${selectedChapter.id}/likes`);
       });
       return () => unsubscribe();
     }
@@ -346,14 +360,16 @@ export default function App() {
 
   // Following Listener
   useEffect(() => {
-    if (user) {
+    if (isAuthReady && user) {
       const q = query(collection(db, 'users', user.uid, 'following'), limit(100));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setFollowing(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Following)));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/following`);
       });
       return () => unsubscribe();
     }
-  }, [user]);
+  }, [user, isAuthReady]);
 
   // Following Feed Listener
   const followingIds = useMemo(() => {
@@ -365,7 +381,7 @@ export default function App() {
   }, [following]);
 
   useEffect(() => {
-    if (user && followingIds) {
+    if (isAuthReady && user && followingIds) {
       const comicIds = followingIds.split(',').filter(id => id !== '');
       if (comicIds.length === 0) {
         setFollowingFeed([]);
@@ -383,16 +399,18 @@ export default function App() {
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setFollowingFeed(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Chapter)));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'chapters');
       });
       return () => unsubscribe();
     } else if (user && !followingIds) {
       setFollowingFeed([]);
     }
-  }, [user, followingIds]);
+  }, [user, followingIds, isAuthReady]);
 
   // Notifications Listener
   useEffect(() => {
-    if (user) {
+    if (isAuthReady && user) {
       const q = query(
         collection(db, 'users', user.uid, 'notifications'),
         where('read', '==', false),
@@ -400,16 +418,18 @@ export default function App() {
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setUnreadNotificationsCount(snapshot.size);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/notifications`);
       });
       return () => unsubscribe();
     } else {
       setUnreadNotificationsCount(0);
     }
-  }, [user]);
+  }, [user, isAuthReady]);
 
   // Messages Listener
   useEffect(() => {
-    if (user) {
+    if (isAuthReady && user) {
       const q = query(
         collection(db, 'conversations'),
         where('participants', 'array-contains', user.uid)
@@ -420,12 +440,14 @@ export default function App() {
           return acc + (data.unreadCount?.[user.uid] || 0);
         }, 0);
         setUnreadMessagesCount(totalUnread);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'conversations');
       });
       return () => unsubscribe();
     } else {
       setUnreadMessagesCount(0);
     }
-  }, [user]);
+  }, [user, isAuthReady]);
 
   // Scroll Listener
   useEffect(() => {
@@ -439,6 +461,8 @@ export default function App() {
     const q = query(collection(db, 'profiles'), where('role', '==', 'artist'), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setArtists(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
+    }, (error) => {
+      console.error("Error listening to artists:", error);
     });
     return () => unsubscribe();
   }, []);
@@ -565,7 +589,7 @@ export default function App() {
 
   // History Listener
   useEffect(() => {
-    if (user) {
+    if (isAuthReady && user) {
       const q = query(
         collection(db, 'users', user.uid, 'history'),
         orderBy('lastRead', 'desc'),
@@ -574,10 +598,12 @@ export default function App() {
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const historyData = snapshot.docs.map(doc => ({ comicId: doc.id, ...doc.data() } as ReadingHistory));
         setHistory(historyData);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/history`);
       });
       return () => unsubscribe();
     }
-  }, [user]);
+  }, [user, isAuthReady]);
 
   const handleChapterClick = async (chapter: Chapter) => {
     setSelectedChapter(chapter);

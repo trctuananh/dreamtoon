@@ -3,9 +3,6 @@ import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, 
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 
-const API_BASE_URL = window.location.hostname.includes('run.app') 
-  ? '' 
-  : 'https://ais-dev-gq74g6ry4vil5pjirlrpm5-198274087907.asia-east1.run.app';
 import { Post, UserProfile, Donation, CommissionWork, Following, PostComment } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -248,7 +245,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       if (artistProfile.email) {
         try {
           console.log(`📤 Attempting to send commission email to artist: ${artistProfile.email}`);
-          const response = await fetch(`${API_BASE_URL}/api/notify-artist`, {
+          const response = await fetch('/api/notify-artist', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -350,7 +347,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       if (artistProfile.email) {
         try {
           console.log(`📤 Attempting to send donation email to artist: ${artistProfile.email}`);
-          const response = await fetch(`${API_BASE_URL}/api/notify-artist`, {
+          const response = await fetch('/api/notify-artist', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

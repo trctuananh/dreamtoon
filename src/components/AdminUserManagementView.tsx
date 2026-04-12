@@ -13,9 +13,6 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 
-const API_BASE_URL = window.location.hostname.includes('run.app') 
-  ? '' 
-  : 'https://ais-dev-gq74g6ry4vil5pjirlrpm5-198274087907.asia-east1.run.app';
 import { UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -157,7 +154,7 @@ export function AdminUserManagementView({ lang }: { lang: Language }) {
     setIsTestingEmail(true);
     setTestEmailResult(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/test-email`, {
+      const response = await fetch('/api/test-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: testEmailInput })
