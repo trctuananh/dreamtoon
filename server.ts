@@ -31,7 +31,12 @@ async function startServer() {
   });
 
   // API Route for sending emails
-  app.post("/api/notify-artist", async (req, res) => {
+  app.get("/api/notify-artist-v2", (req, res) => {
+    res.json({ message: "This endpoint only supports POST requests for sending notifications." });
+  });
+
+  app.post("/api/notify-artist-v2", async (req, res) => {
+    console.log(">>> REACHED /api/notify-artist-v2 POST");
     const { artistEmail, guestEmail, guestName, details, type } = req.body;
     
     console.log(`\n📧 Processing ${type} notification for: ${artistEmail}`);

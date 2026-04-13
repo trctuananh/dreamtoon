@@ -258,7 +258,9 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       if (artistProfile.email) {
         try {
           console.log(`📤 Attempting to send commission email to artist: ${artistProfile.email}`);
-          const response = await fetch('/api/notify-artist', {
+          const apiUrl = `${window.location.origin}/api/notify-artist-v2`;
+          console.log(`🔗 Calling API at: ${apiUrl}`);
+          const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -360,7 +362,8 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       if (artistProfile.email) {
         try {
           console.log(`📤 Attempting to send donation email to artist: ${artistProfile.email}`);
-          const response = await fetch('/api/notify-artist', {
+          const apiUrl = `${window.location.origin}/api/notify-artist-v2`;
+          const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

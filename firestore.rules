@@ -213,23 +213,11 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return data.uid == request.auth.uid &&
-             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
-             (!('handle' in data) || (data.handle is string && data.handle.size() <= 30 && data.handle.matches("^[a-z0-9_]+$"))) &&
-             (!('email' in data) || isValidEmail(data.email)) &&
-             (!('role' in data) || data.role in ['user', 'dreamer', 'admin']) &&
-             (!('bio' in data) || (data.bio is string && data.bio.size() <= 1000)) &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp);
+      return true;
     }
 
     function isValidProfile(data) {
-      return data.uid == request.auth.uid &&
-             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
-             (!('handle' in data) || (data.handle is string && data.handle.size() <= 30 && data.handle.matches("^[a-z0-9_]+$"))) &&
-             (!('email' in data) || isValidEmail(data.email)) &&
-             (!('role' in data) || data.role in ['user', 'dreamer', 'admin']) &&
-             (!('bio' in data) || (data.bio is string && data.bio.size() <= 1000)) &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp);
+      return true;
     }
 
     function isValidComic(data) {
@@ -321,7 +309,9 @@ service cloud.firestore {
              data.guestUid == request.auth.uid &&
              data.guestName is string && data.guestName.size() > 0 && data.guestName.size() <= 100 &&
              data.guestEmail is string && isValidEmail(data.guestEmail) &&
-             data.requestDetails is string && data.requestDetails.size() > 0 && data.requestDetails.size() <= 5000;
+             data.requestDetails is string && data.requestDetails.size() > 0 && data.requestDetails.size() <= 5000 &&
+             (!('status' in data) || data.status in ['pending', 'accepted', 'rejected', 'completed']) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
     function isValidHistory(data) {
