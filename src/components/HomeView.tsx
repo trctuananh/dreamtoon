@@ -178,7 +178,7 @@ export function HomeView({
 
               {filteredArtists.length > 0 && (
                 <div>
-                  <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{t('authors') || 'Authors'}</h3>
+                  <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{t('authors')} & {t('users')}</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
                     {filteredArtists.map((artist) => (
                       <motion.div

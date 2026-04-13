@@ -279,37 +279,46 @@ export default function App() {
     }
   }, [user, isAuthReady]);
 
-  // Comics Listener
+  // Comics Fetch (One-time)
   useEffect(() => {
-    const q = query(collection(db, 'comics'), orderBy('createdAt', 'desc'), limit(50));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setComics(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'comics');
-    });
-    return () => unsubscribe();
+    const fetchComics = async () => {
+      try {
+        const q = query(collection(db, 'comics'), orderBy('createdAt', 'desc'), limit(50));
+        const snapshot = await getDocs(q);
+        setComics(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic)));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'comics');
+      }
+    };
+    fetchComics();
   }, []);
 
-  // Articles Listener
+  // Articles Fetch (One-time)
   useEffect(() => {
-    const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'), limit(20));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setArticles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'articles');
-    });
-    return () => unsubscribe();
+    const fetchArticles = async () => {
+      try {
+        const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'), limit(20));
+        const snapshot = await getDocs(q);
+        setArticles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article)));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'articles');
+      }
+    };
+    fetchArticles();
   }, []);
 
-  // Featured Listener
+  // Featured Fetch (One-time)
   useEffect(() => {
-    const q = query(collection(db, 'featured'), orderBy('createdAt', 'desc'), limit(10));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setFeaturedItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeaturedItem)));
-    }, (error) => {
-      console.error("Error listening to featured items:", error);
-    });
-    return () => unsubscribe();
+    const fetchFeatured = async () => {
+      try {
+        const q = query(collection(db, 'featured'), orderBy('createdAt', 'desc'), limit(10));
+        const snapshot = await getDocs(q);
+        setFeaturedItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeaturedItem)));
+      } catch (error) {
+        console.error("Error fetching featured items:", error);
+      }
+    };
+    fetchFeatured();
   }, []);
 
   // Chapters Listener
@@ -408,23 +417,26 @@ export default function App() {
     }
   }, [user, followingIds, isAuthReady]);
 
-  // Notifications Listener
+  // Notifications Fetch (One-time)
   useEffect(() => {
-    if (isAuthReady && user) {
-      const q = query(
-        collection(db, 'users', user.uid, 'notifications'),
-        where('read', '==', false),
-        limit(50)
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setUnreadNotificationsCount(snapshot.size);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/notifications`);
-      });
-      return () => unsubscribe();
-    } else {
-      setUnreadNotificationsCount(0);
-    }
+    const fetchNotifications = async () => {
+      if (isAuthReady && user) {
+        try {
+          const q = query(
+            collection(db, 'users', user.uid, 'notifications'),
+            where('read', '==', false),
+            limit(50)
+          );
+          const snapshot = await getDocs(q);
+          setUnreadNotificationsCount(snapshot.size);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/notifications`);
+        }
+      } else {
+        setUnreadNotificationsCount(0);
+      }
+    };
+    fetchNotifications();
   }, [user, isAuthReady]);
 
   // Messages Listener
@@ -456,15 +468,19 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Artists Listener
+  // Artists Fetch (One-time) - Now fetching all profiles for search
   useEffect(() => {
-    const q = query(collection(db, 'profiles'), where('role', '==', 'artist'), limit(50));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setArtists(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
-    }, (error) => {
-      console.error("Error listening to artists:", error);
-    });
-    return () => unsubscribe();
+    const fetchArtists = async () => {
+      try {
+        // Fetching more profiles to support searching for any user
+        const q = query(collection(db, 'profiles'), limit(100));
+        const snapshot = await getDocs(q);
+        setArtists(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
+      } catch (error) {
+        console.error("Error fetching profiles:", error);
+      }
+    };
+    fetchArtists();
   }, []);
 
   // Handlers
@@ -587,22 +603,25 @@ export default function App() {
     }
   };
 
-  // History Listener
+  // History Fetch (One-time)
   useEffect(() => {
-    if (isAuthReady && user) {
-      const q = query(
-        collection(db, 'users', user.uid, 'history'),
-        orderBy('lastRead', 'desc'),
-        limit(20)
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const historyData = snapshot.docs.map(doc => ({ comicId: doc.id, ...doc.data() } as ReadingHistory));
-        setHistory(historyData);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/history`);
-      });
-      return () => unsubscribe();
-    }
+    const fetchHistory = async () => {
+      if (isAuthReady && user) {
+        try {
+          const q = query(
+            collection(db, 'users', user.uid, 'history'),
+            orderBy('lastRead', 'desc'),
+            limit(20)
+          );
+          const snapshot = await getDocs(q);
+          const historyData = snapshot.docs.map(doc => ({ comicId: doc.id, ...doc.data() } as ReadingHistory));
+          setHistory(historyData);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/history`);
+        }
+      }
+    };
+    fetchHistory();
   }, [user, isAuthReady]);
 
   const handleChapterClick = async (chapter: Chapter) => {

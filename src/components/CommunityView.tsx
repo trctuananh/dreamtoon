@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Heart, PenTool, MessageCircle, Send } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, updateDoc, increment, arrayUnion, arrayRemove, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, updateDoc, increment, arrayUnion, arrayRemove, addDoc, serverTimestamp, getDocs, getDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 import { View, Post, Comic, Following, UserProfile } from '../types';
 import { Language } from '../translations';
@@ -17,35 +17,44 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [profile, setProfile] = useState<any>(null);
 
+  // Profile Fetch (One-time)
   useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      return;
-    }
-    const unsubscribe = onSnapshot(doc(db, 'profiles', user.uid), (doc) => {
-      if (doc.exists()) setProfile(doc.data());
-    });
-    return () => unsubscribe();
+    const fetchProfile = async () => {
+      if (!user) {
+        setProfile(null);
+        return;
+      }
+      try {
+        const docRef = doc(db, 'profiles', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) setProfile(docSnap.data());
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+    fetchProfile();
   }, [user]);
 
+  // Comments Fetch (One-time when activePostId changes)
   useEffect(() => {
-    if (!activePostId) {
-      setPostComments([]);
-      return;
-    }
+    const fetchComments = async () => {
+      if (!activePostId) {
+        setPostComments([]);
+        return;
+      }
 
-    const q = query(
-      collection(db, 'posts', activePostId, 'comments'),
-      orderBy('createdAt', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPostComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
-    });
-
-    return () => unsubscribe();
+      try {
+        const q = query(
+          collection(db, 'posts', activePostId, 'comments'),
+          orderBy('createdAt', 'asc')
+        );
+        const snapshot = await getDocs(q);
+        setPostComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
+      }
+    };
+    fetchComments();
   }, [activePostId]);
 
   // Search filtering for posts
@@ -61,24 +70,26 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
     return matchesSearch && matchesTab;
   });
 
+  // Posts Fetch (One-time)
   useEffect(() => {
-    const q = query(
-      collection(db, 'posts'),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newPosts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Post[];
-      setPosts(newPosts);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'posts');
-    });
-
-    return () => unsubscribe();
+    const fetchPosts = async () => {
+      try {
+        const q = query(
+          collection(db, 'posts'),
+          orderBy('createdAt', 'desc'),
+          limit(50)
+        );
+        const snapshot = await getDocs(q);
+        const newPosts = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Post[];
+        setPosts(newPosts);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'posts');
+      }
+    };
+    fetchPosts();
   }, []);
 
   const handleDelete = async (postId: string) => {

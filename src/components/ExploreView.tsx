@@ -181,7 +181,7 @@ export function ExploreView({
         <div className="px-6 mt-16">
           <h3 className="text-xl font-black text-zinc-900 mb-8 tracking-tight flex items-center gap-2">
             <Users size={24} className="text-blue-500" />
-            {t('authors') || 'Authors'}
+            {t('authors')} & {t('users')}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
             {filteredArtists.map((artist) => (

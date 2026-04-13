@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, Trash2, MessageCircle, Layout } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit, getDocs } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 
 import { Post, UserProfile, Donation, CommissionWork, Following, PostComment } from '../types';
@@ -54,17 +54,22 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   const [isPostingComment, setIsPostingComment] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      const q = query(
-        collection(db, 'users', user.uid, 'following'),
-        where('targetId', '==', artistUid),
-        where('type', '==', 'artist')
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setIsFollowing(!snapshot.empty);
-      });
-      return () => unsubscribe();
-    }
+    const checkFollowing = async () => {
+      if (user) {
+        try {
+          const q = query(
+            collection(db, 'users', user.uid, 'following'),
+            where('targetId', '==', artistUid),
+            where('type', '==', 'artist')
+          );
+          const snapshot = await getDocs(q);
+          setIsFollowing(!snapshot.empty);
+        } catch (error) {
+          console.error("Error checking following status:", error);
+        }
+      }
+    };
+    checkFollowing();
   }, [user, artistUid]);
 
   const handleFollow = () => {
@@ -75,89 +80,97 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     onToggleFollow(artistUid, 'artist');
   };
 
+  // Posts Fetch (One-time)
   useEffect(() => {
-    const q = query(
-      collection(db, 'posts'),
-      where('authorUid', '==', artistUid),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newPosts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Post[];
-      setPosts(newPosts);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'posts');
-    });
-
-    return () => unsubscribe();
+    const fetchPosts = async () => {
+      try {
+        const q = query(
+          collection(db, 'posts'),
+          where('authorUid', '==', artistUid),
+          orderBy('createdAt', 'desc'),
+          limit(50)
+        );
+        const snapshot = await getDocs(q);
+        const newPosts = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Post[];
+        setPosts(newPosts);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'posts');
+      }
+    };
+    fetchPosts();
   }, [artistUid]);
 
+  // Donations Fetch (One-time)
   useEffect(() => {
-    const q = query(
-      collection(db, 'donations'),
-      where('artistUid', '==', artistUid),
-      orderBy('createdAt', 'desc'),
-      limit(20)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newDonations = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Donation[];
-      setDonationMessages(newDonations);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'donations');
-    });
-
-    return () => unsubscribe();
+    const fetchDonations = async () => {
+      try {
+        const q = query(
+          collection(db, 'donations'),
+          where('artistUid', '==', artistUid),
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        );
+        const snapshot = await getDocs(q);
+        const newDonations = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Donation[];
+        setDonationMessages(newDonations);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'donations');
+      }
+    };
+    fetchDonations();
   }, [artistUid]);
 
+  // Commissions Fetch (One-time)
   useEffect(() => {
-    const q = query(
-      collection(db, 'users', artistUid, 'commissions'),
-      orderBy('order', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newWorks = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as CommissionWork[];
-      setCommissionWorks(newWorks);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, `users/${artistUid}/commissions`);
-    });
-
-    return () => unsubscribe();
+    const fetchCommissions = async () => {
+      try {
+        const q = query(
+          collection(db, 'users', artistUid, 'commissions'),
+          orderBy('order', 'asc')
+        );
+        const snapshot = await getDocs(q);
+        const newWorks = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as CommissionWork[];
+        setCommissionWorks(newWorks);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, `users/${artistUid}/commissions`);
+      }
+    };
+    fetchCommissions();
   }, [artistUid]);
 
+  // Comments Fetch (One-time when activePostId changes)
   useEffect(() => {
-    if (!activePostId) {
-      setPostComments([]);
-      return;
-    }
+    const fetchComments = async () => {
+      if (!activePostId) {
+        setPostComments([]);
+        return;
+      }
 
-    const q = query(
-      collection(db, 'posts', activePostId, 'comments'),
-      orderBy('createdAt', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newComments = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as PostComment[];
-      setPostComments(newComments);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
-    });
-
-    return () => unsubscribe();
+      try {
+        const q = query(
+          collection(db, 'posts', activePostId, 'comments'),
+          orderBy('createdAt', 'asc')
+        );
+        const snapshot = await getDocs(q);
+        const newComments = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as PostComment[];
+        setPostComments(newComments);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
+      }
+    };
+    fetchComments();
   }, [activePostId]);
 
   const handleLike = async (post: Post) => {
