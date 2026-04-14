@@ -572,7 +572,7 @@ export const translations = {
     users: "Người dùng",
     hotArtists: "Tác giả nổi bật",
     hotArtistsDesc: "Những tác giả có nhiều lượt xem nhất trong tuần",
-    footerDescription: "Nền tảng thế hệ mới dành cho những người kể chuyện kỹ thuật số và những người mộng mơ. Hãy tham gia cộng đồng của chúng tôi và chia sẻ câu chuyện của bạn với thế giới.",
+    footerDescription: "Nền tảng thế hệ mới dành cho Họa sĩ và những Kẻ mộng mơ. Hãy tham gia cộng đồng của chúng tôi và chia sẻ câu chuyện của bạn với thế giới.",
     connect: "Kết nối",
     privacyPolicy: "Chính sách bảo mật",
     termsOfService: "Điều khoản dịch vụ",
