@@ -151,7 +151,7 @@ export function HomeView({
                         onClick={() => onComicClick(comic)}
                         className="group cursor-pointer"
                       >
-                        <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-2 shadow-lg shadow-zinc-200/50">
+                        <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-2 shadow-lg shadow-zinc-200/50">
                           <img 
                             src={comic.thumbnail} 
                             alt={comic.title} 
@@ -188,7 +188,7 @@ export function HomeView({
                         onClick={() => onArtistClick?.(artist)}
                         className="group cursor-pointer text-center"
                       >
-                        <div className="relative aspect-square rounded-full overflow-hidden mb-2 shadow-lg shadow-zinc-200/50 mx-auto w-24 sm:w-32">
+                        <div className="relative aspect-square rounded-full overflow-hidden mb-2 shadow-lg shadow-zinc-200/50 mx-auto w-16 sm:w-20">
                           <img 
                             src={artist.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(artist.displayName)}&background=random`} 
                             alt={artist.displayName} 
@@ -196,15 +196,15 @@ export function HomeView({
                             referrerPolicy="no-referrer"
                           />
                           {artist.pioneerNumber && (
-                            <div className="absolute top-0 right-0 bg-blue-600 text-white text-[8px] sm:text-[10px] font-black w-5 h-5 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                            <div className="absolute top-0 right-0 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[8px] sm:text-[10px] font-black w-5 h-5 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-[0_0_15px_rgba(245,158,11,0.6)] z-10">
                               {artist.pioneerNumber}
                             </div>
                           )}
                         </div>
-                        <h4 className="font-bold text-zinc-900 text-sm truncate mb-1 group-hover:text-blue-600 transition-colors">
+                        <h4 className="font-bold text-zinc-900 text-xs truncate mb-1 group-hover:text-blue-600 transition-colors">
                           {artist.displayName}
                         </h4>
-                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                        <p className="text-[10px] font-black text-zinc-400 tracking-widest">
                           @{artist.handle || artist.uid.slice(0, 6)}
                         </p>
                       </motion.div>
@@ -256,7 +256,7 @@ export function HomeView({
   return (
     <div className="min-h-screen bg-white pb-24">
       {/* Hero Section */}
-      <div className="relative h-[154px] w-full overflow-hidden mb-8">
+      <div className="relative h-[150px] w-full overflow-hidden mb-8">
         <AnimatePresence mode="wait">
           {featuredItems.length > 0 ? (
             <motion.div
@@ -267,18 +267,26 @@ export function HomeView({
               transition={{ duration: 0.8 }}
               className="absolute inset-0"
             >
-              {featuredItems[heroIndex].banner ? (
-                <img 
-                  src={featuredItems[heroIndex].banner} 
-                  alt={featuredItems[heroIndex].title}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-indigo-600/20 flex items-center justify-center">
-                  <Compass size={48} className="text-zinc-300" />
-                </div>
-              )}
+              {(() => {
+                const item = featuredItems[heroIndex];
+                const sourceItem = item.type === 'comic' 
+                  ? comics.find(c => c.id === item.targetId)
+                  : articles.find(a => a.id === item.targetId);
+                const displayImage = sourceItem ? (item.type === 'comic' ? (sourceItem as Comic).thumbnail : (sourceItem as Article).banner) : null;
+
+                return displayImage ? (
+                  <img 
+                    src={displayImage} 
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-indigo-600/20 flex items-center justify-center">
+                    <Compass size={48} className="text-zinc-300" />
+                  </div>
+                );
+              })()}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               
               <div className="absolute bottom-6 left-0 right-0 px-6">
@@ -330,7 +338,7 @@ export function HomeView({
       </div>
 
       {/* Section: Trending & Popular */}
-      <div className="px-6 mb-12">
+      <div className="px-6 mb-8">
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
@@ -373,7 +381,7 @@ export function HomeView({
                 onClick={() => onComicClick(comic)}
                 className="group cursor-pointer"
               >
-                <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2">
+                <div className="relative aspect-[2/3] rounded-lg overflow-hidden mb-2">
                   <img 
                     src={comic.thumbnail} 
                     alt={comic.title} 
@@ -414,7 +422,7 @@ export function HomeView({
       </div>
 
       {/* Section: New Daily */}
-      <div className="px-6 mb-12">
+      <div className="px-6 mb-8">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-2xl font-black text-zinc-900 tracking-tight">
             {t('newDaily')}
@@ -444,7 +452,7 @@ export function HomeView({
                   <img 
                     src={comic.thumbnail} 
                     alt={comic.title} 
-                    className="w-full aspect-[3/4] object-cover rounded-xl shadow-sm"
+                    className="w-full aspect-[2/3] object-cover rounded-xl shadow-sm"
                     referrerPolicy="no-referrer"
                   />
                   {isNewChapter && (
@@ -474,7 +482,7 @@ export function HomeView({
 
       {/* Section: Following Feed */}
       {followingFeed.length > 0 && (
-        <div className="px-6 mb-12">
+        <div className="px-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-2xl font-black text-zinc-900 tracking-tight">
               {t('followingFeed') || 'Following Feed'}
@@ -520,7 +528,7 @@ export function HomeView({
       )}
 
       {/* Section: Recently Read */}
-      <div className="px-6 mb-12">
+      <div className="px-6 mb-8">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
             {t('recentlyRead')}
@@ -546,7 +554,7 @@ export function HomeView({
                   onClick={() => onComicClick(comic)}
                   className="group cursor-pointer"
                 >
-                  <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2">
+                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden mb-2">
                     <img 
                       src={comic.thumbnail} 
                       alt={comic.title} 
@@ -591,7 +599,7 @@ export function HomeView({
       </div>
 
       {/* Section: Following */}
-      <div className="px-6 mb-12">
+      <div className="px-6 mb-8">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
             {t('followingComics')}
@@ -611,7 +619,7 @@ export function HomeView({
                 onClick={() => onComicClick(comic)}
                 className="group cursor-pointer"
               >
-                <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2">
+                <div className="relative aspect-[2/3] rounded-lg overflow-hidden mb-2">
                   <img 
                     src={comic.thumbnail} 
                     alt={comic.title} 
@@ -641,7 +649,7 @@ export function HomeView({
 
       {/* Section: Hot Artists */}
       {hotArtists.length > 0 && (
-        <div className="px-6 mb-12">
+        <div className="px-6 mb-4">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
@@ -654,15 +662,15 @@ export function HomeView({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4">
             {hotArtists.map((artist) => (
               <motion.div
                 key={artist.uid}
                 whileHover={{ y: -5 }}
                 onClick={() => onArtistClick?.(artist)}
-                className="group cursor-pointer text-center"
+                className="group cursor-pointer text-center flex-shrink-0 w-20"
               >
-                <div className="relative aspect-square rounded-full overflow-hidden mb-3 shadow-xl shadow-zinc-200/50 mx-auto w-24 sm:w-32 border-4 border-white group-hover:border-blue-500 transition-all duration-500">
+                <div className="relative aspect-square rounded-full overflow-hidden mb-2 shadow-xl shadow-zinc-200/50 mx-auto w-16 border-4 border-white group-hover:border-blue-500 transition-all duration-500">
                   <img 
                     src={artist.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(artist.displayName)}&background=random`} 
                     alt={artist.displayName} 
@@ -671,10 +679,10 @@ export function HomeView({
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <h4 className="font-bold text-zinc-900 text-sm truncate mb-0.5 group-hover:text-blue-600 transition-colors">
+                <h4 className="font-bold text-zinc-900 text-[10px] truncate mb-0.5 group-hover:text-blue-600 transition-colors">
                   {artist.displayName}
                 </h4>
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                <p className="text-[9px] font-black text-zinc-400 tracking-widest">
                   @{artist.handle || artist.uid.slice(0, 6)}
                 </p>
               </motion.div>

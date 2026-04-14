@@ -81,7 +81,7 @@ export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, in
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
-            placeholder="Enter article title..."
+            placeholder={t('articlePlaceholder' as any)}
           />
         </div>
         <div>
@@ -94,7 +94,7 @@ export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, in
           
           <div className="relative">
             {banner ? (
-              <div className="relative aspect-[2/1] w-full rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-50">
+              <div className="relative h-[150px] w-full rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-50">
                 <img 
                   src={banner} 
                   alt="Banner preview" 
@@ -110,7 +110,7 @@ export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, in
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center aspect-[2/1] w-full rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-blue-300 cursor-pointer transition-all group">
+              <label className="flex flex-col items-center justify-center h-[150px] w-full rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-blue-300 cursor-pointer transition-all group">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                     <Upload size={24} className="text-zinc-400 group-hover:text-blue-500" />
@@ -151,7 +151,7 @@ export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, in
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors min-h-[400px] font-mono text-sm"
-            placeholder="# Markdown Title..."
+            placeholder={t('contentPlaceholder' as any)}
           />
         </div>
         <div className="flex justify-end gap-4">

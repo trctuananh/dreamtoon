@@ -186,9 +186,10 @@ export function MyWallView({
 
     try {
       // Compress image before setting state
-      // Use smaller size for info/work thumbnails
-      const maxWidth = target === 'post' ? 1000 : 400;
-      const compressed = await compressImage(file, maxWidth, 0.6);
+      // High quality for commission info and works
+      const maxWidth = target === 'post' ? 1600 : 1200;
+      const quality = target === 'post' ? 0.8 : 0.85;
+      const compressed = await compressImage(file, maxWidth, quality);
       
       if (target === 'post') {
         setSelectedImage(compressed);
@@ -458,7 +459,7 @@ export function MyWallView({
     });
   };
 
-  const shareUrl = `https://dreamtoon.vn/${profile?.handle || user.uid}`;
+  const shareUrl = `${window.location.origin}/${profile?.handle || user.uid}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -483,7 +484,7 @@ export function MyWallView({
           <div className="flex gap-2">
             <button 
               onClick={() => openInfoModal('donate')}
-              className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
             >
               <DollarSign size={14} />
               <span>{t('donate')}</span>
@@ -728,7 +729,7 @@ export function MyWallView({
                 referrerPolicy="no-referrer"
               />
               {profile?.pioneerNumber && (
-                <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                <div className="absolute -top-1 -left-1 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-[0_0_10px_rgba(245,158,11,0.6)] z-10">
                   {profile.pioneerNumber}
                 </div>
               )}
@@ -813,7 +814,7 @@ export function MyWallView({
                         {post.authorPioneerNumber}
                       </div>
                     )}
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
                   </div>
                   <div>
                     <h4 className="font-black text-zinc-900 text-sm tracking-tight">{post.authorName}</h4>
@@ -910,7 +911,7 @@ export function MyWallView({
                             referrerPolicy="no-referrer"
                           />
                           {profile?.pioneerNumber && (
-                            <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-lg z-10">
+                            <div className="absolute -top-1 -left-1 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-[0_0_5px_rgba(245,158,11,0.5)] z-10">
                               {profile.pioneerNumber}
                             </div>
                           )}
@@ -993,14 +994,22 @@ export function MyWallView({
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="bg-white w-full max-w-lg rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
-              <div className={`p-2 sm:p-3 flex items-center justify-between text-white flex-shrink-0 ${activeInfoModal === 'donate' ? 'bg-green-500' : 'bg-orange-500'}`}>
-                <div className="flex items-center gap-4">
-                  <h3 className="text-sm sm:text-base font-black uppercase tracking-widest flex items-center gap-2">
-                    {activeInfoModal === 'donate' ? <DollarSign size={16} /> : <Briefcase size={16} />}
-                    {t(activeInfoModal as any)}
-                  </h3>
+              <div className={`p-2 sm:p-3 flex items-center justify-between text-white flex-shrink-0 ${activeInfoModal === 'donate' ? 'bg-emerald-500' : 'bg-orange-500'}`}>
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={profile?.photoURL || user.photoURL || undefined} 
+                    alt={user.displayName || ''} 
+                    className="w-8 h-8 rounded-lg border border-white/30 object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="flex flex-col">
+                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest leading-none">
+                      {t(activeInfoModal as any)}
+                    </h3>
+                    <span className="text-[8px] font-bold opacity-70 uppercase tracking-tighter">@{profile?.handle || user.uid.slice(0, 6)}</span>
+                  </div>
                   {activeInfoModal === 'commission' && (
-                    <div className="flex bg-white/20 rounded-xl p-1">
+                    <div className="flex bg-white/20 rounded-xl p-1 ml-2">
                       <button 
                         onClick={() => setCommissionTab('info')}
                         className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${commissionTab === 'info' ? 'bg-white text-orange-500 shadow-sm' : 'text-white hover:bg-white/10'}`}
@@ -1032,13 +1041,21 @@ export function MyWallView({
                         {commissionRequests.map((req) => (
                           <div key={req.id} className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 relative group">
                             <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <h4 className="text-xs font-black text-zinc-900">{req.guestName}</h4>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{req.guestEmail}</p>
+                              <div className="flex items-center gap-3">
+                                <img 
+                                  src={req.guestPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.guestName)}&background=random`} 
+                                  alt={req.guestName} 
+                                  className="w-10 h-10 rounded-xl object-cover border border-zinc-200"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div>
+                                  <h4 className="text-xs font-black text-zinc-900">{req.guestName}</h4>
+                                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{req.guestEmail}</p>
+                                </div>
                               </div>
                               <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
                                 req.status === 'pending' ? 'bg-orange-100 text-orange-600' :
-                                req.status === 'accepted' ? 'bg-green-100 text-green-600' :
+                                req.status === 'accepted' ? 'bg-emerald-100 text-emerald-600' :
                                 req.status === 'rejected' ? 'bg-red-100 text-red-600' :
                                 'bg-zinc-100 text-zinc-600'
                               }`}>
@@ -1053,7 +1070,7 @@ export function MyWallView({
                                     onClick={async () => {
                                       await updateDoc(doc(db, 'commissions', req.id), { status: 'accepted' });
                                     }}
-                                    className="flex-1 py-2 bg-green-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
+                                    className="flex-1 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
                                   >
                                     {t('accept')}
                                   </button>
@@ -1170,6 +1187,11 @@ export function MyWallView({
                         />
                       </div>
                     )}
+                    {infoText && (
+                      <div className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100">
+                        <p className="text-xs text-zinc-600 leading-relaxed whitespace-pre-wrap">{infoText}</p>
+                      </div>
+                    )}
                     <button
                       onClick={() => setIsEditingInfo(true)}
                       className="w-full py-3 bg-zinc-100 text-zinc-900 rounded-full text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all flex items-center justify-center gap-2"
@@ -1266,7 +1288,7 @@ export function MyWallView({
                   <p className="text-xs text-zinc-500 truncate font-medium">{shareUrl}</p>
                   <button 
                     onClick={handleCopyLink}
-                    className={`p-2 rounded-xl transition-all ${copied ? 'bg-green-500 text-white' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300'}`}
+                    className={`p-2 rounded-xl transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300'}`}
                   >
                     {copied ? <Check size={16} /> : <Copy size={16} />}
                   </button>

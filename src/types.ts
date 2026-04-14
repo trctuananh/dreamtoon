@@ -31,7 +31,6 @@ export interface Comic {
   tags: string[];
   description: string;
   thumbnail: string;
-  banner?: string;
   rating: number;
   ratingCount?: number;
   views: number;
@@ -99,7 +98,6 @@ export interface FeaturedItem {
   id: string;
   title: string;
   description?: string;
-  banner?: string;
   type: 'comic' | 'article' | 'external';
   targetId?: string;
   externalUrl?: string;
@@ -121,7 +119,9 @@ export interface UserProfile {
   pioneerNumber?: number;
   donateInfo?: { text: string; imageUrl: string };
   commissionInfo?: { text: string; imageUrl: string };
+  showEmail?: boolean;
   createdAt?: any;
+  lastSeen?: any;
 }
 
 export interface CommissionRequest {
@@ -130,6 +130,7 @@ export interface CommissionRequest {
   guestUid: string;
   guestName: string;
   guestEmail: string;
+  guestPhoto?: string;
   requestDetails: string;
   status: 'pending' | 'accepted' | 'rejected' | 'completed';
   createdAt: any;

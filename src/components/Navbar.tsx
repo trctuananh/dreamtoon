@@ -40,231 +40,233 @@ export function Navbar({
 
   return (
     <>
-      <nav className={`sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-zinc-100 px-4 py-1.5 sm:py-2.5 flex flex-col gap-1 sm:gap-2 ${view === 'reader' ? 'hidden sm:flex' : 'flex'}`}>
-        {/* Row 1: Logo, Search, Profile, Menu */}
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
-          {/* Logo / Back Button */}
-          <div className="flex items-center gap-2 shrink-0">
-            {view !== 'home' ? (
-              <button 
-                onClick={onBack}
-                className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-900"
-              >
-                <ChevronLeft size={24} />
-              </button>
-            ) : (
-              <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
-                setView('home');
-                window.history.pushState(null, '', '/');
-              }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-zinc-900 shadow-lg shadow-purple-500/20 overflow-hidden relative group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity" />
-                  <span className="relative text-white font-black text-xl italic tracking-tighter">D</span>
+      <nav className={`sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-zinc-100 py-1.5 sm:py-2.5 flex flex-col gap-1 sm:gap-2 ${view === 'reader' ? 'hidden sm:flex' : 'flex'}`}>
+        <div className={`w-full px-4 flex flex-col gap-1 sm:gap-2 ${(view === 'home' || view === 'explore') ? 'lg:max-w-[85%] lg:mx-auto' : ''}`}>
+          {/* Row 1: Logo, Search, Profile, Menu */}
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            {/* Logo / Back Button */}
+            <div className="flex items-center gap-2 shrink-0">
+              {view !== 'home' ? (
+                <button 
+                  onClick={onBack}
+                  className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-900"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
+                  setView('home');
+                  window.history.pushState(null, '', '/');
+                }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-zinc-900 shadow-lg shadow-purple-500/20 overflow-hidden relative group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity" />
+                    <span className="relative text-white font-black text-xl italic tracking-tighter">D</span>
+                  </div>
+                  <span className="text-xl font-black tracking-tighter uppercase hidden sm:inline">
+                    <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">Dream</span>
+                    <span className="text-zinc-900">Toon</span>
+                  </span>
                 </div>
-                <span className="text-xl font-black tracking-tighter uppercase hidden sm:inline">
-                  <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">Dream</span>
-                  <span className="text-zinc-900">Toon</span>
-                </span>
+              )}
+            </div>
+
+            {/* Search Bar - Flexible in middle on mobile, fixed max-width on desktop */}
+            {(view === 'home' || view === 'explore' || view === 'community') && (
+              <div className="flex-1 max-w-md relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                <input 
+                  type="text" 
+                  placeholder={t('searchPlaceholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-zinc-50 border border-zinc-100 rounded-full py-1.5 pl-9 pr-4 focus:outline-none focus:border-blue-500 transition-colors text-xs sm:text-sm text-zinc-900"
+                />
               </div>
             )}
-          </div>
 
-          {/* Search Bar - Flexible in middle on mobile, fixed max-width on desktop */}
-          {(view === 'home' || view === 'explore' || view === 'community') && (
-            <div className="flex-1 max-w-md relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-              <input 
-                type="text" 
-                placeholder={t('searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-100 rounded-full py-1.5 pl-9 pr-4 focus:outline-none focus:border-blue-500 transition-colors text-xs sm:text-sm text-zinc-900"
-              />
-            </div>
-          )}
-
-          {/* Right Actions: Profile, Menu, Desktop Links */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Desktop Nav Links (Hidden on mobile) */}
-            <div className="hidden md:flex items-center gap-6 mr-4">
-              <button 
-              onClick={() => {
-                setView('home');
-                window.history.pushState(null, '', '/');
-              }}
-              className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'home' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
-            >
-              <HomeIcon size={18} />
-              {t('home')}
-            </button>
-            <button 
-              onClick={() => {
-                setView('explore');
-                window.history.pushState(null, '', '/explore');
-              }}
-              className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'explore' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
-            >
-              <Compass size={18} />
-              {t('explore')}
-            </button>
-            
-            <button 
-              onClick={() => {
-                setView('community');
-                window.history.pushState(null, '', '/community');
-              }}
-              className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'community' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
-            >
-              <Star size={18} className="text-amber-500" />
-              {t('dreamWorld')}
-            </button>
-
-            {user && (
+            {/* Right Actions: Profile, Menu, Desktop Links */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Desktop Nav Links (Hidden on mobile) */}
+              <div className="hidden md:flex items-center gap-6 mr-4">
+                <button 
+                onClick={() => {
+                  setView('home');
+                  window.history.pushState(null, '', '/');
+                }}
+                className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'home' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
+              >
+                <HomeIcon size={18} />
+                {t('home')}
+              </button>
               <button 
                 onClick={() => {
-                  setView('my-wall');
-                  window.history.pushState(null, '', '/my-wall');
+                  setView('explore');
+                  window.history.pushState(null, '', '/explore');
                 }}
-                className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
+                className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'explore' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
               >
-                <Users size={18} />
-                {t('myWall')}
+                <Compass size={18} />
+                {t('explore')}
               </button>
-            )}
-          </div>
+              
+              <button 
+                onClick={() => {
+                  setView('community');
+                  window.history.pushState(null, '', '/community');
+                }}
+                className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'community' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
+              >
+                <Star size={18} className="text-amber-500" />
+                {t('dreamWorld')}
+              </button>
 
-            {/* Profile / Login */}
-            {user ? (
-              <div className="flex items-center gap-1 sm:gap-3">
-                {/* Messenger Icon */}
+              {user && (
                 <button 
                   onClick={() => {
-                    setView('messenger');
-                    window.history.pushState(null, '', '/messenger');
+                    setView('my-wall');
+                    window.history.pushState(null, '', '/my-wall');
                   }}
-                  className={`relative p-2 hover:bg-zinc-100 rounded-full transition-colors hidden sm:block ${view === 'messenger' ? 'text-blue-500 bg-blue-50' : 'text-zinc-600'}`}
+                  className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
                 >
-                  <MessageCircle size={20} />
-                  {unreadMessagesCount > 0 && (
-                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold border-2 border-white">
-                      {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
-                    </span>
-                  )}
+                  <Users size={18} />
+                  {t('myWall')}
                 </button>
+              )}
+            </div>
 
-                {/* Bell Icon */}
-                <button 
-                  onClick={() => setView('notifications')}
-                  className={`relative p-2 hover:bg-zinc-100 rounded-full transition-colors ${view === 'notifications' ? 'text-blue-500 bg-blue-50' : 'text-zinc-600'}`}
-                >
-                  <Bell size={20} />
-                  {unreadNotificationsCount > 0 && (
-                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold border-2 border-white">
-                      {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
-                    </span>
-                  )}
-                </button>
-
-                <div className="relative group">
-                <img 
-                  src={profile?.photoURL || user.photoURL || undefined} 
-                  alt={profile?.displayName || user.displayName || ''} 
-                  className="w-8 h-8 rounded-full border-2 border-blue-500 cursor-pointer"
-                  referrerPolicy="no-referrer"
-                  onClick={() => setView('profile')}
-                />
-                {/* Desktop Profile Dropdown */}
-                <div className="hidden sm:block absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-zinc-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                  <div className="px-4 py-2 border-b border-zinc-50">
-                    <p className="text-xs font-bold text-zinc-900 truncate">{profile?.displayName || user.displayName}</p>
-                    {profile?.handle && <p className="text-[10px] font-bold text-blue-500 truncate">@{profile.handle}</p>}
-                    <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
-                  </div>
+              {/* Profile / Login */}
+              {user ? (
+                <div className="flex items-center gap-1 sm:gap-3">
+                  {/* Messenger Icon */}
                   <button 
-                    onClick={() => setView('upload')}
-                    className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 flex items-center gap-2"
+                    onClick={() => {
+                      setView('messenger');
+                      window.history.pushState(null, '', '/messenger');
+                    }}
+                    className={`relative p-2 hover:bg-zinc-100 rounded-full transition-colors hidden sm:block ${view === 'messenger' ? 'text-blue-500 bg-blue-50' : 'text-zinc-600'}`}
                   >
-                    <Upload size={14} className="text-blue-500" />
-                    {t('upload')}
-                  </button>
-                  <button 
-                    onClick={() => setView('profile')}
-                    className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 flex items-center gap-2"
-                  >
-                    <User size={14} />
-                    {t('profile')}
-                  </button>
-                  <button 
-                    onClick={() => setView('notifications')}
-                    className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 flex items-center justify-between"
-                  >
-                    <span>{t('notifications')}</span>
-                    {unreadNotificationsCount > 0 && (
-                      <span className="w-2 h-2 bg-red-500 rounded-full" />
+                    <MessageCircle size={20} />
+                    {unreadMessagesCount > 0 && (
+                      <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold border-2 border-white">
+                        {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                      </span>
                     )}
                   </button>
-                  {(user?.email === 'tr.c.tuananh@gmail.com' || profile?.role === 'admin') && (
-                    <>
-                      <button 
-                        onClick={() => setView('create-article')}
-                        className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
-                      >
-                        {t('createArticle')}
-                      </button>
-                      <button 
-                        onClick={() => setView('manage-featured')}
-                        className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
-                      >
-                        Manage Featured
-                      </button>
-                      <button 
-                        onClick={() => setView('admin-users')}
-                        className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
-                      >
-                        Manage Users
-                      </button>
-                    </>
-                  )}
+
+                  {/* Bell Icon */}
                   <button 
-                    onClick={onLogout}
-                    className="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-50"
+                    onClick={() => setView('notifications')}
+                    className={`relative p-2 hover:bg-zinc-100 rounded-full transition-colors ${view === 'notifications' ? 'text-blue-500 bg-blue-50' : 'text-zinc-600'}`}
                   >
-                    {t('logout')}
+                    <Bell size={20} />
+                    {unreadNotificationsCount > 0 && (
+                      <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold border-2 border-white">
+                        {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                      </span>
+                    )}
                   </button>
+
+                  <div className="relative group">
+                  <img 
+                    src={profile?.photoURL || user.photoURL || undefined} 
+                    alt={profile?.displayName || user.displayName || ''} 
+                    className="w-8 h-8 rounded-full border-2 border-blue-500 cursor-pointer"
+                    referrerPolicy="no-referrer"
+                    onClick={() => setView('profile')}
+                  />
+                  {/* Desktop Profile Dropdown */}
+                  <div className="hidden sm:block absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-zinc-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                    <div className="px-4 py-2 border-b border-zinc-50">
+                      <p className="text-xs font-bold text-zinc-900 truncate">{profile?.displayName || user.displayName}</p>
+                      {profile?.handle && <p className="text-[10px] font-bold text-blue-500 truncate">@{profile.handle}</p>}
+                      <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
+                    </div>
+                    <button 
+                      onClick={() => setView('upload')}
+                      className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 flex items-center gap-2"
+                    >
+                      <Upload size={14} className="text-blue-500" />
+                      {t('upload')}
+                    </button>
+                    <button 
+                      onClick={() => setView('profile')}
+                      className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 flex items-center gap-2"
+                    >
+                      <User size={14} />
+                      {t('profile')}
+                    </button>
+                    <button 
+                      onClick={() => setView('notifications')}
+                      className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50 flex items-center justify-between"
+                    >
+                      <span>{t('notifications')}</span>
+                      {unreadNotificationsCount > 0 && (
+                        <span className="w-2 h-2 bg-red-500 rounded-full" />
+                      )}
+                    </button>
+                    {(user?.email === 'tr.c.tuananh@gmail.com' || profile?.role === 'admin') && (
+                      <>
+                        <button 
+                          onClick={() => setView('create-article')}
+                          className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
+                        >
+                          {t('createArticle')}
+                        </button>
+                        <button 
+                          onClick={() => setView('manage-featured')}
+                          className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
+                        >
+                          Manage Featured
+                        </button>
+                        <button 
+                          onClick={() => setView('admin-users')}
+                          className="w-full text-left px-4 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
+                        >
+                          Manage Users
+                        </button>
+                      </>
+                    )}
+                    <button 
+                      onClick={onLogout}
+                      className="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-50"
+                    >
+                      {t('logout')}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-            ) : (
-              <button 
-                onClick={onLogin}
-                className="px-4 py-2 bg-blue-500 text-white text-xs font-bold rounded-xl hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
-              >
-                {t('login')}
-              </button>
-            )}
+              ) : (
+                <button 
+                  onClick={onLogin}
+                  className="px-4 py-2 bg-blue-500 text-white text-xs font-bold rounded-xl hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
+                >
+                  {t('login')}
+                </button>
+              )}
 
-            {/* Menu Button (Mobile) */}
-            <button 
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600 md:hidden"
-            >
-              <Menu size={24} />
-            </button>
+              {/* Menu Button (Mobile) */}
+              <button 
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600 md:hidden"
+              >
+                <Menu size={24} />
+              </button>
 
-            {/* Language Switcher (Desktop) */}
-            <div className="hidden sm:flex items-center bg-zinc-100 rounded-full p-1 ml-1">
-              <button 
-                onClick={() => setLang('en')}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${lang === 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-zinc-500'}`}
-              >
-                EN
-              </button>
-              <button 
-                onClick={() => setLang('vi')}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${lang === 'vi' ? 'bg-white text-blue-600 shadow-sm' : 'text-zinc-500'}`}
-              >
-                VI
-              </button>
+              {/* Language Switcher (Desktop) */}
+              <div className="hidden sm:flex items-center bg-zinc-100 rounded-full p-1 ml-1">
+                <button 
+                  onClick={() => setLang('en')}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${lang === 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-zinc-500'}`}
+                >
+                  EN
+                </button>
+                <button 
+                  onClick={() => setLang('vi')}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${lang === 'vi' ? 'bg-white text-blue-600 shadow-sm' : 'text-zinc-500'}`}
+                >
+                  VI
+                </button>
+              </div>
             </div>
           </div>
         </div>

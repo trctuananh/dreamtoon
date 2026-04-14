@@ -7,20 +7,20 @@ import { db, handleFirestoreError, OperationType, auth } from '../firebase';
 import { Comic, Following } from '../types';
 import { Language, translations } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
-import { formatViews, validateImage } from '../lib/utils';
+import { formatViews, validateImage, compressImage } from '../lib/utils';
 
 export function ProfileView({ user, profile, comics, following, lang, onEditComic, onComicSelect, onBack, onUpload, onToggleFollow, onLogout, onMessageClick, isGuest = false }: { user: any, profile: any, comics: Comic[], following: Following[], lang: Language, onEditComic: (comic: Comic) => void, onComicSelect: (comic: Comic) => void, onBack: () => void, onUpload: () => void, onToggleFollow: (id: string, type: 'artist' | 'comic', authorUid?: string) => void, onLogout: () => void, onMessageClick?: (target: any) => void, isGuest?: boolean }) {
   const { t } = useTranslation(lang);
+  const isFollowingArtist = following.some(f => f.targetId === profile?.uid && f.type === 'artist');
   const [activeTab, setActiveTab] = useState<'comics' | 'following'>('comics');
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState(profile?.bio || '');
   const [displayName, setDisplayName] = useState(profile?.displayName || user.displayName || '');
   const [handle, setHandle] = useState(profile?.handle || '');
   const [photoURL, setPhotoURL] = useState(profile?.photoURL || user.photoURL || '');
+  const [showEmail, setShowEmail] = useState(profile?.showEmail || false);
   const [handleError, setHandleError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -28,6 +28,7 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
       setDisplayName(profile.displayName || user.displayName || '');
       setHandle(profile.handle || '');
       setPhotoURL(profile.photoURL || user.photoURL || '');
+      setShowEmail(profile.showEmail || false);
     }
   }, [profile, user]);
 
@@ -53,16 +54,18 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      if (result.length > 800 * 1024) { // ~800KB limit for base64
-        alert('Image is too large for an avatar. Please use a smaller image (under 800KB).');
+    try {
+      // Use compressImage for profile photos to ensure they are high quality but fit in Firestore
+      const compressed = await compressImage(file, 800, 0.85);
+      if (compressed.length > 1048576) {
+        alert('Image is too complex even after compression. Please try a different photo.');
         return;
       }
-      setPhotoURL(result);
-    };
-    reader.readAsDataURL(file);
+      setPhotoURL(compressed);
+    } catch (error) {
+      console.error("Error compressing profile photo:", error);
+      alert('Failed to process image');
+    }
   };
 
   const handleUpdateProfile = async () => {
@@ -91,6 +94,7 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
         displayName, 
         handle: handle.toLowerCase(),
         photoURL,
+        showEmail,
         updatedAt: new Date()
       };
 
@@ -99,10 +103,17 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
 
       // Update Firebase Auth profile as well
       if (auth.currentUser) {
-        await updateProfile(auth.currentUser, {
-          displayName: displayName,
-          photoURL: photoURL
-        });
+        const authUpdate: { displayName?: string; photoURL?: string } = {
+          displayName: displayName
+        };
+        
+        // Only update photoURL in Auth if it's a real URL or a short base64
+        // Firebase Auth limit is typically 2048 chars
+        if (photoURL && (!photoURL.startsWith('data:') || photoURL.length < 2000)) {
+          authUpdate.photoURL = photoURL;
+        }
+        
+        await updateProfile(auth.currentUser, authUpdate);
       }
 
       // Update all posts by this user to reflect the new name and photo
@@ -133,88 +144,6 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     } finally {
       setIsUpdating(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!auth.currentUser) return;
-    setIsDeletingAccount(true);
-    try {
-      const batch = writeBatch(db);
-      const uid = user.uid;
-
-      // 1. Delete user comics and their chapters
-      const comicsQuery = query(collection(db, 'comics'), where('authorUid', '==', uid));
-      const comicsSnap = await getDocs(comicsQuery);
-      for (const comicDoc of comicsSnap.docs) {
-        // Delete chapters subcollection
-        const chaptersQuery = query(collection(db, 'comics', comicDoc.id, 'chapters'));
-        const chaptersSnap = await getDocs(chaptersQuery);
-        chaptersSnap.docs.forEach(chapterDoc => {
-          batch.delete(doc(db, 'comics', comicDoc.id, 'chapters', chapterDoc.id));
-        });
-        // Delete ratings subcollection
-        const ratingsQuery = query(collection(db, 'comics', comicDoc.id, 'ratings'));
-        const ratingsSnap = await getDocs(ratingsQuery);
-        ratingsSnap.docs.forEach(ratingDoc => {
-          batch.delete(doc(db, 'comics', comicDoc.id, 'ratings', ratingDoc.id));
-        });
-        batch.delete(doc(db, 'comics', comicDoc.id));
-      }
-
-      // 2. Delete user posts and their comments
-      const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', uid));
-      const postsSnap = await getDocs(postsQuery);
-      for (const postDoc of postsSnap.docs) {
-        const commentsQuery = query(collection(db, 'posts', postDoc.id, 'comments'));
-        const commentsSnap = await getDocs(commentsQuery);
-        commentsSnap.docs.forEach(commentDoc => {
-          batch.delete(doc(db, 'posts', postDoc.id, 'comments', commentDoc.id));
-        });
-        batch.delete(doc(db, 'posts', postDoc.id));
-      }
-
-      // 3. Delete user articles
-      const articlesQuery = query(collection(db, 'articles'), where('authorUid', '==', uid));
-      const articlesSnap = await getDocs(articlesQuery);
-      articlesSnap.docs.forEach(articleDoc => {
-        batch.delete(doc(db, 'articles', articleDoc.id));
-      });
-
-      // 4. Delete user profile and user document
-      batch.delete(doc(db, 'users', uid));
-      batch.delete(doc(db, 'profiles', uid));
-
-      // 5. Delete follows (where user is follower or target)
-      const followsQuery1 = query(collection(db, 'follows'), where('userId', '==', uid));
-      const followsSnap1 = await getDocs(followsQuery1);
-      followsSnap1.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
-
-      const followsQuery2 = query(collection(db, 'follows'), where('targetId', '==', uid));
-      const followsSnap2 = await getDocs(followsQuery2);
-      followsSnap2.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
-
-      // 6. Delete notifications
-      const notifsQuery = query(collection(db, 'notifications'), where('recipientId', '==', uid));
-      const notifsSnap = await getDocs(notifsQuery);
-      notifsSnap.docs.forEach(nDoc => batch.delete(doc(db, 'notifications', nDoc.id)));
-
-      // Commit all Firestore deletions
-      await batch.commit();
-
-      // 7. Delete Firebase Auth user
-      await deleteUser(auth.currentUser);
-      
-      onLogout();
-    } catch (error: any) {
-      if (error.code === 'auth/requires-recent-login') {
-        alert('Please log out and log in again to delete your account for security reasons.');
-      } else {
-        handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}`);
-      }
-    } finally {
-      setIsDeletingAccount(false);
-      setShowDeleteConfirm(false);
     }
   };
 
@@ -252,7 +181,7 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   referrerPolicy="no-referrer"
                 />
                 {profile?.pioneerNumber && (
-                  <div className="absolute -top-2 -left-2 md:-top-4 md:-left-4 bg-blue-600 text-white text-[10px] md:text-base font-black w-8 h-8 md:w-14 md:h-14 rounded-full flex items-center justify-center border-2 md:border-4 border-white shadow-xl z-20">
+                  <div className="absolute -top-2 -left-2 md:-top-4 md:-left-4 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[10px] md:text-base font-black w-8 h-8 md:w-14 md:h-14 rounded-full flex items-center justify-center border-2 md:border-4 border-white shadow-[0_0_20px_rgba(245,158,11,0.7)] z-20">
                     {profile.pioneerNumber}
                   </div>
                 )}
@@ -262,23 +191,45 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                     <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                   </label>
                 )}
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 md:w-10 md:h-10 bg-green-500 border-2 md:border-4 border-white rounded-full shadow-lg" />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 md:w-10 md:h-10 bg-emerald-500 border-2 md:border-4 border-white rounded-full shadow-lg" />
               </div>
               <h3 className="text-xl md:text-2xl font-black text-zinc-900 tracking-tight leading-tight">{displayName || profile?.displayName || user.displayName}</h3>
               {profile?.handle && (
                 <p className="text-blue-500 font-black text-xs md:text-sm mb-0.5 md:mb-1 tracking-tight">@{profile.handle}</p>
               )}
-              {!isGuest && <p className="text-zinc-400 text-[10px] md:text-xs font-bold mb-0.5 md:mb-2">{user.email}</p>}
+              {!isGuest ? (
+                <p className="text-zinc-400 text-[10px] md:text-xs font-bold mb-0.5 md:mb-2">{user.email}</p>
+              ) : (
+                profile?.showEmail && profile?.email && (
+                  <p className="text-zinc-400 text-[10px] md:text-xs font-bold mb-0.5 md:mb-2">{profile.email}</p>
+                )
+              )}
               <p className="text-[9px] md:text-[10px] text-zinc-400 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] mb-2 md:mb-6">{t('joined')}: {joinedDate}</p>
 
-              {isGuest && onMessageClick && (
-                <button
-                  onClick={() => onMessageClick(profile)}
-                  className="w-full mb-6 flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20"
-                >
-                  <MessageCircle size={18} />
-                  {t('messenger')}
-                </button>
+              {isGuest && (
+                <div className="w-full flex flex-col gap-2 mb-6">
+                  <button
+                    onClick={() => onToggleFollow(profile.uid, 'artist')}
+                    className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
+                      isFollowingArtist 
+                        ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
+                        : 'bg-pink-500 text-white hover:bg-pink-600 shadow-pink-500/20'
+                    }`}
+                  >
+                    <Heart size={18} className={isFollowingArtist ? 'fill-current' : ''} />
+                    {isFollowingArtist ? t('following') : t('follow')}
+                  </button>
+
+                  {onMessageClick && (
+                    <button
+                      onClick={() => onMessageClick(profile)}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20"
+                    >
+                      <MessageCircle size={18} />
+                      {t('messenger')}
+                    </button>
+                  )}
+                </div>
               )}
 
               {isEditing ? (
@@ -331,6 +282,18 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                       className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm text-zinc-900 focus:outline-none focus:border-blue-500 transition-colors resize-none"
                       rows={3}
                     />
+                  </div>
+                  <div className="flex items-center gap-2 py-2">
+                    <input
+                      type="checkbox"
+                      id="showEmail"
+                      checked={showEmail}
+                      onChange={(e) => setShowEmail(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-zinc-300 focus:ring-blue-500"
+                    />
+                    <label htmlFor="showEmail" className="text-xs font-bold text-zinc-600 cursor-pointer">
+                      {t('showEmailOnProfile')}
+                    </label>
                   </div>
                   <div className="flex gap-2 mt-2">
                     <button
@@ -389,18 +352,6 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   <p className="text-[7px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('role')}</p>
                 </div>
               </div>
-
-              {!isGuest && (
-                <div className="w-full mt-8 pt-8 border-t border-zinc-50">
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-50 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all"
-                  >
-                    <Trash2 size={16} />
-                    {t('deleteAccount')}
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -563,40 +514,6 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
           )}
         </div>
       </div>
-
-      {/* Delete Account Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl p-8"
-          >
-            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
-              <Trash2 className="text-red-500" size={32} />
-            </div>
-            <h3 className="text-xl font-black text-zinc-900 mb-2 uppercase tracking-tight">{t('deleteAccount')}?</h3>
-            <p className="text-sm text-zinc-500 mb-8 leading-relaxed">{t('confirmDeleteAccount')}</p>
-            
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={isDeletingAccount}
-                className="flex-1 py-4 bg-zinc-100 text-zinc-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-200 transition-all disabled:opacity-50"
-              >
-                {t('cancel')}
-              </button>
-              <button 
-                onClick={handleDeleteAccount}
-                disabled={isDeletingAccount}
-                className="flex-1 py-4 bg-red-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
-              >
-                {isDeletingAccount ? '...' : t('delete')}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }

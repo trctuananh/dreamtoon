@@ -1,6 +1,8 @@
 import React from 'react';
 import { ArrowLeft, Clock, Compass, Share2, Twitter, Facebook, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { Article } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -98,7 +100,7 @@ export function ArticleView({ article, lang, onBack }: { article: Article, lang:
           </div>
 
           <div className="prose prose-zinc prose-lg max-w-none">
-            <ReactMarkdown>{article.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{article.content}</ReactMarkdown>
           </div>
         </div>
       </div>

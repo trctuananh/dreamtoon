@@ -87,7 +87,7 @@ export function DashboardView({
 
   const stats = [
     { label: 'Total Views', value: totalViews.toLocaleString(), icon: <Eye size={20} />, color: 'bg-blue-500' },
-    { label: 'Followers', value: followerCount.toLocaleString(), icon: <Users size={20} />, color: 'bg-green-500' },
+    { label: 'Followers', value: followerCount.toLocaleString(), icon: <Users size={20} />, color: 'bg-emerald-500' },
     { label: 'Avg Rating', value: avgRating, icon: <Star size={20} />, color: 'bg-amber-500' },
     { label: 'My Comics', value: myComics.length.toString(), icon: <BookOpen size={20} />, color: 'bg-purple-500' },
   ];

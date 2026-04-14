@@ -3,7 +3,7 @@ import { Star } from 'lucide-react';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 
-export function StarRating({ rating, onRate, lang, isSubmitting, success }: { rating: number, onRate: (score: number) => void, lang: Language, isSubmitting: boolean, success: boolean }) {
+export function StarRating({ rating, onRate, lang, isSubmitting, success, size = 16 }: { rating: number, onRate: (score: number) => void, lang: Language, isSubmitting: boolean, success: boolean, size?: number }) {
   const { t } = useTranslation(lang);
   const [hover, setHover] = useState(0);
 
@@ -20,7 +20,7 @@ export function StarRating({ rating, onRate, lang, isSubmitting, success }: { ra
             className="p-0.5 transition-transform hover:scale-110 disabled:opacity-50"
           >
             <Star 
-              size={16} 
+              size={size} 
               className={`${(hover || rating) >= star ? 'text-yellow-500 fill-yellow-500' : 'text-zinc-300'} transition-colors`} 
             />
           </button>

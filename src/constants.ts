@@ -10,7 +10,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: 'In a world where shadows can consume the living, one young warrior must find the light within to save his village from the encroaching darkness.',
     thumbnail: 'https://picsum.photos/seed/comic1/400/600',
-    banner: 'https://picsum.photos/seed/comic1-banner/1200/400',
     rating: 4.8,
     views: 1250000,
     chapters: [
@@ -50,7 +49,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: '2099. The city of Neo-Tokyo is a neon-drenched playground for the elite and a graveyard for the forgotten. A rogue hacker uncovers a secret that could bring the entire system down.',
     thumbnail: 'https://picsum.photos/seed/comic2/400/600',
-    banner: 'https://picsum.photos/seed/comic2-banner/1200/400',
     rating: 4.5,
     views: 850000,
     chapters: [
@@ -77,7 +75,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: 'Deep in the ancient woods, the trees speak to those who listen. Elara has always heard them, but now they are screaming for help.',
     thumbnail: 'https://picsum.photos/seed/comic3/400/600',
-    banner: 'https://picsum.photos/seed/comic3-banner/1200/400',
     rating: 4.9,
     views: 2100000,
     chapters: [
@@ -103,7 +100,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: 'At the most prestigious magic academy in the galaxy, love is the most dangerous spell of all.',
     thumbnail: 'https://picsum.photos/seed/comic4/400/600',
-    banner: 'https://picsum.photos/seed/comic4-banner/1200/400',
     rating: 4.7,
     views: 540000,
     chapters: [
@@ -129,7 +125,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: 'Who says you can\'t cook a dragon? Follow Chef Leo as he explores the world\'s deadliest dungeons in search of the ultimate ingredients.',
     thumbnail: 'https://picsum.photos/seed/comic5/400/600',
-    banner: 'https://picsum.photos/seed/comic5-banner/1200/400',
     rating: 4.6,
     views: 120000,
     chapters: [
@@ -155,7 +150,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: 'In a world where alchemy is forbidden, one young girl discovers she is the last of her kind.',
     thumbnail: 'https://picsum.photos/seed/comic6/400/600',
-    banner: 'https://picsum.photos/seed/comic6-banner/1200/400',
     rating: 4.4,
     views: 320000,
     chapters: [{ id: 'c7', comicId: '6', number: 1, title: 'Forbidden Arts', uploadDate: '2024-03-28', images: ['https://picsum.photos/seed/c7-1/800/1200'] }]
@@ -169,7 +163,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: 'An AI develops consciousness and tries to escape the corporate server it was born in.',
     thumbnail: 'https://picsum.photos/seed/comic7/400/600',
-    banner: 'https://picsum.photos/seed/comic7-banner/1200/400',
     rating: 4.3,
     views: 150000,
     chapters: [{ id: 'c8', comicId: '7', number: 1, title: 'Hello World', uploadDate: '2024-03-27', images: ['https://picsum.photos/seed/c8-1/800/1200'] }]
@@ -183,7 +176,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: 'Finding love is hard. Finding love during a zombie apocalypse is even harder.',
     thumbnail: 'https://picsum.photos/seed/comic8/400/600',
-    banner: 'https://picsum.photos/seed/comic8-banner/1200/400',
     rating: 4.2,
     views: 420000,
     chapters: [{ id: 'c9', comicId: '8', number: 1, title: 'First Bite', uploadDate: '2024-03-26', images: ['https://picsum.photos/seed/c9-1/800/1200'] }]
@@ -197,7 +189,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: 'A group of elite thieves plan the biggest heist in history: stealing the crown jewels of the moon.',
     thumbnail: 'https://picsum.photos/seed/comic9/400/600',
-    banner: 'https://picsum.photos/seed/comic9-banner/1200/400',
     rating: 4.1,
     views: 95000,
     chapters: [{ id: 'c10', comicId: '9', number: 1, title: 'The Plan', uploadDate: '2024-03-25', images: ['https://picsum.photos/seed/c10-1/800/1200'] }]
@@ -211,7 +202,6 @@ export const SAMPLE_COMICS: Comic[] = [
     tags: [],
     description: 'A young stable boy finds a dragon egg and becomes the first dragon rider in a thousand years.',
     thumbnail: 'https://picsum.photos/seed/comic10/400/600',
-    banner: 'https://picsum.photos/seed/comic10-banner/1200/400',
     rating: 4.9,
     views: 3500000,
     chapters: [{ id: 'c11', comicId: '10', number: 1, title: 'The Egg', uploadDate: '2024-03-24', images: ['https://picsum.photos/seed/c11-1/800/1200'] }]

@@ -8,7 +8,7 @@ import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, lang, onBack, onProfileClick, onToggleFollow, onMessageClick, onLogin }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onMessageClick: (target: UserProfile) => void, onLogin: () => void }) {
+export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, following, lang, onBack, onProfileClick, onToggleFollow, onMessageClick, onLogin }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, following: Following[], lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onMessageClick: (target: UserProfile) => void, onLogin: () => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   
@@ -33,7 +33,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   // Share State
   const [showShareModal, setShowShareModal] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const isFollowing = following.some(f => f.targetId === artistUid && f.type === 'artist');
   const [viewingWorkImage, setViewingWorkImage] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -52,25 +52,6 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   const [postComments, setPostComments] = useState<PostComment[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
-
-  useEffect(() => {
-    const checkFollowing = async () => {
-      if (user) {
-        try {
-          const q = query(
-            collection(db, 'users', user.uid, 'following'),
-            where('targetId', '==', artistUid),
-            where('type', '==', 'artist')
-          );
-          const snapshot = await getDocs(q);
-          setIsFollowing(!snapshot.empty);
-        } catch (error) {
-          console.error("Error checking following status:", error);
-        }
-      }
-    };
-    checkFollowing();
-  }, [user, artistUid]);
 
   const handleFollow = () => {
     onToggleFollow(artistUid, 'artist');
@@ -209,7 +190,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     }
   };
 
-  const shareUrl = `https://dreamtoon.vn/${artistProfile?.handle || artistUid}`;
+  const shareUrl = `${window.location.origin}/${artistProfile?.handle || artistUid}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -247,6 +228,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
         guestUid: user.uid,
         guestName,
         guestEmail,
+        guestPhoto: profile?.photoURL || user.photoURL || '',
         requestDetails,
         status: 'pending',
         createdAt: serverTimestamp()
@@ -258,7 +240,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       if (artistProfile.email) {
         try {
           console.log(`📤 Attempting to send commission email to artist: ${artistProfile.email}`);
-          const apiUrl = `${window.location.origin}/api/notify-artist-v2`;
+          const apiUrl = '/notify-v3';
           console.log(`🔗 Calling API at: ${apiUrl}`);
           const response = await fetch(apiUrl, {
             method: 'POST',
@@ -272,8 +254,10 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
             })
           });
           
+          console.log(`📡 Response status: ${response.status}`);
           if (!response.ok) {
             const errorText = await response.text();
+            console.error(`❌ API Error Response: ${errorText}`);
             throw new Error(`Server responded with ${response.status}: ${errorText.substring(0, 100)}`);
           }
           
@@ -357,36 +341,6 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
         message: donorMessage.trim(),
         createdAt: serverTimestamp()
       });
-
-      // Notify the artist via server (Real email via Resend)
-      if (artistProfile.email) {
-        try {
-          console.log(`📤 Attempting to send donation email to artist: ${artistProfile.email}`);
-          const apiUrl = `${window.location.origin}/api/notify-artist-v2`;
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              artistEmail: artistProfile.email,
-              guestEmail: user?.email || 'anonymous',
-              guestName: donorName.trim(),
-              details: donorMessage.trim(),
-              type: 'donation'
-            })
-          });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`❌ Email notification failed (${response.status}):`, errorText);
-          } else {
-            console.log("✅ Email notification sent successfully");
-          }
-        } catch (e) {
-          console.error("❌ Failed to send email notification:", e);
-        }
-      } else {
-        console.warn("⚠️ Artist email missing, skipping email notification.");
-      }
 
       // Create a notification for the artist
       createNotification({
@@ -511,7 +465,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                 referrerPolicy="no-referrer"
               />
               {artistProfile.pioneerNumber && (
-                <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[10px] sm:text-xs font-black w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
+                <div className="absolute -top-1 -left-1 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[10px] sm:text-xs font-black w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 border-white shadow-[0_0_20px_rgba(245,158,11,0.7)] z-10">
                   {artistProfile.pioneerNumber}
                 </div>
               )}
@@ -520,6 +474,9 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
                 <p className="text-sm sm:text-sm font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
+                {artistProfile.showEmail && artistProfile.email && (
+                  <p className="text-[10px] sm:text-xs font-bold text-zinc-400 mt-0.5">{artistProfile.email}</p>
+                )}
               </div>
               <button 
                 onClick={() => onProfileClick(artistUid)}
@@ -533,7 +490,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:justify-end">
             <button 
               onClick={() => setActiveInfoModal('donate')}
-              className="flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-green-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-green-500/20"
+              className="flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-emerald-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
             >
               <DollarSign size={14} className="sm:w-[18px] sm:h-[18px]" />
               {t('donate')}
@@ -678,7 +635,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                         {post.authorPioneerNumber}
                       </div>
                     )}
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
                   </div>
                   <div>
                     <h4 className="font-black text-zinc-900 text-sm tracking-tight">{post.authorName}</h4>
@@ -778,7 +735,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                               referrerPolicy="no-referrer"
                             />
                             {profile?.pioneerNumber && (
-                              <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-lg z-10">
+                              <div className="absolute -top-1 -left-1 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-[0_0_5px_rgba(245,158,11,0.5)] z-10">
                                 {profile.pioneerNumber}
                               </div>
                             )}
@@ -872,11 +829,21 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="bg-white w-full max-w-lg rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
-              <div className={`p-2 sm:p-3 flex items-center justify-between text-white flex-shrink-0 ${activeInfoModal === 'donate' ? 'bg-green-500' : 'bg-orange-500'}`}>
-                <h3 className="text-sm sm:text-base font-black uppercase tracking-widest flex items-center gap-2">
-                  {showCommissionForm ? <Send size={16} /> : (activeInfoModal === 'donate' ? <DollarSign size={16} /> : <Briefcase size={16} />)}
-                  {showCommissionForm ? t('submitCommission') : t(activeInfoModal as any)}
-                </h3>
+              <div className={`p-2 sm:p-3 flex items-center justify-between text-white flex-shrink-0 ${activeInfoModal === 'donate' ? 'bg-emerald-500' : 'bg-orange-500'}`}>
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={artistProfile.photoURL || undefined} 
+                    alt={artistProfile.displayName} 
+                    className="w-8 h-8 rounded-lg border border-white/30 object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="flex flex-col">
+                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest leading-none">
+                      {showCommissionForm ? t('submitCommission') : t(activeInfoModal as any)}
+                    </h3>
+                    <span className="text-[8px] font-bold opacity-70 uppercase tracking-tighter">@{artistProfile.handle || 'artist'}</span>
+                  </div>
+                </div>
                 <button onClick={() => {
                   setActiveInfoModal(null);
                   setShowCommissionForm(false);
@@ -893,9 +860,9 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                       <motion.div 
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="text-center py-12 bg-green-50 rounded-3xl border-2 border-dashed border-green-200 flex flex-col items-center gap-4"
+                        className="text-center py-12 bg-emerald-50 rounded-3xl border-2 border-dashed border-emerald-200 flex flex-col items-center gap-4"
                       >
-                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                        <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
                           <Check size={32} />
                         </div>
                         <div className="space-y-1">
@@ -975,7 +942,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                           type="text"
                           value={donorName}
                           onChange={(e) => setDonorName(e.target.value)}
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-green-500 transition-colors"
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-emerald-500 transition-colors"
                         />
                       </div>
                       <div>
@@ -984,7 +951,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                           required
                           value={donorMessage}
                           onChange={(e) => setDonorMessage(e.target.value)}
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-green-500 transition-colors resize-none"
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 focus:outline-none focus:border-emerald-500 transition-colors resize-none"
                           rows={3}
                           placeholder="Thank you for your support!"
                         />
@@ -993,7 +960,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                     <button 
                       type="submit"
                       disabled={isPostingDonation}
-                      className="w-full py-3 sm:py-4 bg-green-500 text-white rounded-full font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-xl shadow-green-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full py-3 sm:py-4 bg-emerald-500 text-white rounded-full font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <Send size={18} />
                       {isPostingDonation ? '...' : t('postMessage')}
@@ -1019,6 +986,13 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                         <MessageCircle size={18} />
                         {t('leaveMessage')}
                       </button>
+                    )}
+                    {(activeInfoModal === 'donate' ? artistProfile.donateInfo?.text : artistProfile.commissionInfo?.text) && (
+                      <div className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100">
+                        <p className="text-xs text-zinc-600 leading-relaxed whitespace-pre-wrap">
+                          {activeInfoModal === 'donate' ? artistProfile.donateInfo?.text : artistProfile.commissionInfo?.text}
+                        </p>
+                      </div>
                     )}
                     {activeInfoModal === 'commission' && (
                       <button 
@@ -1127,7 +1101,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                   <p className="text-xs text-zinc-500 truncate font-medium">{shareUrl}</p>
                   <button 
                     onClick={handleCopyLink}
-                    className={`p-2 rounded-xl transition-all ${copied ? 'bg-green-500 text-white' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300'}`}
+                    className={`p-2 rounded-xl transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300'}`}
                   >
                     {copied ? <Check size={16} /> : <Copy size={16} />}
                   </button>

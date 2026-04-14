@@ -19,30 +19,34 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(cors());
-  app.use(express.json());
-
-  // Request logging middleware
+  // Request logging middleware - only for API and important routes
   app.use((req, res, next) => {
-    if (req.path.startsWith('/api')) {
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    const isApi = req.path.startsWith('/api') || req.path.startsWith('/notify-v3');
+    if (isApi) {
+      console.log(`[API] ${new Date().toISOString()} ${req.method} ${req.path}`);
     }
     next();
   });
 
-  // API Route for sending emails
-  app.get("/api/notify-artist-v2", (req, res) => {
-    res.json({ message: "This endpoint only supports POST requests for sending notifications." });
-  });
+  app.use(cors());
+  app.use(express.json());
 
-  app.post("/api/notify-artist-v2", async (req, res) => {
-    console.log(">>> REACHED /api/notify-artist-v2 POST");
+  // API Route for sending emails (v3 - no /api prefix to avoid proxy issues)
+  app.all("/notify-v3", async (req, res) => {
+    console.log(`>>> REACHED /notify-v3 with method: ${req.method}`);
+    
+    if (req.method !== 'POST') {
+      return res.status(200).json({ 
+        message: "This endpoint is alive. Please use POST to send notifications.",
+        method: req.method 
+      });
+    }
+
     const { artistEmail, guestEmail, guestName, details, type } = req.body;
     
     console.log(`\n📧 Processing ${type} notification for: ${artistEmail}`);
 
     if (!artistEmail) {
-      console.error("❌ Error: artistEmail is missing in request body");
       return res.status(400).json({ success: false, error: "Artist email is required" });
     }
 
@@ -52,41 +56,36 @@ async function startServer() {
         const rawFrom = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
         const from = rawFrom.includes('<') ? rawFrom : `DreamToon <${rawFrom}>`;
         
-        console.log(`📤 Sending ${type} email from: ${from} to: ${artistEmail}`);
-        
         const { data, error } = await resendInstance.emails.send({
           from: from,
-          to: artistEmail, // Changed from [artistEmail] to artistEmail for simplicity
+          to: artistEmail,
           subject: `New ${type} request from ${guestName}`,
           html: getCommissionTemplate(guestName, guestEmail, details, type),
         });
 
         if (error) {
-          console.error("❌ Resend Error Details:", JSON.stringify(error, null, 2));
-          return res.status(500).json({ success: false, error: error.message, code: error.name });
+          console.error("❌ Resend Error:", error);
+          return res.status(500).json({ success: false, error: error.message });
         }
 
-        console.log("✅ Email sent successfully via Resend:", data?.id);
-        return res.json({ success: true, message: "Email sent successfully", id: data?.id });
-      } catch (err) {
-        console.error("❌ Critical Failure in notify-artist:", err);
-        return res.status(500).json({ success: false, error: "Internal server error" });
+        return res.json({ success: true, id: data?.id });
+      } catch (err: any) {
+        console.error("❌ Server Error:", err);
+        return res.status(500).json({ success: false, error: err.message });
       }
     } else {
-      // Fallback to simulation if no API key
-      console.log("⚠️ RESEND_API_KEY not found. Simulating email...");
-      console.log("------------------------------------------");
-      console.log(`To: ${artistEmail}`);
-      console.log(`Subject: New ${type} request from ${guestName}`);
-      console.log(`Details: ${details}`);
-      console.log("------------------------------------------\n");
-      
       return res.json({ 
         success: true, 
-        message: "Simulated notification (Add RESEND_API_KEY for real emails)",
+        message: "Simulated notification",
         simulated: true 
       });
     }
+  });
+
+  // Keep old routes for backward compatibility
+  app.all("/api/notify-artist*", (req, res) => {
+    console.log(`>>> DEPRECATED API CALL: ${req.method} ${req.path}`);
+    res.status(410).json({ error: "This endpoint is deprecated. Please use /notify-v3" });
   });
 
   app.post("/api/test-email", async (req, res) => {

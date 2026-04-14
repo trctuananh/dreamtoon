@@ -136,7 +136,7 @@ export default function App() {
 
         if (artistHandle) {
           // Check if it's a reserved path
-          const reservedPaths = ['explore', 'upload', 'community', 'notifications', 'profile', 'privacy', 'manage-featured', 'admin-users'];
+          const reservedPaths = ['explore', 'upload', 'community', 'notifications', 'profile', 'privacy', 'manage-featured', 'admin-users', 'create-article'];
           if (reservedPaths.includes(artistHandle)) {
             setView(artistHandle as View);
             window.scrollTo(0, 0);
@@ -203,6 +203,31 @@ export default function App() {
 
   const [selectedArtist, setSelectedArtist] = useState<{ uid: string, profile: UserProfile } | null>(null);
 
+  // Presence System: Update lastSeen every minute
+  useEffect(() => {
+    if (!user) return;
+
+    const updatePresence = async () => {
+      if (!user || !isAuthReady) return;
+      try {
+        const profileRef = doc(db, 'profiles', user.uid);
+        await updateDoc(profileRef, {
+          lastSeen: serverTimestamp()
+        });
+      } catch (error) {
+        // Silently fail for presence updates to not disturb user
+        console.warn('Presence update failed:', error);
+      }
+    };
+
+    // Initial update
+    updatePresence();
+
+    // Periodic update - increased to 5 minutes to save quota
+    const interval = setInterval(updatePresence, 300000);
+    return () => clearInterval(interval);
+  }, [user, isAuthReady]);
+
   // Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -216,7 +241,9 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Profile Listener
+  // Profile Listener & Sync
+  const lastSyncedProfileRef = React.useRef<string>('');
+
   useEffect(() => {
     if (isAuthReady && user) {
       const unsubscribe = onSnapshot(doc(db, 'users', user.uid), async (snapshot) => {
@@ -224,35 +251,34 @@ export default function App() {
           const userData = snapshot.data() as UserProfile;
           setProfile(userData);
 
-          // Sync public profile
+          // Sync public profile only if meaningful data changed to save quota
           try {
-            const publicProfile: any = {
-              uid: userData.uid,
+            const syncData = {
               displayName: userData.displayName || 'Anonymous',
               handle: userData.handle || '',
               photoURL: userData.photoURL || '',
               bio: userData.bio || '',
               pioneerNumber: userData.pioneerNumber || null,
-              role: userData.role || 'user',
-              banned: userData.banned || false,
               donateInfo: userData.donateInfo || null,
               commissionInfo: userData.commissionInfo || null,
-              email: userData.email || '',
-              updatedAt: serverTimestamp()
+              role: userData.role || 'user',
+              banned: userData.banned || false
             };
-            
-            // Only include createdAt if it exists to avoid 'undefined' error
-            if (userData.createdAt) {
-              publicProfile.createdAt = userData.createdAt;
-            } else {
-              // Fallback to server timestamp if missing, though it should exist
-              publicProfile.createdAt = serverTimestamp();
-            }
 
-            const profileRef = doc(db, 'profiles', user.uid);
-            await setDoc(profileRef, publicProfile, { merge: true });
+            const syncString = JSON.stringify(syncData);
+            if (syncString !== lastSyncedProfileRef.current) {
+              const profileRef = doc(db, 'profiles', user.uid);
+              await setDoc(profileRef, {
+                ...syncData,
+                uid: user.uid,
+                email: userData.email || '',
+                updatedAt: serverTimestamp(),
+                createdAt: userData.createdAt || serverTimestamp()
+              }, { merge: true });
+              lastSyncedProfileRef.current = syncString;
+            }
           } catch (e) {
-            console.error("Error syncing public profile:", e);
+            handleFirestoreError(e, OperationType.WRITE, `profiles/${user.uid}`);
           }
         } else {
           // Create initial profile if it doesn't exist
@@ -279,46 +305,37 @@ export default function App() {
     }
   }, [user, isAuthReady]);
 
-  // Comics Fetch (One-time)
+  // Comics Listener
   useEffect(() => {
-    const fetchComics = async () => {
-      try {
-        const q = query(collection(db, 'comics'), orderBy('createdAt', 'desc'), limit(50));
-        const snapshot = await getDocs(q);
-        setComics(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic)));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'comics');
-      }
-    };
-    fetchComics();
+    const q = query(collection(db, 'comics'), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setComics(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'comics');
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Articles Fetch (One-time)
+  // Articles Listener
   useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'), limit(20));
-        const snapshot = await getDocs(q);
-        setArticles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article)));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'articles');
-      }
-    };
-    fetchArticles();
+    const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setArticles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'articles');
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Featured Fetch (One-time)
+  // Featured Listener
   useEffect(() => {
-    const fetchFeatured = async () => {
-      try {
-        const q = query(collection(db, 'featured'), orderBy('createdAt', 'desc'), limit(10));
-        const snapshot = await getDocs(q);
-        setFeaturedItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeaturedItem)));
-      } catch (error) {
-        console.error("Error fetching featured items:", error);
-      }
-    };
-    fetchFeatured();
+    const q = query(collection(db, 'featured'), orderBy('createdAt', 'desc'), limit(10));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setFeaturedItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeaturedItem)));
+    }, (error) => {
+      console.error("Error fetching featured items:", error);
+    });
+    return () => unsubscribe();
   }, []);
 
   // Chapters Listener
@@ -507,9 +524,14 @@ export default function App() {
   const handleEmailRegister = async (email: string, pass: string, name: string) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      await updateProfile(userCredential.user, {
+      const authUpdate: { displayName?: string; photoURL?: string } = {
         displayName: name
-      });
+      };
+      
+      // If we ever add a photo upload during registration, we should check it here too
+      // For now, we just set the display name
+      
+      await updateProfile(userCredential.user, authUpdate);
       // The onAuthStateChanged will handle the rest
       setIsLoginModalOpen(false);
     } catch (error: any) {
@@ -562,7 +584,8 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  const handleArtistClick = async (uid: string) => {
+  const handleArtistClick = async (input: string | any) => {
+    const uid = typeof input === 'string' ? input : input.uid;
     try {
       const docRef = doc(db, 'profiles', uid);
       const docSnap = await getDoc(docRef);
@@ -891,7 +914,7 @@ export default function App() {
           unreadMessagesCount={unreadMessagesCount}
         />
 
-        <main className={`pb-20 sm:pb-0 ${view === 'reader' ? 'pb-0' : ''}`}>
+        <main className={`pb-20 sm:pb-0 ${view === 'reader' ? 'pb-0' : ''} ${(view === 'home' || view === 'explore') ? 'lg:max-w-[85%] lg:mx-auto' : ''}`}>
           <AnimatePresence mode="wait">
             {view === 'home' && (
               <HomeView 
@@ -1238,6 +1261,7 @@ export default function App() {
                 isAdmin={profile?.role === 'admin' || user?.email === 'tr.c.tuananh@gmail.com'}
                 artistUid={selectedArtist.uid}
                 artistProfile={selectedArtist.profile}
+                following={following}
                 lang={lang}
                 onBack={handleBack}
                 onProfileClick={handlePublicProfileClick}

@@ -42,6 +42,7 @@ export function MessengerView({
   const { t } = useTranslation(lang);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [otherParticipantProfile, setOtherParticipantProfile] = useState<UserProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -145,10 +146,6 @@ export function MessengerView({
         const updated = convs.find(c => c.id === selectedConversation.id);
         if (updated) {
           setSelectedConversation(updated);
-          // If we are currently viewing this conversation, mark as read
-          if (updated.unreadCount?.[user.uid]) {
-            markAsRead(updated.id);
-          }
         }
       }
     }, (error) => {
@@ -180,6 +177,25 @@ export function MessengerView({
 
     return () => unsubscribe();
   }, [selectedConversation]);
+
+  // Listen to other participant's profile for online status
+  useEffect(() => {
+    if (!selectedConversation || !user) {
+      setOtherParticipantProfile(null);
+      return;
+    }
+
+    const otherId = selectedConversation.participants.find(id => id !== user.uid);
+    if (!otherId) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'profiles', otherId), (snapshot) => {
+      if (snapshot.exists()) {
+        setOtherParticipantProfile({ uid: snapshot.id, ...snapshot.data() } as UserProfile);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [selectedConversation?.id, user?.uid]);
 
   const handleSearch = async (queryStr: string) => {
     setSearchQuery(queryStr);
@@ -485,10 +501,42 @@ export function MessengerView({
                 <button onClick={() => setSelectedConversation(null)} className="p-2 hover:bg-zinc-100 rounded-full md:hidden">
                   <ChevronLeft size={20} />
                 </button>
-                <img src={getOtherParticipant(selectedConversation).photoURL || undefined} className="w-10 h-10 rounded-full object-cover" alt="" referrerPolicy="no-referrer" />
+                <div className="relative">
+                  <img src={getOtherParticipant(selectedConversation).photoURL || undefined} className="w-10 h-10 rounded-full object-cover" alt="" referrerPolicy="no-referrer" />
+                  {(() => {
+                    const lastSeen = otherParticipantProfile?.lastSeen?.toDate?.();
+                    const isOnline = lastSeen && (Date.now() - lastSeen.getTime() < 120000);
+                    if (isOnline) {
+                      return <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />;
+                    }
+                    return null;
+                  })()}
+                </div>
                 <div>
                   <p className="font-bold text-sm">{getOtherParticipant(selectedConversation).displayName}</p>
-                  <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">Online</p>
+                  {(() => {
+                    const lastSeen = otherParticipantProfile?.lastSeen?.toDate?.();
+                    const isOnline = lastSeen && (Date.now() - lastSeen.getTime() < 120000); // Online if seen in last 2 mins
+                    
+                    if (isOnline) {
+                      return <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">Online</p>;
+                    } else if (lastSeen) {
+                      const diff = Date.now() - lastSeen.getTime();
+                      const mins = Math.floor(diff / 60000);
+                      const hours = Math.floor(mins / 60);
+                      const days = Math.floor(hours / 24);
+                      
+                      let timeStr = '';
+                      if (days > 0) timeStr = `${days}d ago`;
+                      else if (hours > 0) timeStr = `${hours}h ago`;
+                      else if (mins > 0) timeStr = `${mins}m ago`;
+                      else timeStr = 'just now';
+                      
+                      return <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Last seen {timeStr}</p>;
+                    } else {
+                      return <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Offline</p>;
+                    }
+                  })()}
                 </div>
               </div>
               <div className="flex items-center gap-1">

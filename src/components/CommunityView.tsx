@@ -276,7 +276,7 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
                           {post.authorPioneerNumber}
                         </div>
                       )}
-                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
                     </div>
                     <div>
                       <h4 className="font-black text-zinc-900 text-sm tracking-tight hover:text-blue-500 transition-colors">{post.authorName}</h4>

@@ -8,11 +8,11 @@ export function Footer({ lang, onViewChange }: { lang: Language, onViewChange?: 
   const { t } = useTranslation(lang);
 
   return (
-    <footer className="bg-zinc-950 text-white py-20">
+    <footer className="bg-zinc-950 text-white py-10">
       <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-4 gap-12 mb-16">
+        <div className="grid md:grid-cols-4 gap-12 mb-8">
           <div className="col-span-2">
-            <div className="flex items-center gap-2 mb-6">
+            <div className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-zinc-900 shadow-lg shadow-purple-500/20 overflow-hidden relative group">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity" />
                 <span className="relative text-white font-black text-2xl italic tracking-tighter">D</span>
@@ -27,7 +27,7 @@ export function Footer({ lang, onViewChange }: { lang: Language, onViewChange?: 
             </p>
           </div>
           <div>
-            <h4 className="font-bold mb-6 uppercase tracking-widest text-xs text-zinc-400">{t('connect' as any)}</h4>
+            <h4 className="font-bold mb-4 uppercase tracking-widest text-xs text-zinc-400">{t('connect' as any)}</h4>
             <div className="flex gap-4">
               <a href="#" className="p-3 bg-zinc-900 rounded-2xl hover:bg-blue-600 transition-all group">
                 <Facebook size={20} className="group-hover:scale-110 transition-transform" />
@@ -44,7 +44,7 @@ export function Footer({ lang, onViewChange }: { lang: Language, onViewChange?: 
             </div>
           </div>
         </div>
-        <div className="pt-8 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+        <div className="pt-4 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
           <p>© 2026 DREAMTOON. ALL RIGHTS RESERVED.</p>
           <div className="flex gap-8">
             <button 

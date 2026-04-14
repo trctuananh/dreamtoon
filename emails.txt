@@ -1,0 +1,85 @@
+src/components/CommunityView.tsx:      email: '' // We don't have the email here, but MessengerView handles it
+src/components/ArtistWallView.tsx:  const [guestEmail, setGuestEmail] = useState(user?.email || '');
+src/components/ArtistWallView.tsx:        artistEmail: artistProfile.email,
+src/components/ArtistWallView.tsx:      // Notify the artist via server (Real email via Resend)
+src/components/ArtistWallView.tsx:      if (artistProfile.email) {
+src/components/ArtistWallView.tsx:          console.log(`📤 Attempting to send commission email to artist: ${artistProfile.email}`);
+src/components/ArtistWallView.tsx:              artistEmail: artistProfile.email,
+src/components/ArtistWallView.tsx:              ? `Lỗi gửi email: ${result.error || 'Không xác định'}` 
+src/components/ArtistWallView.tsx:            ? `Không thể kết nối với máy chủ gửi email. (${e.message || 'Lỗi mạng'})` 
+src/components/ArtistWallView.tsx:            : `Could not connect to the email server. (${e.message || 'Network error'})`);
+src/components/ArtistWallView.tsx:        console.warn("⚠️ Artist email missing, skipping email notification.");
+src/components/ArtistWallView.tsx:          ? 'Artist này chưa cập nhật email nên không thể nhận thông báo. Yêu cầu của bạn vẫn được lưu vào hệ thống.' 
+src/components/ArtistWallView.tsx:          : 'This artist has not set up their email, so they cannot receive notifications. Your request is still saved in the system.');
+src/components/ArtistWallView.tsx:      // Real email sending is handled by the server using Resend.
+src/components/ArtistWallView.tsx:      console.log(`Notification request sent for artist ${artistProfile.email}`);
+src/components/ArtistWallView.tsx:      artistEmail: artistProfile.email,
+src/components/ArtistWallView.tsx:                                type="email"
+src/components/PrivacyPolicyView.tsx:        ? "We collect information you provide directly to us, such as when you create an account, upload content, or communicate with us. This includes your name, email address, and profile information."
+src/components/PrivacyPolicyView.tsx:        : "Chúng tôi thu thập thông tin bạn cung cấp trực tiếp cho chúng tôi, chẳng hạn như khi bạn tạo tài khoản, đăng nội dung hoặc liên hệ với chúng tôi. Thông tin này bao gồm tên, địa chỉ email và thông tin hồ sơ của bạn."
+src/components/Navbar.tsx:                    <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
+src/components/Navbar.tsx:                  {(user?.email === 'tr.c.tuananh@gmail.com' || profile?.role === 'admin') && (
+src/components/Navbar.tsx:                    <p className="text-[10px] text-zinc-500 font-bold">{user.email}</p>
+src/components/ProfileView.tsx:              {!isGuest && <p className="text-zinc-400 text-[10px] md:text-xs font-bold mb-0.5 md:mb-2">{user.email}</p>}
+src/components/AdminUserManagementView.tsx:      const response = await fetch('/api/test-email', {
+src/components/AdminUserManagementView.tsx:        body: JSON.stringify({ email: testEmailInput })
+src/components/AdminUserManagementView.tsx:        setTestEmailResult({ success: true, message: `Test email sent to ${testEmailInput}!` });
+src/components/AdminUserManagementView.tsx:        setTestEmailResult({ success: false, message: data.error || 'Failed to send test email.' });
+src/components/AdminUserManagementView.tsx:    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+src/components/AdminUserManagementView.tsx:              type="email"
+src/components/AdminUserManagementView.tsx:              placeholder="Enter email for testing..."
+src/components/AdminUserManagementView.tsx:          placeholder="Search by name, email, handle or UID..."
+src/components/AdminUserManagementView.tsx:                        <span className="text-[10px] font-bold">{user.email}</span>
+src/components/MyWallView.tsx:          email: ''
+src/components/LoginModal.tsx:  onEmailLogin: (email: string, pass: string) => Promise<void>,
+src/components/LoginModal.tsx:  onEmailRegister: (email: string, pass: string, name: string) => Promise<void>,
+src/components/LoginModal.tsx:  onForgotPassword: (email: string) => Promise<void>,
+src/components/LoginModal.tsx:  const [email, setEmail] = useState('');
+src/components/LoginModal.tsx:        await onForgotPassword(email);
+src/components/LoginModal.tsx:        await onEmailRegister(email, password, name);
+src/components/LoginModal.tsx:        await onEmailLogin(email, password);
+src/components/LoginModal.tsx:                  type="email"
+src/components/LoginModal.tsx:                  value={email}
+src/components/LoginModal.tsx:                  placeholder={t('email')}
+src/lib/emailTemplates.ts:export const emailStyles = `
+src/lib/emailTemplates.ts:      This is an automated notification. Please do not reply directly to this email.
+src/lib/emailTemplates.ts:  <div style="${emailStyles}">
+src/lib/emailTemplates.ts:  <div style="${emailStyles}">
+src/lib/emailTemplates.ts:export const getTestTemplate = (email: string) => `
+src/lib/emailTemplates.ts:  <div style="${emailStyles}">
+src/lib/emailTemplates.ts:      <p style="font-size: 12px; color: #a1a1aa; margin-top: 24px;">Sent to: ${email}</p>
+src/firebase.ts:    email: string | null | undefined;
+src/firebase.ts:    emailVerified: boolean | undefined;
+src/firebase.ts:      email: string | null;
+src/firebase.ts:      email: auth.currentUser?.email,
+src/firebase.ts:      emailVerified: auth.currentUser?.emailVerified,
+src/firebase.ts:        email: provider.email,
+src/App.tsx:              email: userData.email || '',
+src/App.tsx:            email: user.email || '',
+src/App.tsx:  const handleEmailLogin = async (email: string, pass: string) => {
+src/App.tsx:      await signInWithEmailAndPassword(auth, email, pass);
+src/App.tsx:      if (error.code === 'auth/invalid-email') message = t('invalidEmail');
+src/App.tsx:  const handleEmailRegister = async (email: string, pass: string, name: string) => {
+src/App.tsx:      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+src/App.tsx:      if (error.code === 'auth/email-already-in-use') message = t('emailInUse');
+src/App.tsx:      if (error.code === 'auth/invalid-email') message = t('invalidEmail');
+src/App.tsx:  const handleForgotPassword = async (email: string) => {
+src/App.tsx:      const q = query(collection(db, 'users'), where('email', '==', email), limit(1));
+src/App.tsx:      // For now, we'll just try to send the email. 
+src/App.tsx:      await sendPasswordResetEmail(auth, email);
+src/App.tsx:      if (error.code === 'auth/invalid-email') message = t('invalidEmail');
+src/App.tsx:        email: ''
+src/App.tsx:                isAdmin={profile?.role === 'admin' || user?.email === 'tr.c.tuananh@gmail.com'}
+src/App.tsx:                isAdmin={profile?.role === 'admin' || user?.email === 'tr.c.tuananh@gmail.com'}
+src/App.tsx:            {view === 'admin-users' && (profile?.role === 'admin' || user?.email === 'tr.c.tuananh@gmail.com') && (
+src/types.ts:  email: string;
+src/translations.ts:    artistNotified: "The artist has been notified via email and account.",
+src/translations.ts:    email: "Email",
+src/translations.ts:    invalidEmail: "Invalid email",
+src/translations.ts:    emailInUse: "Email already in use",
+src/translations.ts:    passwordResetSent: "Password reset email sent! Please check your inbox.",
+src/translations.ts:    enterEmailToReset: "Enter your email to receive a password reset link.",
+src/translations.ts:    artistNotified: "Họa sĩ đã được thông báo qua email và tài khoản.",
+src/translations.ts:    email: "Email",
+src/translations.ts:    emailInUse: "Email đã được sử dụng",
+src/translations.ts:    enterEmailToReset: "Nhập email của bạn để nhận liên kết đặt lại mật khẩu.",

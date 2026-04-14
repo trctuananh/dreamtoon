@@ -204,8 +204,8 @@ service cloud.firestore {
       return val is number && val >= 0;
     }
 
-    function isUnchanged(field) {
-      return resource != null && field in request.resource.data && field in resource.data && request.resource.data[field] == resource.data[field];
+    function isFieldUnchanged(field, defaultValue) {
+      return ! (field in request.resource.data) || request.resource.data[field] == resource.data.get(field, defaultValue);
     }
 
     // ===============================================================
@@ -213,11 +213,39 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return true;
+      return data.uid == request.auth.uid &&
+             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('handle' in data) || data.handle == null || data.handle == "" || (data.handle is string && data.handle.size() <= 30 && data.handle.matches("^[a-z0-9_]+$"))) &&
+             (!('email' in data) || data.email == null || data.email == "" || isValidEmail(data.email)) &&
+             (!('role' in data) || data.role == null || data.role in ['user', 'dreamer', 'admin']) &&
+             (!('bio' in data) || data.bio == null || (data.bio is string && data.bio.size() <= 1000)) &&
+             (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1048487)) &&
+             (!('pioneerNumber' in data) || data.pioneerNumber == null || data.pioneerNumber is number) &&
+             (!('banned' in data) || data.banned == null || data.banned is bool) &&
+             (!('donateInfo' in data) || data.donateInfo == null || data.donateInfo is map) &&
+             (!('commissionInfo' in data) || data.commissionInfo == null || data.commissionInfo is map) &&
+             (!('showEmail' in data) || data.showEmail == null || data.showEmail is bool) &&
+             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp) &&
+             (!('lastSeen' in data) || data.lastSeen == null || data.lastSeen is timestamp) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
     function isValidProfile(data) {
-      return true;
+      return data.uid == request.auth.uid &&
+             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('handle' in data) || data.handle == null || data.handle == "" || (data.handle is string && data.handle.size() <= 30 && data.handle.matches("^[a-z0-9_]+$"))) &&
+             (!('email' in data) || data.email == null || data.email == "" || isValidEmail(data.email)) &&
+             (!('role' in data) || data.role == null || data.role in ['user', 'dreamer', 'admin']) &&
+             (!('bio' in data) || data.bio == null || (data.bio is string && data.bio.size() <= 1000)) &&
+             (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1048487)) &&
+             (!('pioneerNumber' in data) || data.pioneerNumber == null || data.pioneerNumber is number) &&
+             (!('banned' in data) || data.banned == null || data.banned is bool) &&
+             (!('donateInfo' in data) || data.donateInfo == null || data.donateInfo is map) &&
+             (!('commissionInfo' in data) || data.commissionInfo == null || data.commissionInfo is map) &&
+             (!('showEmail' in data) || data.showEmail == null || data.showEmail is bool) &&
+             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp) &&
+             (!('lastSeen' in data) || data.lastSeen == null || data.lastSeen is timestamp) &&
+             (!('createdAt' in data) || data.createdAt == null || data.createdAt is timestamp);
     }
 
     function isValidComic(data) {
@@ -308,6 +336,7 @@ service cloud.firestore {
       return data.artistUid is string &&
              data.guestUid == request.auth.uid &&
              data.guestName is string && data.guestName.size() > 0 && data.guestName.size() <= 100 &&
+             (!('guestPhoto' in data) || data.guestPhoto == null || (data.guestPhoto is string && data.guestPhoto.size() <= 1048487)) &&
              data.guestEmail is string && isValidEmail(data.guestEmail) &&
              data.requestDetails is string && data.requestDetails.size() > 0 && data.requestDetails.size() <= 5000 &&
              (!('status' in data) || data.status in ['pending', 'accepted', 'rejected', 'completed']) &&
@@ -344,8 +373,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.get('role', 'user') == resource.data.get('role', 'user') && request.resource.data.get('banned', false) == resource.data.get('banned', false)) || (isAdmin() && isValidUser(request.resource.data));
-      allow delete: if isOwner(userId) || isAdmin();
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && isFieldUnchanged('role', 'user') && isFieldUnchanged('banned', false)) || (isAdmin() && isValidUser(request.resource.data));
+      allow delete: if isAdmin();
 
       match /following/{id} {
         allow read: if isOwner(userId);
@@ -382,8 +411,8 @@ service cloud.firestore {
     match /profiles/{userId} {
       allow read: if true;
       allow create: if isOwner(userId) && isValidProfile(request.resource.data);
-      allow update: if (isOwner(userId) && isValidProfile(request.resource.data) && request.resource.data.get('role', 'user') == resource.data.get('role', 'user') && request.resource.data.get('banned', false) == resource.data.get('banned', false)) || (isAdmin() && isValidProfile(request.resource.data));
-      allow delete: if isOwner(userId) || isAdmin();
+      allow update: if (isOwner(userId) && isValidProfile(request.resource.data) && isFieldUnchanged('role', 'user') && isFieldUnchanged('banned', false)) || (isAdmin() && isValidProfile(request.resource.data));
+      allow delete: if isAdmin();
 
       match /followers/{id} {
         allow read: if true;

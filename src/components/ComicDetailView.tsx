@@ -130,9 +130,19 @@ export function ComicDetailView({
                   <p className="text-base sm:text-lg font-black text-blue-600">{formatViews(comic.views)}</p>
                   <p className="text-[8px] sm:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('views')}</p>
                 </div>
-                <div className="text-center p-2 sm:p-3 bg-zinc-50 rounded-xl sm:rounded-2xl">
-                  <p className="text-base sm:text-lg font-black text-yellow-500">{comic.rating}</p>
-                  <p className="text-[8px] sm:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('rating')}</p>
+                <div className="flex flex-col items-center justify-center p-2 sm:p-3 bg-zinc-50 rounded-xl sm:rounded-2xl">
+                  <div className="flex items-center gap-1 mb-1">
+                    <p className="text-base sm:text-lg font-black text-yellow-500">{comic.rating}</p>
+                    <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                  </div>
+                  <StarRating 
+                    rating={userRating} 
+                    onRate={onRate} 
+                    lang={lang} 
+                    isSubmitting={isRatingSubmitting} 
+                    success={ratingSuccess} 
+                    size={12}
+                  />
                 </div>
               </div>
 
@@ -170,7 +180,7 @@ export function ComicDetailView({
                   onClick={handleDownload}
                   className={`w-full py-2 sm:py-3 rounded-full font-bold text-xs sm:text-sm transition-all shadow-xl flex items-center justify-center gap-2 ${
                     isDownloaded 
-                      ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                      ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' 
                       : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
                   }`}
                 >
@@ -179,7 +189,7 @@ export function ComicDetailView({
                 </button>
                 <button 
                   onClick={() => onArtistClick(comic.authorUid)}
-                  className="w-full py-2 sm:py-3 bg-green-500 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-green-600 transition-all shadow-xl shadow-green-500/20 flex items-center justify-center gap-2"
+                  className="w-full py-2 sm:py-3 bg-emerald-500 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2"
                 >
                   <DollarSign size={16} />
                   {t('donate')}
@@ -224,17 +234,6 @@ export function ComicDetailView({
                     </button>
                   </div>
                 </div>
-              </div>
-              <div className="h-10 w-px bg-zinc-200" />
-              <div>
-                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">{t('rateThis')}</p>
-                <StarRating 
-                  rating={userRating} 
-                  onRate={onRate} 
-                  lang={lang} 
-                  isSubmitting={isRatingSubmitting} 
-                  success={ratingSuccess} 
-                />
               </div>
             </div>
 

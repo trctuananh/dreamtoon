@@ -26,6 +26,7 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
   const [description, setDescription] = useState(initialData?.description || '');
   const [thumbnail, setThumbnail] = useState(initialData?.thumbnail || '');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   
   const suggestedTags = Array.from(new Set(comics.flatMap(c => c.tags || []))).filter(tag => 
@@ -63,14 +64,19 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
     }
 
     try {
-      const compressed = await compressImage(file, 400, 0.6);
+      setUploadProgress(10);
+      const compressed = await compressImage(file, 800, 0.85);
       if (compressed.length > 1048576) {
         setError('Image is too complex and exceeds the 1MB limit. Please try a simpler image.');
+        setUploadProgress(0);
         return;
       }
       setThumbnail(compressed);
+      setUploadProgress(100);
+      setTimeout(() => setUploadProgress(0), 500);
     } catch (err) {
       setError('Failed to process image');
+      setUploadProgress(0);
     }
   };
 
@@ -267,16 +273,26 @@ export function UploadView({ user, profile, comics, onSuccess, onCancel, lang, i
                   ({t('thumbnailRecommendedSize' as any)})
                 </span>
               </label>
-              <input 
-                type="file" 
-                accept="image/*"
-                onChange={(e) => handleFileChange(e)}
-                className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              <p className="text-[10px] text-zinc-400 font-medium mt-1">{t('rules')}</p>
-              {thumbnail && <img src={thumbnail} className="mt-2 h-32 w-24 object-cover rounded-lg" referrerPolicy="no-referrer" />}
+              <div className="relative">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e)}
+                  className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {thumbnail && <img src={thumbnail} className="mt-2 h-32 w-24 object-cover rounded-lg shadow-md" referrerPolicy="no-referrer" />}
+              </div>
             </div>
           </div>
+
+          {uploadProgress > 0 && (
+            <div className="w-full h-1 bg-zinc-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-500 transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium">
