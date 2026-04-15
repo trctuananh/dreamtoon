@@ -242,7 +242,7 @@ export function DashboardView({
                 {t('creatorGuide')}
               </button>
               <button 
-                onClick={() => window.open('https://discord.gg/S2pabzV6', '_blank')}
+                onClick={() => window.open('https://discord.gg/QXmaakBVfr', '_blank')}
                 className="w-full py-3 bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-indigo-500/20 hover:bg-indigo-600 transition-all"
               >
                 {t('joinDiscord')}

@@ -426,7 +426,7 @@ export function Navbar({
 
             <div className="space-y-4">
               <button 
-                onClick={() => { window.open('https://discord.gg/S2pabzV6', '_blank'); setIsMobileMenuOpen(false); }}
+                onClick={() => { window.open('https://discord.gg/QXmaakBVfr', '_blank'); setIsMobileMenuOpen(false); }}
                 className="w-full text-left py-3 text-lg font-black flex items-center gap-4 text-zinc-900"
               >
                 <MessageSquare size={24} className="text-indigo-500" />

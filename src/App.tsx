@@ -158,6 +158,21 @@ export default function App() {
                 return;
               }
             }
+            if (artistHandle === 'reader' && subPath) {
+              const chapterId = pathParts[2];
+              const comic = comics.find(c => c.id === subPath);
+              if (comic) {
+                setSelectedComic(comic);
+                // Fetch chapters for this comic if not already loaded
+                // Actually, they should be loaded by the chapters listener if selectedComic is set
+                // But we need to find the specific chapter
+                const chapter = chapters.find(ch => ch.id === chapterId);
+                if (chapter) {
+                  handleChapterClick(chapter);
+                  return;
+                }
+              }
+            }
             // For reader, we need more parts, but for now just set the view if it's a simple reserved path
             if (artistHandle !== 'reader' && artistHandle !== 'detail' && artistHandle !== 'article') {
               setView(artistHandle as View);
@@ -569,18 +584,6 @@ export default function App() {
 
   const handleForgotPassword = async (email: string) => {
     try {
-      // Check if user exists in Firestore first
-      const q = query(collection(db, 'users'), where('email', '==', email), limit(1));
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        throw new Error(t('userNotFound'));
-      }
-
-      // Optional: Check if they are a social login user (if we store that info)
-      // For now, we'll just try to send the email. 
-      // Firebase will handle it if they don't have a password set.
-      
       await sendPasswordResetEmail(auth, email);
     } catch (error: any) {
       console.error('Password reset failed:', error);

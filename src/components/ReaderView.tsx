@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronUp, ArrowLeft, ArrowRight, Heart, Facebook, Twitter, Copy, Check, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronUp, ArrowLeft, ArrowRight, Heart, Facebook, Twitter, Copy, Check, MessageCircle, Send, Trash2, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, runTransaction, increment, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Comic, Chapter, Comment, Like } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
+import { formatViews } from '../lib/utils';
 
 export function ReaderView({ 
   comic, 
@@ -100,6 +101,16 @@ export function ReaderView({
                 {chapter.thumbnail && (
                   <img src={chapter.thumbnail} className="w-8 h-8 rounded-lg object-cover border border-zinc-800" alt={chapter.title} referrerPolicy="no-referrer" />
                 )}
+                <div className="flex flex-col min-w-0">
+                  <h3 className="text-xs font-bold text-white truncate">{chapter.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{comic.title}</span>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-zinc-400">
+                      <Eye size={10} />
+                      <span>{formatViews(chapter.views || 0)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -386,8 +397,12 @@ export function ReaderView({
             >
               <ChevronLeft size={20} />
             </button>
-            <div className="px-4 py-1 border-x border-zinc-800 text-xs font-bold tracking-widest uppercase">
-              {t('chapter')} {chapter.number}
+            <div className="px-4 py-1 border-x border-zinc-800 flex flex-col items-center">
+              <span className="text-xs font-bold tracking-widest uppercase">{t('chapter')} {chapter.number}</span>
+              <div className="flex items-center gap-1 text-[8px] font-bold text-zinc-500">
+                <Eye size={8} />
+                <span>{formatViews(chapter.views || 0)}</span>
+              </div>
             </div>
             <button 
               onClick={(e) => { e.stopPropagation(); onNextChapter(); }}

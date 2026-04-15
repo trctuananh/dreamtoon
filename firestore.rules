@@ -208,6 +208,11 @@ service cloud.firestore {
       return ! (field in request.resource.data) || request.resource.data[field] == resource.data.get(field, defaultValue);
     }
 
+    function isOnlyIncrementingViews() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) &&
+             request.resource.data.views == resource.data.get('views', 0) + 1;
+    }
+
     // ===============================================================
     // Domain Validators
     // ===============================================================
@@ -432,8 +437,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAuthenticated() && isValidComic(request.resource.data);
       allow update: if (isDocOwner() || isAdmin()) && isValidComic(request.resource.data);
-      allow update: if isAuthenticated() && 
-                       isValidComic(request.resource.data);
+      allow update: if isAuthenticated() && isOnlyIncrementingViews();
       allow delete: if isDocOwner() || isAdmin();
 
       match /chapters/{chapterId} {
@@ -443,8 +447,7 @@ service cloud.firestore {
                         isValidChapter(request.resource.data, comicId);
         allow update: if (get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid || isAdmin()) &&
                         isValidChapter(request.resource.data, comicId);
-        allow update: if isAuthenticated() && 
-                        isValidChapter(request.resource.data, comicId);
+        allow update: if isAuthenticated() && isOnlyIncrementingViews();
         allow delete: if get(/databases/$(database)/documents/comics/$(comicId)).data.authorUid == request.auth.uid || isAdmin();
 
         match /pages/{pageId} {

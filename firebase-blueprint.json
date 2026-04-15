@@ -61,6 +61,7 @@
         "authorUid": { "type": "string", "description": "The UID of the author." },
         "title": { "type": "string", "description": "The title of the chapter." },
         "number": { "type": "number", "description": "The chapter number." },
+        "views": { "type": "number", "description": "The number of views for this chapter." },
         "uploadDate": { "type": "string", "description": "The date the chapter was uploaded." },
         "images": { "type": "array", "items": { "type": "string" }, "description": "The list of image URLs for the chapter (legacy/small chapters)." },
         "createdAt": { "type": "string", "format": "date-time", "description": "The creation date." }
