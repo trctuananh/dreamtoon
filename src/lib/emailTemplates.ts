@@ -1,5 +1,5 @@
 
-export const siteName = 'DreamToon';
+export const siteName = 'Dreamtoon';
 export const siteUrl = 'https://dreamtoon.vn';
 
 export const emailStyles = `
@@ -70,7 +70,7 @@ export const getWelcomeTemplate = (userName: string) => `
     
     <div style="background: #f4f4f5; border-radius: 24px; padding: 32px; margin-bottom: 32px;">
       <p style="font-size: 16px; color: #3f3f46; margin: 0;">
-        DreamToon is a community for artists and dreamers. You can now follow your favorite artists, 
+        Dreamtoon is a community for artists and dreamers. You can now follow your favorite artists, 
         request commissions, and share your own dreams with the world.
       </p>
       <div style="margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">

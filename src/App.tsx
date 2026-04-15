@@ -15,6 +15,7 @@ import {
   addDoc, 
   deleteDoc, 
   setDoc,
+  writeBatch,
   limit
 } from 'firebase/firestore';
 import { 
@@ -136,11 +137,33 @@ export default function App() {
 
         if (artistHandle) {
           // Check if it's a reserved path
-          const reservedPaths = ['explore', 'upload', 'community', 'notifications', 'profile', 'privacy', 'manage-featured', 'admin-users', 'create-article'];
+          const reservedPaths = ['explore', 'upload', 'community', 'notifications', 'profile', 'privacy', 'manage-featured', 'admin-users', 'create-article', 'reader', 'detail', 'article'];
           if (reservedPaths.includes(artistHandle)) {
-            setView(artistHandle as View);
-            window.scrollTo(0, 0);
-            return;
+            // Special handling for paths that need IDs
+            if (artistHandle === 'detail' && subPath) {
+              const comic = comics.find(c => c.id === subPath);
+              if (comic) {
+                setSelectedComic(comic);
+                setView('detail');
+                window.scrollTo(0, 0);
+                return;
+              }
+            }
+            if (artistHandle === 'article' && subPath) {
+              const article = articles.find(a => a.id === subPath);
+              if (article) {
+                setSelectedArticle(article);
+                setView('article');
+                window.scrollTo(0, 0);
+                return;
+              }
+            }
+            // For reader, we need more parts, but for now just set the view if it's a simple reserved path
+            if (artistHandle !== 'reader' && artistHandle !== 'detail' && artistHandle !== 'article') {
+              setView(artistHandle as View);
+              window.scrollTo(0, 0);
+              return;
+            }
           }
 
           try {
@@ -208,7 +231,7 @@ export default function App() {
     if (!user) return;
 
     const updatePresence = async () => {
-      if (!user || !isAuthReady) return;
+      if (!user || !isAuthReady || document.visibilityState !== 'visible') return;
       try {
         const profileRef = doc(db, 'profiles', user.uid);
         await updateDoc(profileRef, {
@@ -582,6 +605,14 @@ export default function App() {
     setSelectedComic(comic);
     setView('detail');
     window.scrollTo(0, 0);
+    window.history.pushState(null, '', `/detail/${comic.id}`);
+  };
+
+  const handleArticleClick = (article: Article) => {
+    setSelectedArticle(article);
+    setView('article');
+    window.scrollTo(0, 0);
+    window.history.pushState(null, '', `/article/${article.id}`);
   };
 
   const handleArtistClick = async (input: string | any) => {
@@ -594,12 +625,8 @@ export default function App() {
         setSelectedArtist({ uid, profile: data });
         setView('artist-wall');
         window.scrollTo(0, 0);
-        // Update URL to dreamtoon.vn/id
-        if (data.handle) {
-          window.history.pushState(null, '', `/${data.handle}`);
-        } else {
-          window.history.pushState(null, '', `/${uid}`);
-        }
+        // Update URL to dreamtoon.vn/handle or dreamtoon.vn/uid
+        window.history.pushState(null, '', `/${data.handle || uid}`);
       }
     } catch (error) {
       console.error("Error fetching artist profile:", error);
@@ -615,11 +642,7 @@ export default function App() {
         setSelectedArtist({ uid, profile: data });
         setView('public-profile');
         window.scrollTo(0, 0);
-        if (data.handle) {
-          window.history.pushState(null, '', `/${data.handle}/profile`);
-        } else {
-          window.history.pushState(null, '', `/${uid}/profile`);
-        }
+        window.history.pushState(null, '', `/${data.handle || uid}/profile`);
       }
     } catch (error) {
       console.error("Error fetching artist profile:", error);
@@ -647,18 +670,28 @@ export default function App() {
     fetchHistory();
   }, [user, isAuthReady]);
 
+  const viewedChaptersRef = React.useRef<Set<string>>(new Set());
+
   const handleChapterClick = async (chapter: Chapter) => {
     setSelectedChapter(chapter);
     setView('reader');
     window.scrollTo(0, 0);
+    window.history.pushState(null, '', `/reader/${chapter.comicId}/${chapter.id}`);
 
     try {
-      await updateDoc(doc(db, 'comics', chapter.comicId, 'chapters', chapter.id), {
-        views: increment(1)
-      });
-      await updateDoc(doc(db, 'comics', chapter.comicId), {
-        views: increment(1)
-      });
+      // Only increment views once per session per chapter to save quota
+      if (!viewedChaptersRef.current.has(chapter.id)) {
+        viewedChaptersRef.current.add(chapter.id);
+        
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'comics', chapter.comicId, 'chapters', chapter.id), {
+          views: increment(1)
+        });
+        batch.update(doc(db, 'comics', chapter.comicId), {
+          views: increment(1)
+        });
+        await batch.commit();
+      }
 
       if (user) {
         await setDoc(doc(db, 'users', user.uid, 'history', chapter.comicId), {
@@ -672,11 +705,18 @@ export default function App() {
     }
   };
 
+  const lastActionTimeRef = React.useRef<number>(0);
+  const ACTION_THROTTLE = 2000; // 2 seconds throttle for writes
+
   const handleToggleFollow = async (targetId: string, type: 'comic' | 'artist', comicAuthorUid?: string) => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
 
     const followId = `${type}_${targetId}`;
     const followRef = doc(db, 'users', user.uid, 'following', followId);
@@ -684,9 +724,12 @@ export default function App() {
     
     try {
       const docSnap = await getDoc(followRef);
+      const batch = writeBatch(db);
+
       if (docSnap.exists()) {
-        await deleteDoc(followRef);
-        await deleteDoc(globalFollowRef);
+        batch.delete(followRef);
+        batch.delete(globalFollowRef);
+        await batch.commit();
       } else {
         const followData = {
           id: followId,
@@ -695,8 +738,9 @@ export default function App() {
           type,
           createdAt: serverTimestamp()
         };
-        await setDoc(followRef, followData);
-        await setDoc(globalFollowRef, followData);
+        batch.set(followRef, followData);
+        batch.set(globalFollowRef, followData);
+        await batch.commit();
         
         // Create notification for artist follow
         if (type === 'artist') {
@@ -928,24 +972,13 @@ export default function App() {
                 user={user}
                 searchQuery={searchQuery}
                 onComicClick={handleComicClick}
-                onArticleClick={(article) => {
-                  setSelectedArticle(article);
-                  setView('article');
-                }}
-                onChapterClick={(chapter) => {
-                  const comic = comics.find(c => c.id === chapter.comicId);
-                  if (comic) setSelectedComic(comic);
-                  setSelectedChapter(chapter);
-                  setView('reader');
-                }}
+                onArticleClick={handleArticleClick}
+                onChapterClick={handleChapterClick}
                 onExploreClick={() => {
                   setView('explore');
                   window.scrollTo(0, 0);
                 }}
-                onArtistClick={(artist) => {
-                  setSelectedArtist({ uid: artist.uid, profile: artist });
-                  setView('artist-wall');
-                }}
+                onArtistClick={handleArtistClick}
                 lang={lang}
               />
             )}
@@ -955,10 +988,7 @@ export default function App() {
                 comics={comics}
                 artists={artists}
                 onComicClick={handleComicClick}
-                onArtistClick={(artist) => {
-                  setSelectedArtist({ uid: artist.uid, profile: artist });
-                  setView('artist-wall');
-                }}
+                onArtistClick={handleArtistClick}
                 lang={lang}
                 searchQuery={searchQuery}
               />
@@ -1003,13 +1033,22 @@ export default function App() {
                 onChapterClick={handleChapterClick}
                 onToggleLike={async () => {
                   if (!user || !selectedChapter || !selectedComic) return;
+                  
+                  const now = Date.now();
+                  if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+                  lastActionTimeRef.current = now;
+
                   const userLike = likes.find(l => l.userId === user.uid && l.targetId === selectedChapter.id);
                   const likesRef = collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'likes');
+                  const batch = writeBatch(db);
+
                   try {
                     if (userLike) {
-                      await deleteDoc(doc(likesRef, userLike.id));
+                      batch.delete(doc(likesRef, userLike.id));
+                      await batch.commit();
                     } else {
-                      await setDoc(doc(likesRef, user.uid), {
+                      const likeRef = doc(likesRef, user.uid);
+                      batch.set(likeRef, {
                         id: user.uid,
                         userId: user.uid,
                         targetId: selectedChapter.id,
@@ -1019,15 +1058,20 @@ export default function App() {
                       });
                       
                       // Create notification for like
-                      createNotification({
+                      const notifRef = doc(collection(db, 'users', selectedComic.authorUid, 'notifications'));
+                      batch.set(notifRef, {
                         recipientId: selectedComic.authorUid,
+                        senderId: user.uid,
+                        senderName: profile?.displayName || user.displayName || 'Anonymous',
+                        senderPhoto: profile?.photoURL || user.photoURL || '',
                         type: 'like',
                         targetId: selectedChapter.id,
                         targetTitle: selectedComic.title,
-                        senderId: user.uid,
-                        senderName: profile?.displayName || user.displayName || 'Anonymous',
-                        senderPhoto: profile?.photoURL || user.photoURL || ''
+                        read: false,
+                        createdAt: serverTimestamp()
                       });
+
+                      await batch.commit();
                     }
                   } catch (error) {
                     handleFirestoreError(error, OperationType.WRITE, `likes/${user.uid}`);
@@ -1035,8 +1079,16 @@ export default function App() {
                 }}
                 onAddComment={async (text, parentId, replyTo) => {
                   if (!user || !selectedChapter || !selectedComic || !text.trim()) return;
+                  
+                  const now = Date.now();
+                  if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+                  lastActionTimeRef.current = now;
+
                   try {
-                    await addDoc(collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'comments'), {
+                    const batch = writeBatch(db);
+                    const commentRef = doc(collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'comments'));
+                    
+                    batch.set(commentRef, {
                       uid: user.uid,
                       userName: profile?.displayName || user.displayName || 'Anonymous',
                       userPhoto: profile?.photoURL || user.photoURL || '',
@@ -1049,15 +1101,20 @@ export default function App() {
                     });
                     
                     // Create notification for comment
-                    createNotification({
+                    const notifRef = doc(collection(db, 'users', selectedComic.authorUid, 'notifications'));
+                    batch.set(notifRef, {
                       recipientId: selectedComic.authorUid,
+                      senderId: user.uid,
+                      senderName: profile?.displayName || user.displayName || 'Anonymous',
+                      senderPhoto: profile?.photoURL || user.photoURL || '',
                       type: 'comment',
                       targetId: selectedChapter.id,
                       targetTitle: selectedComic.title,
-                      senderId: user.uid,
-                      senderName: profile?.displayName || user.displayName || 'Anonymous',
-                      senderPhoto: profile?.photoURL || user.photoURL || ''
+                      read: false,
+                      createdAt: serverTimestamp()
                     });
+
+                    await batch.commit();
                   } catch (error) {
                     handleFirestoreError(error, OperationType.CREATE, 'comments');
                   }

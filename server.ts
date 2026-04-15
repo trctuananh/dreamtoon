@@ -54,7 +54,7 @@ async function startServer() {
     if (resendInstance) {
       try {
         const rawFrom = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-        const from = rawFrom.includes('<') ? rawFrom : `DreamToon <${rawFrom}>`;
+        const from = rawFrom.includes('<') ? rawFrom : `Dreamtoon <${rawFrom}>`;
         
         const { data, error } = await resendInstance.emails.send({
           from: from,
@@ -101,14 +101,14 @@ async function startServer() {
     try {
       const rawFrom = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
       // Ensure the from address is in the correct format: "Name <email@domain.com>"
-      const from = rawFrom.includes('<') ? rawFrom : `DreamToon <${rawFrom}>`;
+      const from = rawFrom.includes('<') ? rawFrom : `Dreamtoon <${rawFrom}>`;
       
       console.log(`📤 Sending test email from: ${from}`);
       
       const { data, error } = await resendInstance.emails.send({
         from: from,
         to: email,
-        subject: "Test Email from DreamToon",
+        subject: "Test Email from Dreamtoon",
         html: getTestTemplate(email),
       });
 

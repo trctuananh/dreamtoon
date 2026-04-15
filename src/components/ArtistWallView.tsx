@@ -190,7 +190,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     }
   };
 
-  const shareUrl = `${window.location.origin}/${artistProfile?.handle || artistUid}`;
+  const shareUrl = `https://dreamtoon.vn/${artistProfile.handle || artistUid}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -199,7 +199,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   };
 
   const shareOnSocial = (platform: 'facebook' | 'twitter' | 'telegram') => {
-    const text = `Check out ${artistProfile?.displayName}'s wall on DreamToon!`;
+    const text = `Check out ${artistProfile?.displayName}'s wall on Dreamtoon!`;
     const urls = {
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
       twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`,

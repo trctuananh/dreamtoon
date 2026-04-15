@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Heart, PenTool, MessageCircle, Send } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, updateDoc, increment, arrayUnion, arrayRemove, addDoc, serverTimestamp, getDocs, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, updateDoc, increment, arrayUnion, arrayRemove, addDoc, serverTimestamp, getDocs, getDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 import { View, Post, Comic, Following, UserProfile } from '../types';
 import { Language } from '../translations';
@@ -101,30 +101,45 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
     }
   };
 
+  const lastActionTimeRef = React.useRef<number>(0);
+  const ACTION_THROTTLE = 2000;
+
   const handleLike = async (post: Post) => {
     if (!user) {
       onLogin();
       return;
     }
     if (post.likedBy?.includes(user.uid)) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
     
     try {
-      await updateDoc(doc(db, 'posts', post.id), {
+      const batch = writeBatch(db);
+      const postRef = doc(db, 'posts', post.id);
+      
+      batch.update(postRef, {
         likes: increment(1),
         likedBy: arrayUnion(user.uid)
       });
 
       // Notify author
       if (user.uid !== post.authorUid) {
-        createNotification({
+        const notifRef = doc(collection(db, 'users', post.authorUid, 'notifications'));
+        batch.set(notifRef, {
           recipientId: post.authorUid,
+          senderId: user.uid,
+          senderName: profile?.displayName || user.displayName || 'Anonymous',
+          senderPhoto: profile?.photoURL || user.photoURL || '',
           type: 'like',
           targetId: post.id,
-          senderId: user.uid,
-          senderName: user.displayName || 'Anonymous',
-          senderPhoto: user.photoURL || ''
+          read: false,
+          createdAt: serverTimestamp()
         });
       }
+
+      await batch.commit();
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
     }
@@ -132,6 +147,11 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
 
   const handleUnlike = async (post: Post) => {
     if (!user || !post.likedBy?.includes(user.uid)) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
+
     try {
       await updateDoc(doc(db, 'posts', post.id), {
         likes: increment(-1),
@@ -144,12 +164,20 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
 
   const handleAddComment = async (postId: string) => {
     if (!user || !newCommentText.trim()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
+
     setIsPostingComment(true);
     try {
       const post = posts.find(p => p.id === postId);
       if (!post) return;
 
-      await addDoc(collection(db, 'posts', postId, 'comments'), {
+      const batch = writeBatch(db);
+      const commentRef = doc(collection(db, 'posts', postId, 'comments'));
+      
+      batch.set(commentRef, {
         uid: user.uid,
         userName: profile?.displayName || user.displayName || 'Anonymous',
         userPhoto: profile?.photoURL || user.photoURL || '',
@@ -158,22 +186,26 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
         createdAt: serverTimestamp()
       });
 
-      await updateDoc(doc(db, 'posts', postId), {
+      batch.update(doc(db, 'posts', postId), {
         comments: increment(1)
       });
 
       // Notify author
       if (user.uid !== post.authorUid) {
-        createNotification({
+        const notifRef = doc(collection(db, 'users', post.authorUid, 'notifications'));
+        batch.set(notifRef, {
           recipientId: post.authorUid,
-          type: 'comment',
-          targetId: postId,
           senderId: user.uid,
           senderName: profile?.displayName || user.displayName || 'Anonymous',
-          senderPhoto: profile?.photoURL || user.photoURL || ''
+          senderPhoto: profile?.photoURL || user.photoURL || '',
+          type: 'comment',
+          targetId: postId,
+          read: false,
+          createdAt: serverTimestamp()
         });
       }
 
+      await batch.commit();
       setNewCommentText('');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `posts/${postId}/comments`);

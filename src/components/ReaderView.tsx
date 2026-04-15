@@ -68,7 +68,8 @@ export function ReaderView({
   }, [chapter.id, comic.id, chapter.images]);
 
   const handleShare = (platform: 'fb' | 'x' | 'copy') => {
-    const url = window.location.href;
+    // Construct the URL using the custom domain
+    const url = `https://dreamtoon.vn/reader/${comic.id}/${chapter.id}`;
     if (platform === 'fb') {
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
     } else if (platform === 'x') {

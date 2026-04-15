@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus } from 'lucide-react';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs, setDoc, orderBy } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, query, where, getDocs, setDoc, orderBy, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
 import { Language } from '../translations';
 import { Chapter } from '../types';
@@ -119,7 +119,7 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
       const chapterData = {
         title,
         thumbnail,
-        // We still keep images array for small chapters/legacy, but for large ones we'll use subcollection
+        // Store images in array if small enough to save quota (1MB limit)
         images: totalSize < 800 * 1024 ? imageUrls : [], 
       };
 
@@ -144,41 +144,57 @@ export function AddChapterView({ comicId, authorUid, chapterCount, initialData, 
           chapterCount: chapterCount + 1
         });
 
-        // Notify followers
+        // Notify followers - use batch to save on connection overhead (still counts as N writes)
         try {
           const followersQuery = query(collection(db, 'follows'), where('targetId', '==', comicId));
           const followersSnap = await getDocs(followersQuery);
           
-          followersSnap.docs.forEach(followerDoc => {
-            const followerData = followerDoc.data();
-            createNotification({
-              recipientId: followerData.userId,
-              type: 'new_chapter',
-              targetId: comicId,
-              targetTitle: title,
-              senderId: authorUid,
-              senderName: 'DreamToon',
-              senderPhoto: ''
+          if (!followersSnap.empty) {
+            const batch = writeBatch(db);
+            let count = 0;
+            followersSnap.docs.forEach(followerDoc => {
+              if (count < 50) { // Limit to 50 to save quota on free tier
+                const followerData = followerDoc.data();
+                const notifRef = doc(collection(db, 'users', followerData.userId, 'notifications'));
+                batch.set(notifRef, {
+                  recipientId: followerData.userId,
+                  type: 'new_chapter',
+                  targetId: comicId,
+                  targetTitle: title,
+                  senderId: authorUid,
+                  senderName: 'Dreamtoon',
+                  senderPhoto: '',
+                  read: false,
+                  createdAt: serverTimestamp()
+                });
+                count++;
+              }
             });
-          });
+            if (count > 0) await batch.commit();
+          }
         } catch (err) {
           console.error("Error notifying followers:", err);
         }
       }
 
       // Store pages in subcollection if chapter is large or always for consistency
-      if (chapterId) {
-        // Delete old pages if editing (optional, but good for cleanup)
-        // For simplicity, we'll just add/overwrite
+      if (chapterId && totalSize >= 800 * 1024) {
+        const batch = writeBatch(db);
         for (let i = 0; i < imageUrls.length; i++) {
           const pageId = `page_${i}`;
-          await setDoc(doc(db, 'comics', comicId, 'chapters', chapterId, 'pages', pageId), {
+          batch.set(doc(db, 'comics', comicId, 'chapters', chapterId, 'pages', pageId), {
             chapterId,
             comicId,
             imageUrl: imageUrls[i],
             order: i
           });
+          
+          // Commit every 400 pages if needed (unlikely to have 400 pages)
+          if ((i + 1) % 400 === 0) {
+            await batch.commit();
+          }
         }
+        await batch.commit();
       }
 
       onSuccess();

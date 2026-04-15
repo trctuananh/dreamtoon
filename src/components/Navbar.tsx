@@ -124,7 +124,7 @@ export function Navbar({
                 <button 
                   onClick={() => {
                     setView('my-wall');
-                    window.history.pushState(null, '', '/my-wall');
+                    window.history.pushState(null, '', `/${profile?.handle || user.uid}`);
                   }}
                   className={`text-sm font-bold flex items-center gap-2 transition-colors ${view === 'my-wall' ? 'text-blue-500' : 'text-zinc-500 hover:text-blue-500'}`}
                 >
@@ -326,7 +326,7 @@ export function Navbar({
             onClick={() => {
               if (user) {
                 setView('my-wall');
-                window.history.pushState(null, '', '/my-wall');
+                window.history.pushState(null, '', `/${profile?.handle || user.uid}`);
               } else {
                 onLogin();
               }

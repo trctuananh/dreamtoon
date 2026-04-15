@@ -73,8 +73,8 @@ export function PrivacyPolicyView({ lang, onBack }: { lang: Language, onBack: ()
           <div className="prose prose-zinc max-w-none">
             <p className="text-zinc-600 leading-relaxed mb-12">
               {lang === 'en' 
-                ? "At DreamToon, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our platform."
-                : "Tại DreamToon, chúng tôi coi trọng sự riêng tư của bạn. Chính sách Bảo mật này giải thích cách chúng tôi thu thập, sử dụng, tiết lộ và bảo vệ thông tin của bạn khi bạn truy cập nền tảng của chúng tôi."}
+                ? "At Dreamtoon, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our platform."
+                : "Tại Dreamtoon, chúng tôi coi trọng sự riêng tư của bạn. Chính sách Bảo mật này giải thích cách chúng tôi thu thập, sử dụng, tiết lộ và bảo vệ thông tin của bạn khi bạn truy cập nền tảng của chúng tôi."}
             </p>
 
             <div className="grid gap-8">
