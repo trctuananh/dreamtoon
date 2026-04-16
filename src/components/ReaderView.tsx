@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronUp, ArrowLeft, ArrowRight, Heart, Facebook, Twitter, Copy, Check, MessageCircle, Send, Trash2, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, runTransaction, increment, limit } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, runTransaction, increment, limit, getDocs } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Comic, Chapter, Comment, Like } from '../types';
 import { Language } from '../translations';
@@ -22,7 +22,8 @@ export function ReaderView({
   onChapterClick, 
   onNextChapter, 
   onPrevChapter,
-  onBack
+  onBack,
+  isQuotaExceeded
 }: { 
   comic: Comic, 
   chapter: Chapter, 
@@ -37,7 +38,8 @@ export function ReaderView({
   onChapterClick: (chapter: Chapter) => void, 
   onNextChapter: () => void, 
   onPrevChapter: () => void,
-  onBack: () => void
+  onBack: () => void,
+  isQuotaExceeded?: boolean
 }) {
   const { t } = useTranslation(lang);
   const [showControls, setShowControls] = useState(true);
@@ -52,21 +54,28 @@ export function ReaderView({
     // Reset images when chapter changes
     setChapterImages(chapter.images || []);
 
-    // Fetch from subcollection
-    const q = query(
-      collection(db, 'comics', comic.id, 'chapters', chapter.id, 'pages'), 
-      orderBy('order', 'asc'),
-      limit(100)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const pages = snapshot.docs.map(doc => doc.data().imageUrl);
-        setChapterImages(pages);
-      }
-    });
+    if (isQuotaExceeded) return;
 
-    return () => unsubscribe();
-  }, [chapter.id, comic.id, chapter.images]);
+    // Fetch from subcollection
+    const fetchPages = async () => {
+      try {
+        const q = query(
+          collection(db, 'comics', comic.id, 'chapters', chapter.id, 'pages'), 
+          orderBy('order', 'asc'),
+          limit(100)
+        );
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const pages = snapshot.docs.map(doc => doc.data().imageUrl);
+          setChapterImages(pages);
+        }
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, `comics/${comic.id}/chapters/${chapter.id}/pages`);
+      }
+    };
+
+    fetchPages();
+  }, [chapter.id, comic.id, chapter.images, isQuotaExceeded]);
 
   const handleShare = (platform: 'fb' | 'x' | 'copy') => {
     // Construct the URL using the custom domain

@@ -101,14 +101,13 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
       await setDoc(doc(db, 'users', user.uid), updateData, { merge: true });
       await setDoc(doc(db, 'profiles', user.uid), updateData, { merge: true });
 
-      // Update Firebase Auth profile as well
+      // Update Firebase Auth profile as well (doesn't count towards Firestore quota)
       if (auth.currentUser) {
         const authUpdate: { displayName?: string; photoURL?: string } = {
           displayName: displayName
         };
         
         // Only update photoURL in Auth if it's a real URL or a short base64
-        // Firebase Auth limit is typically 2048 chars
         if (photoURL && (!photoURL.startsWith('data:') || photoURL.length < 2000)) {
           authUpdate.photoURL = photoURL;
         }
@@ -116,28 +115,34 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
         await updateProfile(auth.currentUser, authUpdate);
       }
 
-      // Update all posts by this user to reflect the new name and photo
-      const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', user.uid));
-      const postsSnap = await getDocs(postsQuery);
-      const postUpdates = postsSnap.docs.map(postDoc => 
-        updateDoc(doc(db, 'posts', postDoc.id), { authorName: displayName, authorPhoto: photoURL })
-      );
+      // Only update denormalized data if name or photo actually changed to save quota
+      const nameChanged = displayName !== (profile?.displayName || user.displayName);
+      const photoChanged = photoURL !== (profile?.photoURL || user.photoURL);
 
-      // Update all comics by this user to reflect the new name and photo
-      const comicsQuery = query(collection(db, 'comics'), where('authorUid', '==', user.uid));
-      const comicsSnap = await getDocs(comicsQuery);
-      const comicUpdates = comicsSnap.docs.map(comicDoc => 
-        updateDoc(doc(db, 'comics', comicDoc.id), { authorName: displayName, authorPhoto: photoURL })
-      );
+      if (nameChanged || photoChanged) {
+        // Update all posts by this user to reflect the new name and photo
+        const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', user.uid));
+        const postsSnap = await getDocs(postsQuery);
+        const postUpdates = postsSnap.docs.map(postDoc => 
+          updateDoc(doc(db, 'posts', postDoc.id), { authorName: displayName, authorPhoto: photoURL })
+        );
 
-      // Update all articles by this user to reflect the new name and photo
-      const articlesQuery = query(collection(db, 'articles'), where('authorUid', '==', user.uid));
-      const articlesSnap = await getDocs(articlesQuery);
-      const articleUpdates = articlesSnap.docs.map(articleDoc => 
-        updateDoc(doc(db, 'articles', articleDoc.id), { authorName: displayName, authorPhoto: photoURL })
-      );
+        // Update all comics by this user to reflect the new name and photo
+        const comicsQuery = query(collection(db, 'comics'), where('authorUid', '==', user.uid));
+        const comicsSnap = await getDocs(comicsQuery);
+        const comicUpdates = comicsSnap.docs.map(comicDoc => 
+          updateDoc(doc(db, 'comics', comicDoc.id), { authorName: displayName, authorPhoto: photoURL })
+        );
 
-      await Promise.all([...postUpdates, ...comicUpdates, ...articleUpdates]);
+        // Update all articles by this user to reflect the new name and photo
+        const articlesQuery = query(collection(db, 'articles'), where('authorUid', '==', user.uid));
+        const articlesSnap = await getDocs(articlesQuery);
+        const articleUpdates = articlesSnap.docs.map(articleDoc => 
+          updateDoc(doc(db, 'articles', articleDoc.id), { authorName: displayName, authorPhoto: photoURL })
+        );
+
+        await Promise.all([...postUpdates, ...comicUpdates, ...articleUpdates]);
+      }
 
       setIsEditing(false);
     } catch (error) {

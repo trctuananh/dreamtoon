@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, Trash2, MessageCircle, Layout } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit, getDocs } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
+import { db, handleFirestoreError, OperationType, createNotification, checkQuota } from '../firebase';
 
 import { Post, UserProfile, Donation, CommissionWork, Following, PostComment } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, following, lang, onBack, onProfileClick, onToggleFollow, onMessageClick, onLogin }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, following: Following[], lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onMessageClick: (target: UserProfile) => void, onLogin: () => void }) {
+export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, following, lang, onBack, onProfileClick, onToggleFollow, onMessageClick, onLogin, isQuotaExceeded }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, following: Following[], lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onMessageClick: (target: UserProfile) => void, onLogin: () => void, isQuotaExceeded?: boolean }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   
@@ -53,6 +53,9 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   const [newCommentText, setNewCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
 
+  const lastActionTimeRef = React.useRef<number>(0);
+  const ACTION_THROTTLE = 3000;
+
   const handleFollow = () => {
     onToggleFollow(artistUid, 'artist');
   };
@@ -63,6 +66,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
   // Posts Fetch (One-time)
   useEffect(() => {
+    if (isQuotaExceeded) return;
     const fetchPosts = async () => {
       try {
         const q = query(
@@ -86,6 +90,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
   // Donations Fetch (One-time)
   useEffect(() => {
+    if (isQuotaExceeded) return;
     const fetchDonations = async () => {
       try {
         const q = query(
@@ -109,6 +114,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
   // Commissions Fetch (One-time)
   useEffect(() => {
+    if (isQuotaExceeded) return;
     const fetchCommissions = async () => {
       try {
         const q = query(
@@ -130,11 +136,11 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
   // Comments Fetch (One-time when activePostId changes)
   useEffect(() => {
+    if (!activePostId || isQuotaExceeded) {
+      setPostComments([]);
+      return;
+    }
     const fetchComments = async () => {
-      if (!activePostId) {
-        setPostComments([]);
-        return;
-      }
 
       try {
         const q = query(
@@ -155,7 +161,12 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   }, [activePostId]);
 
   const handleLike = async (post: Post) => {
-    if (!user || post.likedBy?.includes(user.uid)) return;
+    if (!user || post.likedBy?.includes(user.uid) || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
+
     try {
       await updateDoc(doc(db, 'posts', post.id), {
         likes: increment(1),
@@ -179,7 +190,12 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   };
 
   const handleUnlike = async (post: Post) => {
-    if (!user || !post.likedBy?.includes(user.uid)) return;
+    if (!user || !post.likedBy?.includes(user.uid) || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
+
     try {
       await updateDoc(doc(db, 'posts', post.id), {
         likes: increment(-1),
@@ -210,7 +226,12 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
   const handleSubmitCommission = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
+
     setIsSubmitting(true);
     setCommissionError(null);
     
@@ -322,7 +343,11 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
   const handlePostDonation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!donorMessage.trim() || !donorName.trim()) return;
+    if (!donorMessage.trim() || !donorName.trim() || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
 
     setIsPostingDonation(true);
     
@@ -395,7 +420,12 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
   };
 
   const handleAddComment = async (postId: string) => {
-    if (!user || !newCommentText.trim()) return;
+    if (!user || !newCommentText.trim() || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
+
     setIsPostingComment(true);
     try {
       const commentData = {

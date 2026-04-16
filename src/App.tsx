@@ -39,7 +39,9 @@ import {
   facebookProvider, 
   handleFirestoreError, 
   OperationType,
-  createNotification
+  createNotification,
+  checkQuota,
+  onQuotaChange
 } from './firebase';
 
 // Types
@@ -109,8 +111,23 @@ export default function App() {
   const [history, setHistory] = useState<ReadingHistory[]>([]);
   const [artists, setArtists] = useState<UserProfile[]>([]);
   const [chatTarget, setChatTarget] = useState<UserProfile | null>(null);
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(checkQuota());
 
   const { t } = useTranslation(lang);
+
+  useEffect(() => {
+    return onQuotaChange((exhausted) => {
+      setIsQuotaExceeded(exhausted);
+    });
+  }, []);
+
+  const comicsRef = React.useRef<Comic[]>([]);
+  const articlesRef = React.useRef<Article[]>([]);
+  const chaptersRef = React.useRef<Chapter[]>([]);
+
+  useEffect(() => { comicsRef.current = comics; }, [comics]);
+  useEffect(() => { articlesRef.current = articles; }, [articles]);
+  useEffect(() => { chaptersRef.current = chapters; }, [chapters]);
 
   // Routing / Deep Linking
   useEffect(() => {
@@ -141,7 +158,7 @@ export default function App() {
           if (reservedPaths.includes(artistHandle)) {
             // Special handling for paths that need IDs
             if (artistHandle === 'detail' && subPath) {
-              const comic = comics.find(c => c.id === subPath);
+              const comic = comicsRef.current.find(c => c.id === subPath);
               if (comic) {
                 setSelectedComic(comic);
                 setView('detail');
@@ -150,7 +167,7 @@ export default function App() {
               }
             }
             if (artistHandle === 'article' && subPath) {
-              const article = articles.find(a => a.id === subPath);
+              const article = articlesRef.current.find(a => a.id === subPath);
               if (article) {
                 setSelectedArticle(article);
                 setView('article');
@@ -160,20 +177,15 @@ export default function App() {
             }
             if (artistHandle === 'reader' && subPath) {
               const chapterId = pathParts[2];
-              const comic = comics.find(c => c.id === subPath);
+              const comic = comicsRef.current.find(c => c.id === subPath);
               if (comic) {
                 setSelectedComic(comic);
-                // Fetch chapters for this comic if not already loaded
-                // Actually, they should be loaded by the chapters listener if selectedComic is set
-                // But we need to find the specific chapter
-                const chapter = chapters.find(ch => ch.id === chapterId);
-                if (chapter) {
-                  handleChapterClick(chapter);
-                  return;
-                }
+                // The chapters listener will fetch chapters when selectedComic is set
+                // We'll handle the actual chapter selection in a separate effect that watches chapters
+                return;
               }
             }
-            // For reader, we need more parts, but for now just set the view if it's a simple reserved path
+            // For other reserved paths
             if (artistHandle !== 'reader' && artistHandle !== 'detail' && artistHandle !== 'article') {
               setView(artistHandle as View);
               window.scrollTo(0, 0);
@@ -236,22 +248,47 @@ export default function App() {
     window.addEventListener('popstate', handleLocationChange);
     handleLocationChange(); // Initial check
 
+    // Also re-run when comics or articles load to handle deep links correctly
+    if (comics.length > 0 || articles.length > 0) {
+      handleLocationChange();
+    }
+
     return () => window.removeEventListener('popstate', handleLocationChange);
-  }, []);
+  }, [comics.length, articles.length]);
+
+  // Handle deep link to specific chapter once chapters load
+  useEffect(() => {
+    const path = window.location.pathname;
+    const pathParts = path.split('/').filter(p => p);
+    if (pathParts[0] === 'reader' && pathParts[1] && pathParts[2] && chapters.length > 0) {
+      const chapter = chapters.find(ch => ch.id === pathParts[2]);
+      if (chapter && (!selectedChapter || selectedChapter.id !== chapter.id)) {
+        handleChapterClick(chapter);
+      }
+    }
+  }, [chapters, selectedComic]);
 
   const [selectedArtist, setSelectedArtist] = useState<{ uid: string, profile: UserProfile } | null>(null);
 
-  // Presence System: Update lastSeen every minute
+  // Presence System: Update lastSeen every 15 minutes
   useEffect(() => {
     if (!user) return;
 
     const updatePresence = async () => {
-      if (!user || !isAuthReady || document.visibilityState !== 'visible') return;
+      if (!user || !isAuthReady || document.visibilityState !== 'visible' || checkQuota()) return;
       try {
+        // Prevent multiple tabs from writing presence too frequently
+        const lastPresenceWrite = localStorage.getItem(`lastPresence_${user.uid}`);
+        const now = Date.now();
+        if (lastPresenceWrite && now - parseInt(lastPresenceWrite) < 1800000) {
+          return;
+        }
+
         const profileRef = doc(db, 'profiles', user.uid);
         await updateDoc(profileRef, {
           lastSeen: serverTimestamp()
         });
+        localStorage.setItem(`lastPresence_${user.uid}`, now.toString());
       } catch (error) {
         // Silently fail for presence updates to not disturb user
         console.warn('Presence update failed:', error);
@@ -261,8 +298,8 @@ export default function App() {
     // Initial update
     updatePresence();
 
-    // Periodic update - increased to 5 minutes to save quota
-    const interval = setInterval(updatePresence, 300000);
+    // Periodic update - 30 minutes
+    const interval = setInterval(updatePresence, 1800000);
     return () => clearInterval(interval);
   }, [user, isAuthReady]);
 
@@ -280,12 +317,14 @@ export default function App() {
   }, []);
 
   // Profile Listener & Sync
-  const lastSyncedProfileRef = React.useRef<string>('');
+  const lastSyncedProfileRef = React.useRef<string>(sessionStorage.getItem('lastSyncedProfile') || '');
 
   useEffect(() => {
     if (isAuthReady && user) {
+      if (isQuotaExceeded) return;
+
       const unsubscribe = onSnapshot(doc(db, 'users', user.uid), async (snapshot) => {
-        if (snapshot.exists()) {
+        if (snapshot.exists() && !checkQuota()) {
           const userData = snapshot.data() as UserProfile;
           setProfile(userData);
 
@@ -314,6 +353,7 @@ export default function App() {
                 createdAt: userData.createdAt || serverTimestamp()
               }, { merge: true });
               lastSyncedProfileRef.current = syncString;
+              sessionStorage.setItem('lastSyncedProfile', syncString);
             }
           } catch (e) {
             handleFirestoreError(e, OperationType.WRITE, `profiles/${user.uid}`);
@@ -329,9 +369,11 @@ export default function App() {
             createdAt: serverTimestamp()
           };
           try {
-            await setDoc(doc(db, 'users', user.uid), initialProfile);
-            // Also create public profile
-            await setDoc(doc(db, 'profiles', user.uid), initialProfile);
+            if (!checkQuota()) {
+              await setDoc(doc(db, 'users', user.uid), initialProfile);
+              // Also create public profile
+              await setDoc(doc(db, 'profiles', user.uid), initialProfile);
+            }
           } catch (error) {
             console.error("Error creating initial profile:", error);
           }
@@ -343,97 +385,171 @@ export default function App() {
     }
   }, [user, isAuthReady]);
 
-  // Comics Listener
+  // Comics Fetch
   useEffect(() => {
-    const q = query(collection(db, 'comics'), orderBy('createdAt', 'desc'), limit(50));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setComics(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'comics');
-    });
-    return () => unsubscribe();
-  }, []);
+    if (isQuotaExceeded) return;
 
-  // Articles Listener
-  useEffect(() => {
-    const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'), limit(50));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setArticles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'articles');
-    });
-    return () => unsubscribe();
-  }, []);
+    const fetchComics = async () => {
+      try {
+        // Try to load from session storage first to save reads
+        const cached = sessionStorage.getItem('cached_comics');
+        if (cached) {
+          setComics(JSON.parse(cached));
+        }
 
-  // Featured Listener
-  useEffect(() => {
-    const q = query(collection(db, 'featured'), orderBy('createdAt', 'desc'), limit(10));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setFeaturedItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeaturedItem)));
-    }, (error) => {
-      console.error("Error fetching featured items:", error);
-    });
-    return () => unsubscribe();
-  }, []);
+        const q = query(collection(db, 'comics'), orderBy('createdAt', 'desc'), limit(50));
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic));
+        setComics(data);
+        sessionStorage.setItem('cached_comics', JSON.stringify(data));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'comics');
+      }
+    };
 
-  // Chapters Listener
+    fetchComics();
+    
+    // Refresh every 5 minutes instead of real-time to save quota
+    const interval = setInterval(fetchComics, 300000);
+    return () => clearInterval(interval);
+  }, [isQuotaExceeded]);
+
+  // Articles Fetch
   useEffect(() => {
+    if (isQuotaExceeded) return;
+
+    const fetchArticles = async () => {
+      try {
+        const cached = sessionStorage.getItem('cached_articles');
+        if (cached) {
+          setArticles(JSON.parse(cached));
+        }
+
+        const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'), limit(50));
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article));
+        setArticles(data);
+        sessionStorage.setItem('cached_articles', JSON.stringify(data));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'articles');
+      }
+    };
+
+    fetchArticles();
+    const interval = setInterval(fetchArticles, 300000);
+    return () => clearInterval(interval);
+  }, [isQuotaExceeded]);
+
+  // Featured Fetch
+  useEffect(() => {
+    if (isQuotaExceeded) return;
+
+    const fetchFeatured = async () => {
+      try {
+        const cached = sessionStorage.getItem('cached_featured');
+        if (cached) {
+          setFeaturedItems(JSON.parse(cached));
+        }
+
+        const q = query(collection(db, 'featured'), orderBy('createdAt', 'desc'), limit(10));
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeaturedItem));
+        setFeaturedItems(data);
+        sessionStorage.setItem('cached_featured', JSON.stringify(data));
+      } catch (error) {
+        console.error("Error fetching featured items:", error);
+      }
+    };
+
+    fetchFeatured();
+    const interval = setInterval(fetchFeatured, 300000);
+    return () => clearInterval(interval);
+  }, [isQuotaExceeded]);
+
+  // Chapters Fetch
+  useEffect(() => {
+    if (isQuotaExceeded) return;
+
     if (selectedComic) {
-      const q = query(collection(db, 'comics', selectedComic.id, 'chapters'), orderBy('number', 'asc'));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setChapters(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Chapter)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, `comics/${selectedComic.id}/chapters`);
-      });
-      return () => unsubscribe();
+      const fetchChapters = async () => {
+        try {
+          const q = query(collection(db, 'comics', selectedComic.id, 'chapters'), orderBy('number', 'asc'));
+          const snapshot = await getDocs(q);
+          setChapters(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Chapter)));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, `comics/${selectedComic.id}/chapters`);
+        }
+      };
+      fetchChapters();
     }
-  }, [selectedComic]);
+  }, [selectedComic, isQuotaExceeded]);
 
-  // Comments Listener
+  // Comments Fetch
   useEffect(() => {
+    if (isQuotaExceeded) return;
+
     if (selectedComic && selectedChapter) {
-      const q = query(
-        collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'comments'),
-        orderBy('createdAt', 'desc'),
-        limit(50)
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, `comics/${selectedComic.id}/chapters/${selectedChapter.id}/comments`);
-      });
-      return () => unsubscribe();
+      const fetchComments = async () => {
+        try {
+          const q = query(
+            collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'comments'),
+            orderBy('createdAt', 'desc'),
+            limit(50)
+          );
+          const snapshot = await getDocs(q);
+          setComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment)));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, `comics/${selectedComic.id}/chapters/${selectedChapter.id}/comments`);
+        }
+      };
+      fetchComments();
+    } else {
+      setComments([]);
     }
-  }, [selectedComic, selectedChapter]);
+  }, [selectedComic, selectedChapter, isQuotaExceeded]);
 
-  // Likes Listener
+  // Likes Fetch
   useEffect(() => {
+    if (isQuotaExceeded) return;
+
     if (selectedComic && selectedChapter) {
-      const q = query(
-        collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'likes'),
-        limit(100)
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setLikes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Like)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, `comics/${selectedComic.id}/chapters/${selectedChapter.id}/likes`);
-      });
-      return () => unsubscribe();
+      const fetchLikes = async () => {
+        try {
+          const q = query(
+            collection(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'likes'),
+            limit(100)
+          );
+          const snapshot = await getDocs(q);
+          setLikes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Like)));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, `comics/${selectedComic.id}/chapters/${selectedChapter.id}/likes`);
+        }
+      };
+      fetchLikes();
+    } else {
+      setLikes([]);
     }
-  }, [selectedComic, selectedChapter]);
+  }, [selectedComic, selectedChapter, isQuotaExceeded]);
 
-  // Following Listener
+  // Following Fetch
   useEffect(() => {
+    if (isQuotaExceeded) return;
+
     if (isAuthReady && user) {
-      const q = query(collection(db, 'users', user.uid, 'following'), limit(100));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setFollowing(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Following)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/following`);
-      });
-      return () => unsubscribe();
+      const fetchFollowing = async () => {
+        try {
+          const q = query(collection(db, 'users', user.uid, 'following'), limit(100));
+          const snapshot = await getDocs(q);
+          setFollowing(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Following)));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/following`);
+        }
+      };
+      fetchFollowing();
+    } else {
+      setFollowing([]);
     }
-  }, [user, isAuthReady]);
+  }, [user, isAuthReady, isQuotaExceeded]);
 
   // Following Feed Listener
   const followingIds = useMemo(() => {
@@ -445,6 +561,8 @@ export default function App() {
   }, [following]);
 
   useEffect(() => {
+    if (isQuotaExceeded) return;
+
     if (isAuthReady && user && followingIds) {
       const comicIds = followingIds.split(',').filter(id => id !== '');
       if (comicIds.length === 0) {
@@ -461,19 +579,24 @@ export default function App() {
         limit(10)
       );
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setFollowingFeed(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Chapter)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'chapters');
-      });
-      return () => unsubscribe();
+      const fetchFollowingFeed = async () => {
+        try {
+          const snapshot = await getDocs(q);
+          setFollowingFeed(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Chapter)));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, 'chapters');
+        }
+      };
+      fetchFollowingFeed();
     } else if (user && !followingIds) {
       setFollowingFeed([]);
     }
-  }, [user, followingIds, isAuthReady]);
+  }, [user, followingIds, isAuthReady, isQuotaExceeded]);
 
   // Notifications Fetch (One-time)
   useEffect(() => {
+    if (isQuotaExceeded) return;
+
     const fetchNotifications = async () => {
       if (isAuthReady && user) {
         try {
@@ -492,29 +615,37 @@ export default function App() {
       }
     };
     fetchNotifications();
-  }, [user, isAuthReady]);
+  }, [user, isAuthReady, isQuotaExceeded]);
 
-  // Messages Listener
+  // Messages Fetch (Polling)
   useEffect(() => {
-    if (isAuthReady && user) {
-      const q = query(
-        collection(db, 'conversations'),
-        where('participants', 'array-contains', user.uid)
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const totalUnread = snapshot.docs.reduce((acc, doc) => {
-          const data = doc.data();
-          return acc + (data.unreadCount?.[user.uid] || 0);
-        }, 0);
-        setUnreadMessagesCount(totalUnread);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'conversations');
-      });
-      return () => unsubscribe();
-    } else {
-      setUnreadMessagesCount(0);
-    }
-  }, [user, isAuthReady]);
+    if (isQuotaExceeded) return;
+
+    const fetchUnreadMessages = async () => {
+      if (isAuthReady && user) {
+        try {
+          const q = query(
+            collection(db, 'conversations'),
+            where('participants', 'array-contains', user.uid)
+          );
+          const snapshot = await getDocs(q);
+          const totalUnread = snapshot.docs.reduce((acc, doc) => {
+            const data = doc.data();
+            return acc + (data.unreadCount?.[user.uid] || 0);
+          }, 0);
+          setUnreadMessagesCount(totalUnread);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, 'conversations');
+        }
+      } else {
+        setUnreadMessagesCount(0);
+      }
+    };
+
+    fetchUnreadMessages();
+    const interval = setInterval(fetchUnreadMessages, 120000); // Poll every 2 minutes
+    return () => clearInterval(interval);
+  }, [user, isAuthReady, isQuotaExceeded]);
 
   // Scroll Listener
   useEffect(() => {
@@ -525,18 +656,27 @@ export default function App() {
 
   // Artists Fetch (One-time) - Now fetching all profiles for search
   useEffect(() => {
+    if (isQuotaExceeded) return;
+
     const fetchArtists = async () => {
       try {
+        const cached = sessionStorage.getItem('cached_artists');
+        if (cached) {
+          setArtists(JSON.parse(cached));
+        }
+
         // Fetching more profiles to support searching for any user
         const q = query(collection(db, 'profiles'), limit(100));
         const snapshot = await getDocs(q);
-        setArtists(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
+        const data = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
+        setArtists(data);
+        sessionStorage.setItem('cached_artists', JSON.stringify(data));
       } catch (error) {
         console.error("Error fetching profiles:", error);
       }
     };
     fetchArtists();
-  }, []);
+  }, [isQuotaExceeded]);
 
   // Handlers
   const handleLogin = async (providerType: 'google' | 'facebook' = 'google') => {
@@ -673,18 +813,30 @@ export default function App() {
     fetchHistory();
   }, [user, isAuthReady]);
 
-  const viewedChaptersRef = React.useRef<Set<string>>(new Set());
+  // Session-based view tracking to save quota across refreshes
+  const viewedChaptersRef = React.useRef<Set<string>>(new Set(
+    JSON.parse(sessionStorage.getItem('viewedChapters') || '[]')
+  ));
 
   const handleChapterClick = async (chapter: Chapter) => {
+    if (selectedChapter?.id === chapter.id && view === 'reader') return;
+
     setSelectedChapter(chapter);
     setView('reader');
     window.scrollTo(0, 0);
-    window.history.pushState(null, '', `/reader/${chapter.comicId}/${chapter.id}`);
+    
+    const readerUrl = `/reader/${chapter.comicId}/${chapter.id}`;
+    if (window.location.pathname !== readerUrl) {
+      window.history.pushState(null, '', readerUrl);
+    }
+
+    if (checkQuota()) return;
 
     try {
       // Only increment views once per session per chapter to save quota
       if (!viewedChaptersRef.current.has(chapter.id)) {
         viewedChaptersRef.current.add(chapter.id);
+        sessionStorage.setItem('viewedChapters', JSON.stringify(Array.from(viewedChaptersRef.current)));
         
         const batch = writeBatch(db);
         batch.update(doc(db, 'comics', chapter.comicId, 'chapters', chapter.id), {
@@ -696,12 +848,15 @@ export default function App() {
         await batch.commit();
       }
 
-      if (user) {
+      // Throttle history writes - only update if chapter changed or enough time passed
+      const lastHistoryWrite = sessionStorage.getItem(`lastHistory_${chapter.comicId}`);
+      if (user && lastHistoryWrite !== chapter.id) {
         await setDoc(doc(db, 'users', user.uid, 'history', chapter.comicId), {
           lastRead: serverTimestamp(),
           chapterId: chapter.id,
           chapterNumber: chapter.number
         });
+        sessionStorage.setItem(`lastHistory_${chapter.comicId}`, chapter.id);
       }
     } catch (error) {
       console.error("Error incrementing views:", error);
@@ -709,13 +864,15 @@ export default function App() {
   };
 
   const lastActionTimeRef = React.useRef<number>(0);
-  const ACTION_THROTTLE = 2000; // 2 seconds throttle for writes
+  const ACTION_THROTTLE = 3000; // 3 seconds throttle for writes to save quota
 
   const handleToggleFollow = async (targetId: string, type: 'comic' | 'artist', comicAuthorUid?: string) => {
     if (!user) {
       setIsLoginModalOpen(true);
       return;
     }
+
+    if (checkQuota()) return;
 
     const now = Date.now();
     if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
@@ -868,7 +1025,11 @@ export default function App() {
       setIsLoginModalOpen(true);
       return;
     }
-    if (!selectedComic) return;
+    if (!selectedComic || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
 
     setIsRatingSubmitting(true);
     const comicRef = doc(db, 'comics', selectedComic.id);
@@ -936,6 +1097,23 @@ export default function App() {
             className="px-8 py-4 bg-white text-zinc-950 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-zinc-200 transition-all"
           >
             Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isQuotaExceeded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-4">
+        <div className="bg-white p-8 rounded-3xl border border-zinc-100 shadow-xl max-w-md w-full text-center">
+          <h2 className="text-2xl font-black text-red-600 mb-4">Daily Limit Reached</h2>
+          <p className="text-zinc-500 mb-6">The application has reached its free daily quota for the database. This usually happens when there is high traffic. The quota will reset tomorrow. Please try again later.</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 transition-colors"
+          >
+            Refresh Page
           </button>
         </div>
       </div>
@@ -1035,7 +1213,7 @@ export default function App() {
                 comments={comments}
                 onChapterClick={handleChapterClick}
                 onToggleLike={async () => {
-                  if (!user || !selectedChapter || !selectedComic) return;
+                  if (!user || !selectedChapter || !selectedComic || isQuotaExceeded) return;
                   
                   const now = Date.now();
                   if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
@@ -1081,7 +1259,7 @@ export default function App() {
                   }
                 }}
                 onAddComment={async (text, parentId, replyTo) => {
-                  if (!user || !selectedChapter || !selectedComic || !text.trim()) return;
+                  if (!user || !selectedChapter || !selectedComic || !text.trim() || isQuotaExceeded) return;
                   
                   const now = Date.now();
                   if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
@@ -1123,7 +1301,7 @@ export default function App() {
                   }
                 }}
                 onDeleteComment={async (commentId) => {
-                  if (!user || !selectedChapter || !selectedComic) return;
+                  if (!user || !selectedChapter || !selectedComic || isQuotaExceeded) return;
                   try {
                     await deleteDoc(doc(db, 'comics', selectedComic.id, 'chapters', selectedChapter.id, 'comments', commentId));
                   } catch (error) {
@@ -1140,6 +1318,7 @@ export default function App() {
                 }}
                 onBack={handleBack}
                 lang={lang}
+                isQuotaExceeded={isQuotaExceeded}
               />
             )}
 
@@ -1279,6 +1458,7 @@ export default function App() {
                 lang={lang}
                 onBack={handleBack}
                 onNotificationClick={handleNotificationClick}
+                isQuotaExceeded={isQuotaExceeded}
               />
             )}
 
@@ -1311,6 +1491,7 @@ export default function App() {
                 onBack={handleBack}
                 setView={setView}
                 onMessageClick={handleMessageClick}
+                isQuotaExceeded={isQuotaExceeded}
               />
             )}
 
@@ -1328,6 +1509,7 @@ export default function App() {
                 onToggleFollow={handleToggleFollow}
                 onMessageClick={handleMessageClick}
                 onLogin={() => setIsLoginModalOpen(true)}
+                isQuotaExceeded={isQuotaExceeded}
               />
             )}
 
@@ -1344,11 +1526,12 @@ export default function App() {
                 onLogin={() => setIsLoginModalOpen(true)}
                 setView={setView}
                 onMessageClick={handleMessageClick}
+                isQuotaExceeded={isQuotaExceeded}
               />
             )}
 
             {view === 'admin-users' && (profile?.role === 'admin' || user?.email === 'tr.c.tuananh@gmail.com') && (
-              <AdminUserManagementView lang={lang} />
+              <AdminUserManagementView lang={lang} isQuotaExceeded={isQuotaExceeded} />
             )}
 
             {view === 'privacy' && (
@@ -1366,6 +1549,7 @@ export default function App() {
                 onBack={handleBack}
                 chatTarget={chatTarget}
                 onChatTargetHandled={() => setChatTarget(null)}
+                isQuotaExceeded={isQuotaExceeded}
               />
             )}
           </AnimatePresence>

@@ -22,9 +22,9 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
       try {
         if (this.state.error instanceof Error) {
           const parsedError = JSON.parse(this.state.error.message);
-          if (parsedError.error && parsedError.error.includes("Quota limit exceeded")) {
+          if (parsedError.error && (parsedError.error.includes("Quota limit exceeded") || parsedError.error.includes("resource-exhausted") || parsedError.error.includes("quota"))) {
             errorTitle = "Daily Limit Reached";
-            errorMessage = "The application has reached its free daily read limit for the database. The quota will reset tomorrow. Please try again later.";
+            errorMessage = "The application has reached its free daily quota for the database. This usually happens when there is high traffic. The quota will reset tomorrow. Please try again later.";
           } else if (parsedError.error) {
             errorMessage = parsedError.error;
           }
@@ -34,7 +34,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         if (this.state.error instanceof Error && this.state.error.message) {
           if (this.state.error.message.includes("Quota limit exceeded")) {
             errorTitle = "Daily Limit Reached";
-            errorMessage = "The application has reached its free daily read limit for the database. The quota will reset tomorrow. Please try again later.";
+            errorMessage = "The application has reached its free daily quota for the database. This usually happens when there is high traffic. The quota will reset tomorrow. Please try again later.";
           }
         }
       }

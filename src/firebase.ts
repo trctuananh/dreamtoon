@@ -12,19 +12,6 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const facebookProvider = new FacebookAuthProvider();
 
-// Test Connection
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if(error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. ");
-    }
-    // Skip logging for other errors, as this is simply a connection test.
-  }
-}
-testConnection();
-
 // Error handling helper
 export enum OperationType {
   CREATE = 'create',
@@ -54,9 +41,48 @@ export interface FirestoreErrorInfo {
   }
 }
 
+// Global state to track quota exhaustion
+let isQuotaExhausted = false;
+let quotaResetTimeout: any = null;
+let quotaListeners: ((exhausted: boolean) => void)[] = [];
+
+export function checkQuota() {
+  return isQuotaExhausted;
+}
+
+export function onQuotaChange(callback: (exhausted: boolean) => void) {
+  quotaListeners.push(callback);
+  return () => {
+    quotaListeners = quotaListeners.filter(l => l !== callback);
+  };
+}
+
+function notifyQuotaChange(exhausted: boolean) {
+  quotaListeners.forEach(l => l(exhausted));
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  
+  // Detect quota exhaustion
+  if (errorMessage.includes('resource-exhausted') || errorMessage.includes('quota') || errorMessage.includes('Quota limit exceeded')) {
+    if (!isQuotaExhausted) {
+      isQuotaExhausted = true;
+      notifyQuotaChange(true);
+      console.error('🚨 Firestore Quota Exhausted. Writes will be paused for 5 minutes.');
+      
+      // Reset after 5 minutes to try again
+      if (quotaResetTimeout) clearTimeout(quotaResetTimeout);
+      quotaResetTimeout = setTimeout(() => {
+        isQuotaExhausted = false;
+        notifyQuotaChange(false);
+        console.log('🔄 Firestore Quota Circuit Breaker reset. Retrying writes...');
+      }, 300000); // 5 minutes
+    }
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errorMessage,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -96,7 +122,7 @@ export async function createNotification({
   senderName: string;
   senderPhoto: string;
 }) {
-  if (senderId === recipientId) return;
+  if (senderId === recipientId || checkQuota()) return;
 
   try {
     console.log(`Creating notification for ${recipientId}: ${type} from ${senderName}`);

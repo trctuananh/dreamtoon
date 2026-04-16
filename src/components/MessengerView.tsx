@@ -17,7 +17,7 @@ import {
   deleteDoc,
   writeBatch
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, checkQuota } from '../firebase';
 import { UserProfile, Conversation, Message } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -30,14 +30,16 @@ export function MessengerView({
   lang, 
   onBack,
   chatTarget,
-  onChatTargetHandled
+  onChatTargetHandled,
+  isQuotaExceeded
 }: { 
   user: any, 
   profile: UserProfile | null, 
   lang: Language, 
   onBack: () => void,
   chatTarget?: UserProfile | null,
-  onChatTargetHandled?: () => void
+  onChatTargetHandled?: () => void,
+  isQuotaExceeded?: boolean
 }) {
   const { t } = useTranslation(lang);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -56,6 +58,8 @@ export function MessengerView({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const lastConvIdRef = useRef<string | null>(null);
+  const lastActionTimeRef = useRef<number>(0);
+  const ACTION_THROTTLE = 1000;
 
   const emojis = ['😀', '😂', '😍', '🥰', '😎', '🤔', '😢', '😡', '👍', '❤️', '🔥', '✨', '🙌', '👏', '🎉', '💯', '🙏', '💪', '👀', '🚀'];
 
@@ -108,17 +112,25 @@ export function MessengerView({
   }, [messages, selectedConversation?.id]);
 
   // Mark as read when messages change and we are active
+  const lastMarkedReadRef = useRef<{ convId: string, count: number } | null>(null);
+
   useEffect(() => {
     if (user && selectedConversation && messages.length > 0) {
-      if (selectedConversation.unreadCount?.[user.uid]) {
-        markAsRead(selectedConversation.id);
+      const currentCount = selectedConversation.unreadCount?.[user.uid] || 0;
+      if (currentCount > 0) {
+        // Only mark as read if the count is different from what we last marked
+        // or if it's a different conversation
+        if (lastMarkedReadRef.current?.convId !== selectedConversation.id || lastMarkedReadRef.current?.count !== currentCount) {
+          markAsRead(selectedConversation.id);
+          lastMarkedReadRef.current = { convId: selectedConversation.id, count: currentCount };
+        }
       }
     }
   }, [messages, selectedConversation?.id, user?.uid]);
 
   // Listen to conversations
   useEffect(() => {
-    if (!user) return;
+    if (!user || isQuotaExceeded) return;
 
     const q = query(
       collection(db, 'conversations'),
@@ -157,7 +169,7 @@ export function MessengerView({
 
   // Listen to messages in selected conversation
   useEffect(() => {
-    if (!selectedConversation) {
+    if (!selectedConversation || isQuotaExceeded) {
       setMessages([]);
       return;
     }
@@ -180,7 +192,7 @@ export function MessengerView({
 
   // Listen to other participant's profile for online status
   useEffect(() => {
-    if (!selectedConversation || !user) {
+    if (!selectedConversation || !user || isQuotaExceeded) {
       setOtherParticipantProfile(null);
       return;
     }
@@ -226,7 +238,7 @@ export function MessengerView({
   };
 
   const markAsRead = async (convId: string) => {
-    if (!user) return;
+    if (!user || checkQuota()) return;
     try {
       await updateDoc(doc(db, 'conversations', convId), {
         [`unreadCount.${user.uid}`]: 0
@@ -280,7 +292,11 @@ export function MessengerView({
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedConversation || (!newMessage.trim() && !selectedImage)) return;
+    if (!user || !selectedConversation || (!newMessage.trim() && !selectedImage) || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
 
     const content = newMessage.trim();
     const imageUrl = selectedImage;

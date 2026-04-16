@@ -32,14 +32,16 @@ export function DashboardView({
   lang, 
   onUpload,
   onComicClick,
-  onCreateArticle
+  onCreateArticle,
+  isQuotaExceeded
 }: { 
   user: any, 
   profile: UserProfile | null, 
   lang: Language,
   onUpload: () => void,
   onComicClick: (comic: Comic) => void,
-  onCreateArticle: () => void
+  onCreateArticle: () => void,
+  isQuotaExceeded?: boolean
 }) {
   const { t } = useTranslation(lang);
   const [myComics, setMyComics] = useState<Comic[]>([]);
@@ -47,38 +49,33 @@ export function DashboardView({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || isQuotaExceeded) return;
 
-    // Fetch user's comics
-    const comicsQuery = query(
-      collection(db, 'comics'),
-      where('authorUid', '==', user.uid),
-      limit(50)
-    );
+    const fetchData = async () => {
+      try {
+        // Fetch user's comics
+        const comicsQuery = query(
+          collection(db, 'comics'),
+          where('authorUid', '==', user.uid),
+          limit(50)
+        );
+        const comicsSnapshot = await getDocs(comicsQuery);
+        const comics = comicsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic));
+        setMyComics(comics);
 
-    const unsubscribeComics = onSnapshot(comicsQuery, (snapshot) => {
-      const comics = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comic));
-      setMyComics(comics);
-      setLoading(false);
-    });
-
-    // Fetch follower count
-    const followersQuery = query(
-      collection(db, 'profiles', user.uid, 'followers') // Assuming followers are tracked here or globally
-    );
-    
-    // Actually, based on App.tsx, following is in users/{uid}/following
-    // To get followers of current user, we need to query all users' following or have a dedicated followers subcollection
-    // Let's check if we have a followers subcollection in profiles
-    const unsubscribeFollowers = onSnapshot(collection(db, 'profiles', user.uid, 'followers'), (snapshot) => {
-      setFollowerCount(snapshot.size);
-    });
-
-    return () => {
-      unsubscribeComics();
-      unsubscribeFollowers();
+        // Fetch follower count
+        const followersSnapshot = await getDocs(collection(db, 'profiles', user.uid, 'followers'));
+        setFollowerCount(followersSnapshot.size);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        setLoading(false);
+      }
     };
-  }, [user]);
+
+    fetchData();
+  }, [user, isQuotaExceeded]);
 
   const totalViews = myComics.reduce((acc, comic) => acc + (comic.views || 0), 0);
   const avgRating = myComics.length > 0 

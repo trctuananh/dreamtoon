@@ -19,7 +19,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { motion } from 'motion/react';
 import { Search, Shield, ShieldAlert, UserMinus, UserCheck, Mail, Hash, Trash2, Activity, Send } from 'lucide-react';
 
-export function AdminUserManagementView({ lang }: { lang: Language }) {
+export function AdminUserManagementView({ lang, isQuotaExceeded }: { lang: Language, isQuotaExceeded?: boolean }) {
   const { t } = useTranslation(lang);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,6 +30,8 @@ export function AdminUserManagementView({ lang }: { lang: Language }) {
   const [testEmailInput, setTestEmailInput] = useState('');
 
   useEffect(() => {
+    if (isQuotaExceeded) return;
+
     const q = query(
       collection(db, 'users'),
       orderBy('createdAt', 'desc'),

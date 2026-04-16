@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Heart, MessageCircle, UserPlus, BookOpen, Trash2, CheckCircle, Briefcase, X } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, checkQuota } from '../firebase';
 import { AppNotification } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -11,12 +11,14 @@ export function NotificationsView({
   user, 
   lang, 
   onBack,
-  onNotificationClick
+  onNotificationClick,
+  isQuotaExceeded
 }: { 
   user: any, 
   lang: Language, 
   onBack: () => void,
-  onNotificationClick: (notification: AppNotification) => void
+  onNotificationClick: (notification: AppNotification) => void,
+  isQuotaExceeded?: boolean
 }) {
   const { t } = useTranslation(lang);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -24,30 +26,37 @@ export function NotificationsView({
   const [selectedCommission, setSelectedCommission] = useState<AppNotification | null>(null);
   const [notificationToDelete, setNotificationToDelete] = useState<string | null>(null);
 
+  const lastActionTimeRef = React.useRef<number>(0);
+  const ACTION_THROTTLE = 3000;
+
   useEffect(() => {
-    if (!user) return;
+    if (!user || isQuotaExceeded) return;
 
-    const q = query(
-      collection(db, 'users', user.uid, 'notifications'),
-      orderBy('createdAt', 'desc')
-    );
+    const fetchNotifications = async () => {
+      try {
+        const q = query(
+          collection(db, 'users', user.uid, 'notifications'),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        );
+        const snapshot = await getDocs(q);
+        const newNotifications = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as AppNotification[];
+        setNotifications(newNotifications);
+        setLoading(false);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/notifications`);
+        setLoading(false);
+      }
+    };
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newNotifications = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as AppNotification[];
-      setNotifications(newNotifications);
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/notifications`);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
+    fetchNotifications();
+  }, [user, isQuotaExceeded]);
 
   const markAsRead = async (notificationId: string) => {
+    if (checkQuota()) return;
     try {
       await updateDoc(doc(db, 'users', user.uid, 'notifications', notificationId), {
         read: true
@@ -69,7 +78,11 @@ export function NotificationsView({
 
   const markAllAsRead = async () => {
     const unread = notifications.filter(n => !n.read);
-    if (unread.length === 0) return;
+    if (unread.length === 0 || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
 
     const batch = writeBatch(db);
     unread.forEach(n => {

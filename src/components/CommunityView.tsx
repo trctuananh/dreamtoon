@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Heart, PenTool, MessageCircle, Send } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, updateDoc, increment, arrayUnion, arrayRemove, addDoc, serverTimestamp, getDocs, getDoc, writeBatch } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType, createNotification } from '../firebase';
+import { db, handleFirestoreError, OperationType, createNotification, checkQuota } from '../firebase';
 import { View, Post, Comic, Following, UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function CommunityView({ user, isAdmin, comics, following = [], lang, searchQuery = '', onBack, onArtistClick, onLogin, setView, onMessageClick }: { user: any, isAdmin: boolean, comics: Comic[], following?: Following[], lang: Language, searchQuery?: string, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void, onMessageClick?: (target: UserProfile) => void }) {
+export function CommunityView({ user, isAdmin, comics, following = [], lang, searchQuery = '', onBack, onArtistClick, onLogin, setView, onMessageClick, isQuotaExceeded }: { user: any, isAdmin: boolean, comics: Comic[], following?: Following[], lang: Language, searchQuery?: string, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void, onMessageClick?: (target: UserProfile) => void, isQuotaExceeded?: boolean }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   const [feedTab, setFeedTab] = useState<'all' | 'following'>('all');
@@ -37,11 +37,11 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
 
   // Comments Fetch (One-time when activePostId changes)
   useEffect(() => {
+    if (!activePostId || isQuotaExceeded) {
+      setPostComments([]);
+      return;
+    }
     const fetchComments = async () => {
-      if (!activePostId) {
-        setPostComments([]);
-        return;
-      }
 
       try {
         const q = query(
@@ -72,6 +72,7 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
 
   // Posts Fetch (One-time)
   useEffect(() => {
+    if (isQuotaExceeded) return;
     const fetchPosts = async () => {
       try {
         const q = query(
@@ -102,14 +103,14 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
   };
 
   const lastActionTimeRef = React.useRef<number>(0);
-  const ACTION_THROTTLE = 2000;
+  const ACTION_THROTTLE = 3000;
 
   const handleLike = async (post: Post) => {
     if (!user) {
       onLogin();
       return;
     }
-    if (post.likedBy?.includes(user.uid)) return;
+    if (post.likedBy?.includes(user.uid) || checkQuota()) return;
 
     const now = Date.now();
     if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
@@ -146,7 +147,7 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
   };
 
   const handleUnlike = async (post: Post) => {
-    if (!user || !post.likedBy?.includes(user.uid)) return;
+    if (!user || !post.likedBy?.includes(user.uid) || checkQuota()) return;
 
     const now = Date.now();
     if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
@@ -163,7 +164,7 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
   };
 
   const handleAddComment = async (postId: string) => {
-    if (!user || !newCommentText.trim()) return;
+    if (!user || !newCommentText.trim() || checkQuota()) return;
 
     const now = Date.now();
     if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;

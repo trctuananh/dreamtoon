@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Image as ImageIcon, Trash2, Heart, ArrowLeft, PenTool, X, Save, DollarSign, Briefcase, Upload, Camera, Share2, Copy, Check, MessageCircle, Plus, Layout } from 'lucide-react';
 import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, serverTimestamp, updateDoc, increment, arrayUnion, arrayRemove, setDoc, limit, getDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, checkQuota } from '../firebase';
 import { View, Post, UserProfile, Donation, CommissionWork, PostComment, CommissionRequest } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
@@ -14,14 +14,16 @@ export function MyWallView({
   lang, 
   onBack, 
   setView,
-  onMessageClick
+  onMessageClick,
+  isQuotaExceeded
 }: { 
   user: any, 
   profile: UserProfile | null, 
   lang: Language, 
   onBack: () => void, 
   setView: (v: View) => void,
-  onMessageClick?: (target: UserProfile) => void
+  onMessageClick?: (target: UserProfile) => void,
+  isQuotaExceeded?: boolean
 }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -71,8 +73,11 @@ export function MyWallView({
   const [newCommentText, setNewCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
 
+  const lastActionTimeRef = React.useRef<number>(0);
+  const ACTION_THROTTLE = 3000;
+
   useEffect(() => {
-    if (!user) return;
+    if (!user || isQuotaExceeded) return;
     const q = query(
       collection(db, 'posts'),
       where('authorUid', '==', user.uid),
@@ -94,7 +99,7 @@ export function MyWallView({
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || isQuotaExceeded) return;
     const q = query(
       collection(db, 'donations'),
       where('artistUid', '==', user.uid),
@@ -116,7 +121,7 @@ export function MyWallView({
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || isQuotaExceeded) return;
     const q = query(
       collection(db, 'users', user.uid, 'commissions'),
       orderBy('order', 'asc')
@@ -136,7 +141,7 @@ export function MyWallView({
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || isQuotaExceeded) return;
     const q = query(
       collection(db, 'commissions'),
       where('artistUid', '==', user.uid),
@@ -157,7 +162,7 @@ export function MyWallView({
   }, [user]);
 
   useEffect(() => {
-    if (!activePostId) {
+    if (!activePostId || isQuotaExceeded) {
       setPostComments([]);
       return;
     }
@@ -387,7 +392,12 @@ export function MyWallView({
   };
 
   const handleLike = async (post: Post) => {
-    if (!user || post.likedBy?.includes(user.uid)) return;
+    if (!user || post.likedBy?.includes(user.uid) || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
+
     try {
       await updateDoc(doc(db, 'posts', post.id), {
         likes: increment(1),
@@ -399,7 +409,12 @@ export function MyWallView({
   };
 
   const handleUnlike = async (post: Post) => {
-    if (!user || !post.likedBy?.includes(user.uid)) return;
+    if (!user || !post.likedBy?.includes(user.uid) || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
+
     try {
       await updateDoc(doc(db, 'posts', post.id), {
         likes: increment(-1),
@@ -411,7 +426,12 @@ export function MyWallView({
   };
 
   const handleAddComment = async (postId: string) => {
-    if (!user || !newCommentText.trim()) return;
+    if (!user || !newCommentText.trim() || checkQuota()) return;
+
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
+    lastActionTimeRef.current = now;
+
     setIsPostingComment(true);
     try {
       const commentData = {
