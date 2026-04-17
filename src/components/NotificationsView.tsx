@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Heart, MessageCircle, UserPlus, BookOpen, Trash2, CheckCircle, Briefcase, X } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, limit, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, checkQuota } from '../firebase';
 import { AppNotification } from '../types';
 import { Language } from '../translations';

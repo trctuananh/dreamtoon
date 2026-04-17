@@ -13,7 +13,7 @@ service cloud.firestore {
     //   - handle: string (optional, unique, lowercase, alphanumeric)
     //   - email: string (required, email format)
     //   - photoURL: string (optional)
-    //   - role: string (optional, enum: ['dreamer', 'admin'])
+    //   - role: string (optional, enum: ['sleeper', 'dreamer', 'VIP', 'admin'])
     //   - bio: string (optional, max 500 chars)
     //   - donateInfo: map (optional, {text: string, imageUrl: string})
     //   - commissionInfo: map (optional, {text: string, imageUrl: string})
@@ -222,7 +222,7 @@ service cloud.firestore {
              (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
              (!('handle' in data) || data.handle == null || data.handle == "" || (data.handle is string && data.handle.size() <= 30 && data.handle.matches("^[a-z0-9_]+$"))) &&
              (!('email' in data) || data.email == null || data.email == "" || isValidEmail(data.email)) &&
-             (!('role' in data) || data.role == null || data.role in ['user', 'dreamer', 'admin']) &&
+             (!('role' in data) || data.role == null || data.role in ['sleeper', 'dreamer', 'VIP', 'admin']) &&
              (!('bio' in data) || data.bio == null || (data.bio is string && data.bio.size() <= 1000)) &&
              (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1048487)) &&
              (!('pioneerNumber' in data) || data.pioneerNumber == null || data.pioneerNumber is number) &&
@@ -240,7 +240,7 @@ service cloud.firestore {
              (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
              (!('handle' in data) || data.handle == null || data.handle == "" || (data.handle is string && data.handle.size() <= 30 && data.handle.matches("^[a-z0-9_]+$"))) &&
              (!('email' in data) || data.email == null || data.email == "" || isValidEmail(data.email)) &&
-             (!('role' in data) || data.role == null || data.role in ['user', 'dreamer', 'admin']) &&
+             (!('role' in data) || data.role == null || data.role in ['sleeper', 'dreamer', 'VIP', 'admin']) &&
              (!('bio' in data) || data.bio == null || (data.bio is string && data.bio.size() <= 1000)) &&
              (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1048487)) &&
              (!('pioneerNumber' in data) || data.pioneerNumber == null || data.pioneerNumber is number) &&
@@ -378,7 +378,10 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && isFieldUnchanged('role', 'user') && isFieldUnchanged('banned', false)) || (isAdmin() && isValidUser(request.resource.data));
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && 
+                       (isFieldUnchanged('role', 'sleeper') || (resource.data.role == 'sleeper' && request.resource.data.role == 'dreamer')) && 
+                       isFieldUnchanged('banned', false)) || 
+                     (isAdmin() && isValidUser(request.resource.data));
       allow delete: if isAdmin();
 
       match /following/{id} {
@@ -416,7 +419,10 @@ service cloud.firestore {
     match /profiles/{userId} {
       allow read: if true;
       allow create: if isOwner(userId) && isValidProfile(request.resource.data);
-      allow update: if (isOwner(userId) && isValidProfile(request.resource.data) && isFieldUnchanged('role', 'user') && isFieldUnchanged('banned', false)) || (isAdmin() && isValidProfile(request.resource.data));
+      allow update: if (isOwner(userId) && isValidProfile(request.resource.data) && 
+                       (isFieldUnchanged('role', 'sleeper') || (resource.data.role == 'sleeper' && request.resource.data.role == 'dreamer')) && 
+                       isFieldUnchanged('banned', false)) || 
+                     (isAdmin() && isValidProfile(request.resource.data));
       allow delete: if isAdmin();
 
       match /followers/{id} {

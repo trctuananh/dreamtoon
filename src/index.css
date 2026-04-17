@@ -7,7 +7,7 @@
   --font-mono: "JetBrains Mono", monospace;
   --font-manga: "Bangers", system-ui;
   
-  --color-paper: #fcfaf2;
+  --color-paper: #ffffff;
   --color-ink: #1a1a1a;
   --color-ink-muted: #4a4a4a;
 }
@@ -40,19 +40,19 @@
 }
 
 @utility manga-panel {
-  @apply border-2 border-ink bg-white relative overflow-hidden;
-  box-shadow: 4px 4px 0px 0px rgba(26, 26, 26, 1);
+  @apply border-2 border-ink bg-paper relative overflow-hidden transition-colors duration-300;
+  box-shadow: 4px 4px 0px 0px var(--color-ink);
   border-radius: 2px 4px 2px 6px / 4px 2px 6px 2px;
 }
 
 @utility manga-card {
-  @apply border-2 border-ink bg-white p-4 transition-all duration-300;
-  box-shadow: 2px 2px 0px 0px rgba(26, 26, 26, 1);
+  @apply border-2 border-ink bg-paper p-4 transition-all duration-300;
+  box-shadow: 2px 2px 0px 0px var(--color-ink);
   border-radius: 3px 6px 3px 8px / 6px 3px 8px 3px;
 
   &:hover {
     @apply -translate-x-1 -translate-y-1;
-    box-shadow: 6px 6px 0px 0px rgba(26, 26, 26, 1);
+    box-shadow: 6px 6px 0px 0px var(--color-ink);
   }
 }
 
@@ -66,9 +66,10 @@
     45deg,
     transparent,
     transparent 10px,
-    rgba(26, 26, 26, 0.05) 10px,
-    rgba(26, 26, 26, 0.05) 11px
+    var(--color-ink-muted) 10px,
+    var(--color-ink-muted) 11px
   );
+  opacity: 0.1;
 }
 
 @utility inky-text {
@@ -80,29 +81,29 @@
 }
 
 @utility sfx-text {
-  @apply font-manga text-ink uppercase tracking-wider;
-  text-shadow: 2px 2px 0px white, -2px -2px 0px white, 2px -2px 0px white, -2px 2px 0px white, 4px 4px 0px black;
+  @apply font-manga text-ink uppercase tracking-wider transition-colors duration-300;
+  text-shadow: 2px 2px 0px var(--color-paper), -2px -2px 0px var(--color-paper), 2px -2px 0px var(--color-paper), -2px 2px 0px var(--color-paper), 4px 4px 0px var(--color-ink);
 }
 
 @utility manga-btn {
-  @apply border-2 border-ink bg-white px-6 py-2 font-bold uppercase tracking-widest transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none;
-  box-shadow: 3px 3px 0px 0px rgba(26, 26, 26, 1);
+  @apply border-2 border-ink bg-paper px-6 py-2 font-bold uppercase tracking-widest transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none;
+  box-shadow: 3px 3px 0px 0px var(--color-ink);
   border-radius: 4px 2px 6px 3px / 2px 4px 3px 6px;
 }
 
 @utility manga-btn-ink {
   @apply border-2 border-ink bg-ink text-paper px-6 py-2 font-bold uppercase tracking-widest transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none;
-  box-shadow: 3px 3px 0px 0px rgba(26, 26, 26, 1);
+  box-shadow: 3px 3px 0px 0px var(--color-ink);
   border-radius: 2px 6px 3px 4px / 6px 2px 4px 3px;
 }
 
 @utility speech-bubble {
-  @apply relative bg-white border-2 border-ink p-4 font-bold;
+  @apply relative bg-paper border-2 border-ink p-4 font-bold transition-colors duration-300;
   border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
 }
 
 @utility speech-bubble-tail {
-  @apply absolute w-4 h-4 bg-white border-b-2 border-r-2 border-ink;
+  @apply absolute w-4 h-4 bg-paper border-b-2 border-r-2 border-ink transition-colors duration-300;
   bottom: -10px;
   left: 20%;
   transform: rotate(45deg);

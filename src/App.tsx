@@ -338,7 +338,7 @@ export default function App() {
               pioneerNumber: userData.pioneerNumber || null,
               donateInfo: userData.donateInfo || null,
               commissionInfo: userData.commissionInfo || null,
-              role: userData.role || 'user',
+              role: userData.role || 'sleeper',
               banned: userData.banned || false
             };
 
@@ -365,7 +365,7 @@ export default function App() {
             displayName: user.displayName || 'Anonymous',
             email: user.email || '',
             photoURL: user.photoURL || '',
-            role: 'user',
+            role: 'sleeper',
             createdAt: serverTimestamp()
           };
           try {
@@ -384,6 +384,47 @@ export default function App() {
       return () => unsubscribe();
     }
   }, [user, isAuthReady]);
+
+  // Dreamer Role Upgrade Logic: Artist with > 1000 views
+  useEffect(() => {
+    if (!user || !profile || profile.role !== 'sleeper' || isQuotaExceeded) return;
+
+    const checkDreamerUpgrade = async () => {
+      try {
+        const q = query(collection(db, 'comics'), where('authorUid', '==', user.uid));
+        const snap = await getDocs(q);
+        
+        if (snap.empty) return;
+
+        let totalViews = 0;
+        snap.docs.forEach(doc => {
+          totalViews += (doc.data() as Comic).views || 0;
+        });
+
+        if (totalViews > 1000) {
+          const updates = { role: 'dreamer' as const };
+          const userRef = doc(db, 'users', user.uid);
+          const profileRef = doc(db, 'profiles', user.uid);
+          
+          const batch = writeBatch(db);
+          batch.update(userRef, updates);
+          batch.update(profileRef, updates);
+          await batch.commit();
+          
+          console.log(`User ${user.uid} upgraded to dreamer! (Total views: ${totalViews})`);
+        }
+      } catch (error) {
+        console.error("Error checking dreamer upgrade:", error);
+      }
+    };
+
+    // Check once per session to save quota
+    const lastCheck = sessionStorage.getItem(`dreamer_check_${user.uid}`);
+    if (!lastCheck) {
+      checkDreamerUpgrade();
+      sessionStorage.setItem(`dreamer_check_${user.uid}`, Date.now().toString());
+    }
+  }, [user, profile, isQuotaExceeded]);
 
   // Comics Fetch
   useEffect(() => {
@@ -1122,7 +1163,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-blue-100">
+      <div className="min-h-screen bg-paper text-ink font-sans selection:bg-blue-100">
         <Navbar 
           user={user}
           profile={profile}

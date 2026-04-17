@@ -10,7 +10,7 @@
         "handle": { "type": "string", "description": "The unique handle of the user (e.g., @username)." },
         "email": { "type": "string", "description": "The email of the user.", "format": "email" },
         "photoURL": { "type": "string", "description": "The profile picture URL of the user." },
-        "role": { "type": "string", "description": "The role of the user (e.g., 'dreamer', 'admin').", "enum": ["dreamer", "admin"] },
+        "role": { "type": "string", "description": "The role of the user (e.g., 'sleeper', 'dreamer', 'VIP', 'admin').", "enum": ["sleeper", "dreamer", "VIP", "admin"] },
         "bio": { "type": "string", "description": "The biography of the user." },
         "pioneerNumber": { "type": "number", "description": "The unique pioneer number of the user (1-100)." },
         "donateInfo": {
@@ -241,7 +241,7 @@
         "handle": { "type": "string", "description": "The unique handle of the user." },
         "photoURL": { "type": "string", "description": "The profile picture URL." },
         "bio": { "type": "string", "description": "The biography of the user." },
-        "role": { "type": "string", "description": "The role of the user." },
+        "role": { "type": "string", "description": "The role of the user.", "enum": ["sleeper", "dreamer", "VIP", "admin"] },
         "pioneerNumber": { "type": "number", "description": "The pioneer number of the user." },
         "donateInfo": { "type": "object" },
         "commissionInfo": { "type": "object" },

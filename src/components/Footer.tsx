@@ -35,7 +35,7 @@ export function Footer({ lang, onViewChange }: { lang: Language, onViewChange?: 
               <a href="#" className="p-3 bg-zinc-900 rounded-2xl hover:bg-zinc-800 transition-all group">
                 <Twitter size={20} className="group-hover:scale-110 transition-transform" />
               </a>
-              <a href="#" className="p-3 bg-zinc-900 rounded-2xl hover:bg-[#5865F2] transition-all group">
+              <a href="https://discord.gg/QXmaakBVfr" target="_blank" rel="noopener noreferrer" className="p-3 bg-zinc-900 rounded-2xl hover:bg-[#5865F2] transition-all group">
                 <MessageSquare size={20} className="group-hover:scale-110 transition-transform" />
               </a>
               <a href="#" className="p-3 bg-zinc-900 rounded-2xl hover:bg-zinc-800 transition-all group">

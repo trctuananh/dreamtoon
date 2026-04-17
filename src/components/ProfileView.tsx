@@ -185,11 +185,6 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   className="w-24 h-24 md:w-48 md:h-48 rounded-[1.5rem] md:rounded-[3rem] border-2 md:border-4 border-white shadow-2xl object-cover aspect-square"
                   referrerPolicy="no-referrer"
                 />
-                {profile?.pioneerNumber && (
-                  <div className="absolute -top-2 -left-2 md:-top-4 md:-left-4 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[10px] md:text-base font-black w-8 h-8 md:w-14 md:h-14 rounded-full flex items-center justify-center border-2 md:border-4 border-white shadow-[0_0_20px_rgba(245,158,11,0.7)] z-20">
-                    {profile.pioneerNumber}
-                  </div>
-                )}
                 {isEditing && (
                   <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[1.5rem] md:rounded-[3rem] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
                     <Camera className="text-white w-6 h-6 md:w-12 md:h-12" />
@@ -198,10 +193,22 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                 )}
                 <div className="absolute -bottom-1 -right-1 w-5 h-5 md:w-10 md:h-10 bg-emerald-500 border-2 md:border-4 border-white rounded-full shadow-lg" />
               </div>
-              <h3 className="text-xl md:text-2xl font-black text-zinc-900 tracking-tight leading-tight">{displayName || profile?.displayName || user.displayName}</h3>
-              {profile?.handle && (
-                <p className="text-blue-500 font-black text-xs md:text-sm mb-0.5 md:mb-1 tracking-tight">@{profile.handle}</p>
-              )}
+              <h3 className="text-xl md:text-2xl font-black text-ink tracking-tight leading-tight">{displayName || profile?.displayName || user.displayName}</h3>
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-1 mb-2">
+                {profile?.handle && (
+                  <p className="text-blue-500 font-black text-xs md:text-sm tracking-tight">@{profile.handle}</p>
+                )}
+                {profile?.role && (
+                  <div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                    profile.role === 'admin' ? 'bg-zinc-900 text-yellow-400 border border-yellow-400/30' :
+                    profile.role === 'VIP' ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white' :
+                    profile.role === 'dreamer' ? 'bg-blue-500 text-white' :
+                    'bg-zinc-100 text-zinc-400'
+                  }`}>
+                    {profile.role}
+                  </div>
+                )}
+              </div>
               {!isGuest ? (
                 <p className="text-zinc-400 text-[10px] md:text-xs font-bold mb-0.5 md:mb-2">{user.email}</p>
               ) : (
@@ -209,8 +216,7 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   <p className="text-zinc-400 text-[10px] md:text-xs font-bold mb-0.5 md:mb-2">{profile.email}</p>
                 )
               )}
-              <p className="text-[9px] md:text-[10px] text-zinc-400 font-black uppercase tracking-[0.1em] md:tracking-[0.2em] mb-2 md:mb-6">{t('joined')}: {joinedDate}</p>
-
+              
               {isGuest && (
                 <div className="w-full flex flex-col gap-2 mb-6">
                   <button
@@ -353,7 +359,7 @@ export function ProfileView({ user, profile, comics, following, lang, onEditComi
                   <p className="text-[7px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('avgRating')}</p>
                 </div>
                 <div className="text-center pt-1.5 md:pt-4">
-                  <p className="text-base md:text-2xl font-black text-zinc-900">{t((profile?.role || 'dreamer') as any)}</p>
+                  <p className="text-base md:text-2xl font-black text-zinc-900">{t((profile?.role || 'sleeper') as any)}</p>
                   <p className="text-[7px] md:text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t('role')}</p>
                 </div>
               </div>

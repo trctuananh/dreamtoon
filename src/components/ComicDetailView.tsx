@@ -233,11 +233,6 @@ export function ComicDetailView({
                         comic.authorName?.[0] || 'A'
                       )}
                     </div>
-                    {comic.authorPioneerNumber && (
-                      <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[10px] sm:text-xs font-black w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
-                        {comic.authorPioneerNumber}
-                      </div>
-                    )}
                   </div>
                   <div>
                     <p className="text-[10px] sm:text-xs font-bold text-zinc-400 uppercase tracking-widest">{t('author')}</p>

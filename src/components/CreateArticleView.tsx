@@ -5,7 +5,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, Article } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
-import { compressImage } from '../lib/utils';
+import { compressImage, validateImage } from '../lib/utils';
 
 export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, initialData }: { user: any, profile: UserProfile | null, lang: Language, onSuccess: () => void, onCancel: () => void, initialData?: Article | null }) {
   const { t } = useTranslation(lang);
@@ -19,14 +19,41 @@ export function CreateArticleView({ user, profile, lang, onSuccess, onCancel, in
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate type
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      alert(lang === 'vi' ? 'Chỉ chấp nhận file ảnh (JPEG, PNG, WEBP)' : 'Only image files are accepted (JPEG, PNG, WEBP)');
+      return;
+    }
+
     try {
       setUploadProgress(10);
-      const compressed = await compressImage(file, 1200, 0.7);
-      setBanner(compressed);
+      
+      // Basic size/validity check
+      const validation = await validateImage(file);
+      if (!validation.valid) {
+        alert(validation.error || 'Invalid image file');
+        setUploadProgress(0);
+        return;
+      }
+
+      setUploadProgress(40);
+      
+      // Optimize compression: 1600px max width for better quality on large screens, 0.8 quality
+      const compressed = await compressImage(file, 1600, 0.8);
+      
+      // Safety check for Firestore document size (1MB is safe, 2MB is the hard limit for base64 strings in some cases)
+      if (compressed.length > 1048576) { // 1MB
+        // Re-compress with lower quality if still too large
+        const smaller = await compressImage(file, 1200, 0.6);
+        setBanner(smaller);
+      } else {
+        setBanner(compressed);
+      }
+      
       setUploadProgress(100);
       setTimeout(() => setUploadProgress(0), 500);
     } catch (err) {
-      alert('Failed to process image');
+      alert(lang === 'vi' ? 'Không thể xử lý ảnh' : 'Failed to process image');
       setUploadProgress(0);
     }
   };

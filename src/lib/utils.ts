@@ -11,9 +11,9 @@ export const formatViews = (views: number) => {
   return views.toString();
 };
 
-export const validateImage = async (file: File): Promise<{ valid: boolean; error?: string }> => {
-  if (file.size > 20 * 1024 * 1024) {
-    return { valid: false, error: 'File size exceeds 20MB limit.' };
+export const validateImage = async (file: File, maxSizeMB: number = 20): Promise<{ valid: boolean; error?: string }> => {
+  if (file.size > maxSizeMB * 1024 * 1024) {
+    return { valid: false, error: `File size exceeds ${maxSizeMB}MB limit.` };
   }
 
   const img = new Image();

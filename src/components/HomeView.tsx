@@ -126,14 +126,14 @@ export function HomeView({
 
   if (searchQuery.trim()) {
     return (
-      <div className="min-h-screen bg-white pb-24 pt-4">
-        <div className="px-6">
-          <h2 className="text-2xl font-black text-zinc-900 mb-6 tracking-tight">
+      <div className="min-h-screen bg-paper pb-24 pt-4">
+        <div className="px-4 sm:px-6">
+          <h2 className="text-xl sm:text-2xl font-black text-ink mb-6 tracking-tight">
             {t('searchResults') || 'Search Results'} <span className="text-blue-500">"{searchQuery}"</span>
           </h2>
 
           {filteredComics.length === 0 && filteredArticles.length === 0 && filteredArtists.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-zinc-400">
+            <div className="flex flex-col items-center justify-center py-20 text-ink/40">
               <Compass size={48} className="mb-4 opacity-20" />
               <p className="font-bold">{t('noResults') || 'No results found'}</p>
             </div>
@@ -141,8 +141,8 @@ export function HomeView({
             <div className="space-y-12">
               {filteredComics.length > 0 && (
                 <div>
-                  <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{t('stories') || 'Stories'}</h3>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+                  <h3 className="text-[10px] font-black text-ink/40 uppercase tracking-widest mb-4">{t('stories') || 'Stories'}</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
                     {filteredComics.map((comic) => (
                       <motion.div
                         key={comic.id}
@@ -151,7 +151,7 @@ export function HomeView({
                         onClick={() => onComicClick(comic)}
                         className="group cursor-pointer"
                       >
-                        <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-2 shadow-lg shadow-zinc-200/50">
+                        <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-2 shadow-lg shadow-ink/5">
                           <img 
                             src={comic.thumbnail} 
                             alt={comic.title} 
@@ -160,7 +160,7 @@ export function HomeView({
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <h4 className="font-bold text-zinc-900 text-sm truncate mb-1 group-hover:text-blue-600 transition-colors">
+                        <h4 className="font-bold text-ink text-sm truncate mb-1 group-hover:text-blue-600 transition-colors">
                           {comic.title}
                         </h4>
                         <div className="flex flex-wrap gap-1">
@@ -178,7 +178,7 @@ export function HomeView({
 
               {filteredArtists.length > 0 && (
                 <div>
-                  <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{t('authors')} & {t('users')}</h3>
+                  <h3 className="text-[10px] font-black text-ink/40 uppercase tracking-widest mb-4">{t('authors')} & {t('users')}</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
                     {filteredArtists.map((artist) => (
                       <motion.div
@@ -188,7 +188,7 @@ export function HomeView({
                         onClick={() => onArtistClick?.(artist)}
                         className="group cursor-pointer text-center"
                       >
-                        <div className="relative aspect-square rounded-full overflow-hidden mb-2 shadow-lg shadow-zinc-200/50 mx-auto w-16 sm:w-20">
+                        <div className="relative aspect-square rounded-full overflow-hidden mb-2 shadow-lg shadow-ink/5 mx-auto w-16 sm:w-20">
                           <img 
                             src={artist.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(artist.displayName)}&background=random`} 
                             alt={artist.displayName} 
@@ -196,15 +196,15 @@ export function HomeView({
                             referrerPolicy="no-referrer"
                           />
                           {artist.pioneerNumber && (
-                            <div className="absolute top-0 right-0 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[8px] sm:text-[10px] font-black w-5 h-5 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-white shadow-[0_0_15px_rgba(245,158,11,0.6)] z-10">
+                            <div className="absolute top-0 right-0 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[8px] sm:text-[10px] font-black w-5 h-5 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 border-paper shadow-[0_0_15px_rgba(245,158,11,0.6)] z-10">
                               {artist.pioneerNumber}
                             </div>
                           )}
                         </div>
-                        <h4 className="font-bold text-zinc-900 text-xs truncate mb-1 group-hover:text-blue-600 transition-colors">
+                        <h4 className="font-bold text-ink text-xs truncate mb-1 group-hover:text-blue-600 transition-colors">
                           {artist.displayName}
                         </h4>
-                        <p className="text-[10px] font-black text-zinc-400 tracking-widest">
+                        <p className="text-[10px] font-black text-ink/40 tracking-widest">
                           @{artist.handle || artist.uid.slice(0, 6)}
                         </p>
                       </motion.div>
@@ -215,7 +215,7 @@ export function HomeView({
 
               {filteredArticles.length > 0 && (
                 <div>
-                  <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{t('articles')}</h3>
+                  <h3 className="text-[10px] font-black text-ink/40 uppercase tracking-widest mb-4">{t('articles')}</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {filteredArticles.map((article) => (
                       <motion.div
@@ -223,7 +223,7 @@ export function HomeView({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         onClick={() => onArticleClick(article)}
-                        className="flex gap-4 p-4 bg-zinc-50 rounded-2xl hover:bg-zinc-100 transition-colors cursor-pointer group"
+                        className="flex gap-4 p-4 bg-ink/5 rounded-2xl hover:bg-ink/10 transition-colors cursor-pointer group"
                       >
                         {article.banner ? (
                           <img 
@@ -233,13 +233,13 @@ export function HomeView({
                             referrerPolicy="no-referrer"
                           />
                         ) : (
-                          <div className="w-24 h-24 bg-zinc-200 rounded-xl flex items-center justify-center">
-                            <Compass size={24} className="text-zinc-400" />
+                          <div className="w-24 h-24 bg-ink/10 rounded-xl flex items-center justify-center">
+                            <Compass size={24} className="text-ink/40" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
-                          <h4 className="font-bold text-zinc-900 text-sm mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">{article.title}</h4>
-                          <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{article.authorName}</p>
+                          <h4 className="font-bold text-ink text-sm mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">{article.title}</h4>
+                          <p className="text-[10px] text-ink/40 font-bold uppercase tracking-widest">{article.authorName}</p>
                         </div>
                       </motion.div>
                     ))}
@@ -254,7 +254,7 @@ export function HomeView({
   }
 
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-paper pb-24 transition-colors duration-300 text-ink">
       {/* Hero Section */}
       <div className="relative h-[150px] w-full overflow-hidden mb-8">
         <AnimatePresence mode="wait">
@@ -355,13 +355,13 @@ export function HomeView({
           <div className="flex gap-2">
             <button 
               onClick={() => setTrendingTab('trending')}
-              className={`px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all ${trendingTab === 'trending' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+              className={`px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all ${trendingTab === 'trending' ? 'bg-ink text-paper shadow-lg shadow-blue-500/10' : 'bg-ink/5 text-ink/50 hover:bg-ink/10'}`}
             >
               {t('trending')}
             </button>
             <button 
               onClick={() => setTrendingTab('popular')}
-              className={`px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all ${trendingTab === 'popular' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+              className={`px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all ${trendingTab === 'popular' ? 'bg-ink text-paper shadow-lg shadow-blue-500/10' : 'bg-ink/5 text-ink/50 hover:bg-ink/10'}`}
             >
               {t('popular')}
             </button>
@@ -404,12 +404,12 @@ export function HomeView({
                 </div>
                 
                 <div className="mt-1">
-                  <h4 className="font-bold text-zinc-900 text-xs sm:text-sm line-clamp-1 mb-0.5 group-hover:text-blue-600 transition-colors">
+                  <h4 className="font-bold text-ink text-xs sm:text-sm line-clamp-1 mb-0.5 group-hover:text-blue-600 transition-colors">
                     {comic.title}
                   </h4>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {comic.genre.map(g => (
-                      <p key={g} className="text-[10px] font-medium text-zinc-400 capitalize">
+                      <p key={g} className="text-[10px] font-medium text-ink/40 capitalize">
                         {t(g as any)}
                       </p>
                     ))}

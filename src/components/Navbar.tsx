@@ -40,7 +40,7 @@ export function Navbar({
 
   return (
     <>
-      <nav className={`sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-zinc-100 py-1.5 sm:py-2.5 flex flex-col gap-1 sm:gap-2 ${view === 'reader' ? 'hidden sm:flex' : 'flex'}`}>
+      <nav className={`sticky top-0 z-50 bg-paper/95 backdrop-blur-md border-b border-ink/10 py-1.5 sm:py-2.5 flex flex-col gap-1 sm:gap-2 ${view === 'reader' ? 'hidden sm:flex' : 'flex'}`}>
         <div className={`w-full px-4 flex flex-col gap-1 sm:gap-2 ${(view === 'home' || view === 'explore') ? 'lg:max-w-[85%] lg:mx-auto' : ''}`}>
           {/* Row 1: Logo, Search, Profile, Menu */}
           <div className="flex items-center justify-between gap-2 sm:gap-4">
@@ -64,7 +64,7 @@ export function Navbar({
                   </div>
                   <span className="text-xl font-black tracking-tighter uppercase hidden sm:inline">
                     <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">Dream</span>
-                    <span className="text-zinc-900">Toon</span>
+                    <span className="text-ink">Toon</span>
                   </span>
                 </div>
               )}
@@ -73,13 +73,13 @@ export function Navbar({
             {/* Search Bar - Flexible in middle on mobile, fixed max-width on desktop */}
             {(view === 'home' || view === 'explore' || view === 'community') && (
               <div className="flex-1 max-w-md relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" size={16} />
                 <input 
                   type="text" 
                   placeholder={t('searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-zinc-50 border border-zinc-100 rounded-full py-1.5 pl-9 pr-4 focus:outline-none focus:border-blue-500 transition-colors text-xs sm:text-sm text-zinc-900"
+                  className="w-full bg-paper border border-ink/10 rounded-full py-1.5 pl-9 pr-4 focus:outline-none focus:border-blue-500 transition-colors text-xs sm:text-sm text-ink"
                 />
               </div>
             )}
@@ -175,11 +175,23 @@ export function Navbar({
                     onClick={() => setView('profile')}
                   />
                   {/* Desktop Profile Dropdown */}
-                  <div className="hidden sm:block absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-zinc-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                    <div className="px-4 py-2 border-b border-zinc-50">
-                      <p className="text-xs font-bold text-zinc-900 truncate">{profile?.displayName || user.displayName}</p>
-                      {profile?.handle && <p className="text-[10px] font-bold text-blue-500 truncate">@{profile.handle}</p>}
-                      <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
+                  <div className="hidden sm:block absolute right-0 top-full mt-2 w-48 bg-paper rounded-xl shadow-xl border border-ink/10 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                    <div className="px-4 py-2 border-b border-ink/5">
+                      <p className="text-xs font-bold text-ink truncate">{profile?.displayName || user.displayName}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {profile?.handle && <p className="text-[10px] font-bold text-blue-500 truncate">@{profile.handle}</p>}
+                        {profile?.role && (
+                          <span className={`px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest ${
+                            profile.role === 'admin' ? 'bg-zinc-900 text-yellow-400 border border-yellow-400/30' :
+                            profile.role === 'VIP' ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white' :
+                            profile.role === 'dreamer' ? 'bg-blue-500 text-white' :
+                            'bg-zinc-100 text-zinc-400'
+                          }`}>
+                            {profile.role}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-ink/50 truncate">{user.email}</p>
                     </div>
                     <button 
                       onClick={() => setView('upload')}
@@ -253,16 +265,16 @@ export function Navbar({
               </button>
 
               {/* Language Switcher (Desktop) */}
-              <div className="hidden sm:flex items-center bg-zinc-100 rounded-full p-1 ml-1">
+              <div className="hidden sm:flex items-center bg-ink/5 rounded-full p-1 ml-1">
                 <button 
                   onClick={() => setLang('en')}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${lang === 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-zinc-500'}`}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${lang === 'en' ? 'bg-paper text-blue-600 shadow-sm' : 'text-ink/50'}`}
                 >
                   EN
                 </button>
                 <button 
                   onClick={() => setLang('vi')}
-                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${lang === 'vi' ? 'bg-white text-blue-600 shadow-sm' : 'text-zinc-500'}`}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${lang === 'vi' ? 'bg-paper text-blue-600 shadow-sm' : 'text-ink/50'}`}
                 >
                   VI
                 </button>
@@ -273,7 +285,7 @@ export function Navbar({
       </nav>
 
       {/* Bottom Navigation (Mobile Only) */}
-      <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-zinc-100 md:hidden pb-safe ${view === 'reader' ? 'hidden' : 'block'}`}>
+      <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-paper/95 backdrop-blur-lg border-t border-ink/10 md:hidden pb-safe ${view === 'reader' ? 'hidden' : 'block'}`}>
         <div className="flex items-center justify-around py-2 px-2">
           <button 
             onClick={() => {
@@ -341,8 +353,8 @@ export function Navbar({
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[60] bg-white md:hidden overflow-y-auto">
-          <div className="p-4 flex items-center justify-between border-b border-zinc-100">
+        <div className="fixed inset-0 z-[60] bg-paper md:hidden overflow-y-auto">
+          <div className="p-4 flex items-center justify-between border-b border-ink/10">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-zinc-900 shadow-lg shadow-purple-500/20 overflow-hidden relative group">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity" />
@@ -350,19 +362,19 @@ export function Navbar({
               </div>
               <span className="text-xl font-black tracking-tighter uppercase">
                 <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">Dream</span>
-                <span className="text-zinc-900">Toon</span>
+                <span className="text-ink">Toon</span>
               </span>
             </div>
             <button 
               onClick={() => setIsMobileMenuOpen(false)}
-              className="p-2 hover:bg-zinc-100 rounded-full text-zinc-900"
+              className="p-2 hover:bg-ink/5 rounded-full text-ink"
             >
               <ChevronLeft size={24} />
             </button>
           </div>
           <div className="p-6 space-y-8">
             {user && (
-              <div className="px-6 py-4 bg-zinc-50 rounded-2xl mb-6">
+              <div className="px-6 py-4 bg-ink/5 rounded-2xl mb-6">
                 <div className="flex items-center gap-4">
                   <img 
                     src={profile?.photoURL || user.photoURL || undefined} 
@@ -370,84 +382,97 @@ export function Navbar({
                     referrerPolicy="no-referrer"
                   />
                   <div>
-                    <p className="font-black text-zinc-900">{profile?.displayName || user.displayName}</p>
+                    <p className="font-black text-ink">{profile?.displayName || user.displayName}</p>
                     {profile?.handle && <p className="text-xs font-bold text-blue-500">@{profile.handle}</p>}
-                    <p className="text-[10px] text-zinc-500 font-bold">{user.email}</p>
+                    <p className="text-[10px] text-ink/50 font-bold">{user.email}</p>
                   </div>
                 </div>
               </div>
             )}
-            {user && (
-              <div className="space-y-4">
-                <button 
-                  onClick={() => { setView('upload'); setIsMobileMenuOpen(false); }}
-                  className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'upload' ? 'text-blue-500' : 'text-zinc-900'}`}
-                >
-                  <Upload size={24} className="text-blue-500" />
-                  {t('upload')}
-                </button>
-                <button 
-                  onClick={() => { setView('profile'); setIsMobileMenuOpen(false); }}
-                  className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'profile' ? 'text-blue-500' : 'text-zinc-900'}`}
-                >
-                  <User size={24} />
-                  {t('profile')}
-                </button>
-                <button 
-                  onClick={() => { setView('messenger'); setIsMobileMenuOpen(false); }}
-                  className={`w-full text-left py-3 text-lg font-black flex items-center justify-between ${view === 'messenger' ? 'text-blue-500' : 'text-zinc-900'}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <MessageCircle size={24} className="text-blue-500" />
-                    {t('messenger')}
-                  </div>
-                  {unreadMessagesCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
-                      {unreadMessagesCount}
-                    </span>
-                  )}
-                </button>
-                <button 
-                  onClick={() => { setView('notifications'); setIsMobileMenuOpen(false); }}
-                  className={`w-full text-left py-3 text-lg font-black flex items-center justify-between ${view === 'notifications' ? 'text-blue-500' : 'text-zinc-900'}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <Star size={24} className="text-blue-500" />
-                    {t('notifications')}
-                  </div>
-                  {unreadNotificationsCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
-                      {unreadNotificationsCount}
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
-
+            
             <div className="space-y-4">
+              {user && (
+                <>
+                  <button 
+                    onClick={() => { setView('upload'); setIsMobileMenuOpen(false); }}
+                    className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'upload' ? 'text-blue-500' : 'text-ink'}`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+                      <Upload size={24} className="text-blue-500" />
+                    </div>
+                    {t('upload')}
+                  </button>
+                  <button 
+                    onClick={() => { setView('profile'); setIsMobileMenuOpen(false); }}
+                    className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'profile' ? 'text-blue-500' : 'text-ink'}`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+                      <User size={24} className="text-ink" />
+                    </div>
+                    {t('profile')}
+                  </button>
+                  <button 
+                    onClick={() => { setView('messenger'); setIsMobileMenuOpen(false); }}
+                    className={`w-full text-left py-3 text-lg font-black flex items-center justify-between ${view === 'messenger' ? 'text-blue-500' : 'text-ink'}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+                        <MessageCircle size={24} className="text-blue-500" />
+                      </div>
+                      {t('messenger')}
+                    </div>
+                    {unreadMessagesCount > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                        {unreadMessagesCount}
+                      </span>
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => { setView('notifications'); setIsMobileMenuOpen(false); }}
+                    className={`w-full text-left py-3 text-lg font-black flex items-center justify-between ${view === 'notifications' ? 'text-blue-500' : 'text-ink'}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+                        <Bell size={24} className="text-blue-500" />
+                      </div>
+                      {t('notifications')}
+                    </div>
+                    {unreadNotificationsCount > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                        {unreadNotificationsCount}
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
+              
               <button 
                 onClick={() => { window.open('https://discord.gg/QXmaakBVfr', '_blank'); setIsMobileMenuOpen(false); }}
-                className="w-full text-left py-3 text-lg font-black flex items-center gap-4 text-zinc-900"
+                className="w-full text-left py-3 text-lg font-black flex items-center gap-4 text-ink"
               >
-                <MessageSquare size={24} className="text-indigo-500" />
+                <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+                  <MessageSquare size={24} className="text-indigo-500" />
+                </div>
                 {t('discord')}
               </button>
               <button 
                 onClick={() => { setView('support'); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'support' ? 'text-blue-500' : 'text-zinc-900'}`}
+                className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'support' ? 'text-blue-500' : 'text-ink'}`}
               >
-                <HelpCircle size={24} />
+                <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+                  <HelpCircle size={24} className="text-ink" />
+                </div>
                 {t('support')}
               </button>
             </div>
 
-            <div className="pt-8 border-t border-zinc-100">
+            <div className="pt-8 border-t border-ink/10">
               <div className="flex items-center gap-4 mb-6">
                 <div className="flex-1">
-                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">{t('language')}</p>
+                  <p className="text-[10px] font-black text-ink/40 uppercase tracking-[0.2em] mb-2">{t('language')}</p>
                   <div className="flex gap-2">
-                    <button onClick={() => setLang('en')} className={`px-4 py-2 rounded-xl text-xs font-bold ${lang === 'en' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-zinc-100 text-zinc-500'}`}>English</button>
-                    <button onClick={() => setLang('vi')} className={`px-4 py-2 rounded-xl text-xs font-bold ${lang === 'vi' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-zinc-100 text-zinc-500'}`}>Tiếng Việt</button>
+                    <button onClick={() => setLang('en')} className={`px-4 py-2 rounded-xl text-xs font-bold ${lang === 'en' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-ink/5 text-ink/50'}`}>English</button>
+                    <button onClick={() => setLang('vi')} className={`px-4 py-2 rounded-xl text-xs font-bold ${lang === 'vi' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-ink/5 text-ink/50'}`}>Tiếng Việt</button>
                   </div>
                 </div>
               </div>

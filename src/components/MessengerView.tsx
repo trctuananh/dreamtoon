@@ -269,8 +269,8 @@ export function MessengerView({
         id: convId,
         participants: [user.uid, otherUser.uid],
         participantProfiles: {
-          [user.uid]: { displayName: profile?.displayName || 'User', photoURL: profile?.photoURL || '' },
-          [otherUser.uid]: { displayName: otherUser.displayName || 'User', photoURL: otherUser.photoURL || '' }
+          [user.uid]: { displayName: profile?.displayName || 'User', photoURL: profile?.photoURL || '', role: profile?.role || 'sleeper' },
+          [otherUser.uid]: { displayName: otherUser.displayName || 'User', photoURL: otherUser.photoURL || '', role: otherUser.role || 'sleeper' }
         },
         unreadCount: {
           [user.uid]: 0,
@@ -453,7 +453,19 @@ export function MessengerView({
                 >
                   <img src={result.photoURL || undefined} className="w-10 h-10 rounded-full object-cover" alt="" referrerPolicy="no-referrer" />
                   <div className="text-left">
-                    <p className="font-bold text-sm">{result.displayName}</p>
+                    <p className="font-bold text-sm flex items-center gap-2">
+                      {result.displayName}
+                      {result.role && (
+                        <span className={`px-1.5 py-0.5 rounded-full text-[6px] font-black uppercase tracking-widest ${
+                          result.role === 'admin' ? 'bg-zinc-900 text-yellow-400 border border-yellow-400/30' :
+                          result.role === 'VIP' ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white' :
+                          result.role === 'dreamer' ? 'bg-blue-500 text-white' :
+                          'bg-zinc-100 text-zinc-400'
+                        }`}>
+                          {result.role}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-zinc-500">@{result.handle}</p>
                   </div>
                 </button>
@@ -482,7 +494,19 @@ export function MessengerView({
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <div className="flex justify-between items-baseline mb-0.5">
-                        <p className={`font-bold text-sm truncate ${isActive ? 'text-blue-600' : 'text-zinc-900'}`}>{other.displayName}</p>
+                        <p className={`font-bold text-sm truncate flex items-center gap-2 ${isActive ? 'text-blue-600' : 'text-zinc-900'}`}>
+                          {other.displayName}
+                          {(other as any).role && (
+                            <span className={`px-1.5 py-0.5 rounded-full text-[6px] font-black uppercase tracking-widest ${
+                              (other as any).role === 'admin' ? 'bg-zinc-900 text-yellow-400 border border-yellow-400/30' :
+                              (other as any).role === 'VIP' ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white' :
+                              (other as any).role === 'dreamer' ? 'bg-blue-500 text-white' :
+                              'bg-zinc-100 text-zinc-400'
+                            }`}>
+                              {(other as any).role}
+                            </span>
+                          )}
+                        </p>
                         <span className="text-[10px] text-zinc-400">
                           {conv.lastMessageAt?.toDate ? conv.lastMessageAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
@@ -529,7 +553,19 @@ export function MessengerView({
                   })()}
                 </div>
                 <div>
-                  <p className="font-bold text-sm">{getOtherParticipant(selectedConversation).displayName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-sm">{getOtherParticipant(selectedConversation).displayName}</p>
+                    {otherParticipantProfile?.role && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[6px] font-black uppercase tracking-widest ${
+                        otherParticipantProfile.role === 'admin' ? 'bg-zinc-900 text-yellow-400 border border-yellow-400/30' :
+                        otherParticipantProfile.role === 'VIP' ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white' :
+                        otherParticipantProfile.role === 'dreamer' ? 'bg-blue-500 text-white' :
+                        'bg-zinc-100 text-zinc-400'
+                      }`}>
+                        {otherParticipantProfile.role}
+                      </span>
+                    )}
+                  </div>
                   {(() => {
                     const lastSeen = otherParticipantProfile?.lastSeen?.toDate?.();
                     const isOnline = lastSeen && (Date.now() - lastSeen.getTime() < 120000); // Online if seen in last 2 mins

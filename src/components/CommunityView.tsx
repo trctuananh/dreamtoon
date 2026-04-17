@@ -304,11 +304,6 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
                         className="w-10 h-10 rounded-xl border-2 border-white shadow-md object-cover"
                         referrerPolicy="no-referrer"
                       />
-                      {post.authorPioneerNumber && (
-                        <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
-                          {post.authorPioneerNumber}
-                        </div>
-                      )}
                       <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
                     </div>
                     <div>

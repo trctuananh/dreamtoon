@@ -494,26 +494,56 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                 className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl sm:rounded-3xl border-4 border-white shadow-md object-cover aspect-square"
                 referrerPolicy="no-referrer"
               />
-              {artistProfile.pioneerNumber && (
-                <div className="absolute -top-1 -left-1 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[10px] sm:text-xs font-black w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 border-white shadow-[0_0_20px_rgba(245,158,11,0.7)] z-10">
-                  {artistProfile.pioneerNumber}
-                </div>
-              )}
             </div>
             <div className="flex flex-col gap-2 sm:gap-3">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 leading-tight">{artistProfile.displayName}</h2>
-                <p className="text-sm sm:text-sm font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                  <p className="text-sm sm:text-sm font-black text-blue-500 uppercase tracking-widest">@{artistProfile.handle || 'artist'}</p>
+                  {artistProfile.role && (
+                    <div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                      artistProfile.role === 'admin' ? 'bg-zinc-900 text-yellow-400 border border-yellow-400/30' :
+                      artistProfile.role === 'VIP' ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white' :
+                      artistProfile.role === 'dreamer' ? 'bg-blue-500 text-white' :
+                      'bg-zinc-100 text-zinc-400'
+                    }`}>
+                      {artistProfile.role}
+                    </div>
+                  )}
+                </div>
                 {artistProfile.showEmail && artistProfile.email && (
                   <p className="text-[10px] sm:text-xs font-bold text-zinc-400 mt-0.5">{artistProfile.email}</p>
                 )}
               </div>
-              <button 
-                onClick={() => onProfileClick(artistUid)}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 border border-red-500 text-red-500 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-red-50 transition-colors whitespace-nowrap w-fit"
-              >
-                {t('viewProfilesAndArtworks')}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button 
+                  onClick={() => onProfileClick(artistUid)}
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 border border-red-500 text-red-500 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs hover:bg-red-50 transition-colors whitespace-nowrap w-fit"
+                >
+                  {t('viewProfilesAndArtworks')}
+                </button>
+                {user && user.uid !== artistUid && (
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={isFollowing ? handleUnfollow : handleFollow}
+                      className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
+                        isFollowing 
+                        ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
+                        : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
+                      }`}
+                    >
+                      {isFollowing ? t('following') : t('follow')}
+                    </button>
+                    <button 
+                      onClick={() => onMessageClick(artistProfile)}
+                      className="p-1.5 sm:p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all shadow-lg shadow-blue-500/10"
+                      title={t('messenger')}
+                    >
+                      <MessageCircle size={16} className="sm:w-[20px] sm:h-[20px]" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
@@ -527,32 +557,10 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
             </button>
             <button 
               onClick={() => setActiveInfoModal('commission')}
-              className="flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-orange-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
+              className="px-4 py-2.5 sm:px-6 sm:py-3 bg-orange-500 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 text-center"
             >
-              <Briefcase size={14} className="sm:w-[18px] sm:h-[18px]" />
               {t('commission')}
             </button>
-            {user && user.uid !== artistUid && (
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={isFollowing ? handleUnfollow : handleFollow}
-                  className={`px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-lg ${
-                    isFollowing 
-                    ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 shadow-zinc-200/20' 
-                    : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
-                  }`}
-                >
-                  {isFollowing ? t('following') : t('follow')}
-                </button>
-                <button 
-                  onClick={() => onMessageClick(artistProfile)}
-                  className="p-2.5 sm:p-3.5 bg-blue-50 text-blue-600 rounded-xl sm:rounded-2xl hover:bg-blue-100 transition-all shadow-lg shadow-blue-500/10"
-                  title={t('messenger')}
-                >
-                  <MessageCircle size={18} className="sm:w-[22px] sm:h-[22px]" />
-                </button>
-              </div>
-            )}
             <button 
               onClick={() => setShowShareModal(true)}
               className="p-2.5 sm:p-3.5 bg-zinc-100 text-zinc-600 rounded-xl sm:rounded-2xl hover:bg-zinc-200 transition-all"
@@ -601,11 +609,6 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                         </div>
                         <div className="min-w-0">
                           <h5 className="text-[10px] sm:text-xs font-black text-zinc-900 truncate">{work.title}</h5>
-                          {work.clientName && (
-                            <p className="text-[8px] sm:text-[9px] font-bold text-zinc-400 uppercase tracking-widest truncate">
-                              {work.clientName}
-                            </p>
-                          )}
                         </div>
                       </div>
                     </td>
@@ -660,11 +663,6 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                       className="w-10 h-10 rounded-xl border-2 border-white shadow-md object-cover"
                       referrerPolicy="no-referrer"
                     />
-                    {post.authorPioneerNumber && (
-                      <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
-                        {post.authorPioneerNumber}
-                      </div>
-                    )}
                     <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
                   </div>
                   <div>
@@ -764,11 +762,6 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                               className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
                               referrerPolicy="no-referrer"
                             />
-                            {profile?.pioneerNumber && (
-                              <div className="absolute -top-1 -left-1 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-[0_0_5px_rgba(245,158,11,0.5)] z-10">
-                                {profile.pioneerNumber}
-                              </div>
-                            )}
                           </div>
                           <div className="flex-1 relative">
                             <input
@@ -805,11 +798,6 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                                 className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
                                 referrerPolicy="no-referrer"
                               />
-                              {comment.userPioneerNumber && (
-                                <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-lg z-10">
-                                  {comment.userPioneerNumber}
-                                </div>
-                              )}
                             </div>
                             <div className="flex-1 bg-zinc-50 rounded-2xl p-3 relative">
                               <div className="flex justify-between items-start mb-1">
@@ -1048,7 +1036,9 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                           {donationMessages.map((msg) => (
                             <div key={msg.id} className="bg-zinc-50 rounded-xl p-3 border border-zinc-100 relative group">
                               <div className="flex justify-between items-start mb-0.5">
-                                <span className="text-xs font-black text-zinc-900">{msg.donorName}</span>
+                                <span className="text-xs font-black text-zinc-900">
+                                  {msg.donorName ? (msg.donorName.split(' ')[0] + (msg.donorName.includes(' ') ? ' ' + msg.donorName.split(' ')[1][0] + '.' : '')) : 'Anonymous'}
+                                </span>
                                 <span className="text-[10px] font-black text-zinc-300 uppercase">
                                   {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleDateString() : '...'}
                                 </span>

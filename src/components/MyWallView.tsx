@@ -6,7 +6,7 @@ import { View, Post, UserProfile, Donation, CommissionWork, PostComment, Commiss
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, compressImage } from '../lib/utils';
+import { cn, compressImage, validateImage } from '../lib/utils';
 
 export function MyWallView({ 
   user, 
@@ -189,7 +189,22 @@ export function MyWallView({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate format
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      alert(lang === 'vi' ? 'Chỉ chấp nhận file ảnh (JPEG, PNG, WEBP)' : 'Only image files are accepted (JPEG, PNG, WEBP)');
+      return;
+    }
+
     try {
+      // Validate size (5MB for posts, 20MB for others)
+      const maxSize = target === 'post' ? 5 : 20;
+      const validation = await validateImage(file, maxSize);
+      
+      if (!validation.valid) {
+        alert(validation.error || (lang === 'vi' ? 'Ảnh không hợp lệ' : 'Invalid image'));
+        return;
+      }
+
       // Compress image before setting state
       // High quality for commission info and works
       const maxWidth = target === 'post' ? 1600 : 1200;
@@ -205,7 +220,7 @@ export function MyWallView({
       }
     } catch (error) {
       console.error('Image compression failed:', error);
-      // Fallback to reader if compression fails
+      // Fallback to reader if compression fails, but still respect size/type validation ABOVE
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = reader.result as string;
@@ -511,9 +526,8 @@ export function MyWallView({
             </button>
             <button 
               onClick={() => openInfoModal('commission')}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
+              className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 text-center"
             >
-              <Briefcase size={14} />
               <span>{t('commission')}</span>
             </button>
             <button 
@@ -685,11 +699,6 @@ export function MyWallView({
                         </div>
                         <div className="min-w-0">
                           <h5 className="text-[10px] sm:text-xs font-black text-zinc-900 truncate">{work.title}</h5>
-                          {work.clientName && (
-                            <p className="text-[8px] sm:text-[9px] font-bold text-zinc-400 uppercase tracking-widest truncate">
-                              {work.clientName}
-                            </p>
-                          )}
                         </div>
                       </div>
                     </td>
@@ -748,11 +757,6 @@ export function MyWallView({
                 className="w-14 h-14 rounded-xl border-2 border-blue-500 aspect-square object-cover"
                 referrerPolicy="no-referrer"
               />
-              {profile?.pioneerNumber && (
-                <div className="absolute -top-1 -left-1 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-[0_0_10px_rgba(245,158,11,0.6)] z-10">
-                  {profile.pioneerNumber}
-                </div>
-              )}
             </div>
             <div className="flex-1">
               <textarea
@@ -829,11 +833,6 @@ export function MyWallView({
                       className="w-10 h-10 rounded-xl border-2 border-white shadow-md object-cover"
                       referrerPolicy="no-referrer"
                     />
-                    {post.authorPioneerNumber && (
-                      <div className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10">
-                        {post.authorPioneerNumber}
-                      </div>
-                    )}
                     <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
                   </div>
                   <div>
@@ -930,11 +929,6 @@ export function MyWallView({
                             className="w-8 h-8 rounded-xl object-cover border border-zinc-100"
                             referrerPolicy="no-referrer"
                           />
-                          {profile?.pioneerNumber && (
-                            <div className="absolute -top-1 -left-1 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white text-[6px] font-black w-3 h-3 rounded-full flex items-center justify-center border border-white shadow-[0_0_5px_rgba(245,158,11,0.5)] z-10">
-                              {profile.pioneerNumber}
-                            </div>
-                          )}
                         </div>
                         <div className="flex-1 relative">
                           <input
