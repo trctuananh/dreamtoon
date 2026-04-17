@@ -5,7 +5,8 @@ import {
   orderBy, 
   onSnapshot, 
   doc, 
-  updateDoc, 
+  updateDoc,
+  setDoc,
   where,
   limit,
   getDocs,
@@ -18,6 +19,7 @@ import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion } from 'motion/react';
 import { Search, Shield, ShieldAlert, UserMinus, UserCheck, Mail, Hash, Trash2, Activity, Send } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 export function AdminUserManagementView({ lang, isQuotaExceeded }: { lang: Language, isQuotaExceeded?: boolean }) {
   const { t } = useTranslation(lang);
@@ -25,9 +27,25 @@ export function AdminUserManagementView({ lang, isQuotaExceeded }: { lang: Langu
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
+  const [updatingRoleUid, setUpdatingRoleUid] = useState<string | null>(null);
+  const [togglingBanUid, setTogglingBanUid] = useState<string | null>(null);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<{ success: boolean, message: string } | null>(null);
   const [testEmailInput, setTestEmailInput] = useState('');
+
+  // Modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     if (isQuotaExceeded) return;
@@ -53,101 +71,132 @@ export function AdminUserManagementView({ lang, isQuotaExceeded }: { lang: Langu
     return () => unsubscribe();
   }, []);
 
-  const handleUpdateRole = async (uid: string, newRole: 'admin' | 'user') => {
-    if (!window.confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
-    try {
-      await updateDoc(doc(db, 'users', uid), { role: newRole });
-      // Also update public profile
-      await updateDoc(doc(db, 'profiles', uid), { role: newRole });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
-    }
+  const handleUpdateRole = async (uid: string, newRole: UserProfile['role']) => {
+    if (!newRole) return;
+    
+    setConfirmModal({
+      isOpen: true,
+      title: 'Update Role',
+      message: `Are you sure you want to change this user's role to ${newRole}?`,
+      isDestructive: false,
+      onConfirm: async () => {
+        setUpdatingRoleUid(uid);
+        console.log(`[Admin] Updating role for user ${uid} to ${newRole}...`);
+        try {
+          await setDoc(doc(db, 'users', uid), { role: newRole }, { merge: true });
+          // Use setDoc with merge for profiles as they might not exist yet
+          await setDoc(doc(db, 'profiles', uid), { role: newRole }, { merge: true });
+          console.log(`[Admin] Role updated successfully for ${uid}`);
+        } catch (error) {
+          console.error(`[Admin] Failed to update role for ${uid}:`, error);
+          handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
+        } finally {
+          setUpdatingRoleUid(null);
+        }
+      }
+    });
   };
 
   const handleToggleBan = async (uid: string, currentlyBanned: boolean) => {
     const action = currentlyBanned ? 'unban' : 'ban';
-    if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
-    try {
-      await updateDoc(doc(db, 'users', uid), { banned: !currentlyBanned });
-      // Also update public profile
-      await updateDoc(doc(db, 'profiles', uid), { banned: !currentlyBanned });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
-    }
+    
+    setConfirmModal({
+      isOpen: true,
+      title: currentlyBanned ? 'Unban User' : 'Ban User',
+      message: `Are you sure you want to ${action} this user?`,
+      isDestructive: !currentlyBanned,
+      onConfirm: async () => {
+        setTogglingBanUid(uid);
+        console.log(`[Admin] ${action}ing user ${uid}...`);
+        try {
+          await setDoc(doc(db, 'users', uid), { banned: !currentlyBanned }, { merge: true });
+          // Use setDoc with merge for profiles as they might not exist yet
+          await setDoc(doc(db, 'profiles', uid), { banned: !currentlyBanned }, { merge: true });
+          console.log(`[Admin] User ${uid} ${action}ned successfully`);
+        } catch (error) {
+          console.error(`[Admin] Failed to ${action} user ${uid}:`, error);
+          handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
+        } finally {
+          setTogglingBanUid(null);
+        }
+      }
+    });
   };
 
   const handleDeleteUser = async (uid: string) => {
-    if (!window.confirm(t('confirmDeleteUserAccount'))) return;
-    
-    setDeletingUid(uid);
-    try {
-      const batch = writeBatch(db);
+    setConfirmModal({
+      isOpen: true,
+      title: t('delete'),
+      message: t('confirmDeleteUserAccount'),
+      isDestructive: true,
+      onConfirm: async () => {
+        setDeletingUid(uid);
+        try {
+          const batch = writeBatch(db);
 
-      // 1. Delete user comics and their chapters
-      const comicsQuery = query(collection(db, 'comics'), where('authorUid', '==', uid));
-      const comicsSnap = await getDocs(comicsQuery);
-      for (const comicDoc of comicsSnap.docs) {
-        const chaptersQuery = query(collection(db, 'comics', comicDoc.id, 'chapters'));
-        const chaptersSnap = await getDocs(chaptersQuery);
-        chaptersSnap.docs.forEach(chapterDoc => {
-          batch.delete(doc(db, 'comics', comicDoc.id, 'chapters', chapterDoc.id));
-        });
-        const ratingsQuery = query(collection(db, 'comics', comicDoc.id, 'ratings'));
-        const ratingsSnap = await getDocs(ratingsQuery);
-        ratingsSnap.docs.forEach(ratingDoc => {
-          batch.delete(doc(db, 'comics', comicDoc.id, 'ratings', ratingDoc.id));
-        });
-        batch.delete(doc(db, 'comics', comicDoc.id));
+          // 1. Delete user comics and their chapters
+          const comicsQuery = query(collection(db, 'comics'), where('authorUid', '==', uid));
+          const comicsSnap = await getDocs(comicsQuery);
+          for (const comicDoc of comicsSnap.docs) {
+            const chaptersQuery = query(collection(db, 'comics', comicDoc.id, 'chapters'));
+            const chaptersSnap = await getDocs(chaptersQuery);
+            chaptersSnap.docs.forEach(chapterDoc => {
+              batch.delete(doc(db, 'comics', comicDoc.id, 'chapters', chapterDoc.id));
+            });
+            const ratingsQuery = query(collection(db, 'comics', comicDoc.id, 'ratings'));
+            const ratingsSnap = await getDocs(ratingsQuery);
+            ratingsSnap.docs.forEach(ratingDoc => {
+              batch.delete(doc(db, 'comics', comicDoc.id, 'ratings', ratingDoc.id));
+            });
+            batch.delete(doc(db, 'comics', comicDoc.id));
+          }
+
+          // 2. Delete user posts and their comments
+          const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', uid));
+          const postsSnap = await getDocs(postsQuery);
+          for (const postDoc of postsSnap.docs) {
+            const commentsQuery = query(collection(db, 'posts', postDoc.id, 'comments'));
+            const commentsSnap = await getDocs(commentsQuery);
+            commentsSnap.docs.forEach(commentDoc => {
+              batch.delete(doc(db, 'posts', postDoc.id, 'comments', commentDoc.id));
+            });
+            batch.delete(doc(db, 'posts', postDoc.id));
+          }
+
+          // 3. Delete user articles
+          const articlesQuery = query(collection(db, 'articles'), where('authorUid', '==', uid));
+          const articlesSnap = await getDocs(articlesQuery);
+          articlesSnap.docs.forEach(articleDoc => {
+            batch.delete(doc(db, 'articles', articleDoc.id));
+          });
+
+          // 4. Delete user profile and user document
+          batch.delete(doc(db, 'users', uid));
+          batch.delete(doc(db, 'profiles', uid));
+
+          // 5. Delete follows
+          const followsQuery1 = query(collection(db, 'follows'), where('userId', '==', uid));
+          const followsSnap1 = await getDocs(followsQuery1);
+          followsSnap1.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
+
+          const followsQuery2 = query(collection(db, 'follows'), where('targetId', '==', uid));
+          const followsSnap2 = await getDocs(followsQuery2);
+          followsSnap2.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
+
+          // 6. Delete notifications
+          const notifsQuery = query(collection(db, 'notifications'), where('recipientId', '==', uid));
+          const notifsSnap = await getDocs(notifsQuery);
+          notifsSnap.docs.forEach(nDoc => batch.delete(doc(db, 'notifications', nDoc.id)));
+
+          await batch.commit();
+          alert('User data deleted from Firestore. Note: Auth account remains (Admin SDK required for full deletion).');
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `users/${uid}`);
+        } finally {
+          setDeletingUid(null);
+        }
       }
-
-      // 2. Delete user posts and their comments
-      const postsQuery = query(collection(db, 'posts'), where('authorUid', '==', uid));
-      const postsSnap = await getDocs(postsQuery);
-      for (const postDoc of postsSnap.docs) {
-        const commentsQuery = query(collection(db, 'posts', postDoc.id, 'comments'));
-        const commentsSnap = await getDocs(commentsQuery);
-        commentsSnap.docs.forEach(commentDoc => {
-          batch.delete(doc(db, 'posts', postDoc.id, 'comments', commentDoc.id));
-        });
-        batch.delete(doc(db, 'posts', postDoc.id));
-      }
-
-      // 3. Delete user articles
-      const articlesQuery = query(collection(db, 'articles'), where('authorUid', '==', uid));
-      const articlesSnap = await getDocs(articlesQuery);
-      articlesSnap.docs.forEach(articleDoc => {
-        batch.delete(doc(db, 'articles', articleDoc.id));
-      });
-
-      // 4. Delete user profile and user document
-      batch.delete(doc(db, 'users', uid));
-      batch.delete(doc(db, 'profiles', uid));
-
-      // 5. Delete follows
-      const followsQuery1 = query(collection(db, 'follows'), where('userId', '==', uid));
-      const followsSnap1 = await getDocs(followsQuery1);
-      followsSnap1.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
-
-      const followsQuery2 = query(collection(db, 'follows'), where('targetId', '==', uid));
-      const followsSnap2 = await getDocs(followsQuery2);
-      followsSnap2.docs.forEach(fDoc => batch.delete(doc(db, 'follows', fDoc.id)));
-
-      // 6. Delete notifications
-      const notifsQuery = query(collection(db, 'notifications'), where('recipientId', '==', uid));
-      const notifsSnap = await getDocs(notifsQuery);
-      notifsSnap.docs.forEach(nDoc => batch.delete(doc(db, 'notifications', nDoc.id)));
-
-      await batch.commit();
-      
-      // Note: Admin cannot delete user from Firebase Auth via client SDK.
-      // This requires Firebase Admin SDK or a Cloud Function.
-      // For now, we delete all their data and they won't be able to do anything.
-      alert('User data deleted from Firestore. Note: Auth account remains (Admin SDK required for full deletion).');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `users/${uid}`);
-    } finally {
-      setDeletingUid(null);
-    }
+    });
   };
 
   const handleTestEmail = async () => {
@@ -266,11 +315,15 @@ export function AdminUserManagementView({ lang, isQuotaExceeded }: { lang: Langu
                       className={`w-12 h-12 rounded-2xl object-cover border-2 ${user.banned ? 'border-red-200 grayscale' : 'border-white shadow-sm'}`}
                       referrerPolicy="no-referrer"
                     />
-                    {user.role === 'admin' && (
+                    {user.role === 'admin' ? (
                       <div className="absolute -top-1 -right-1 bg-blue-500 text-white p-1 rounded-lg shadow-lg">
                         <Shield size={10} />
                       </div>
-                    )}
+                    ) : user.role === 'mod' ? (
+                      <div className="absolute -top-1 -right-1 bg-orange-500 text-white p-1 rounded-lg shadow-lg">
+                        <ShieldAlert size={10} />
+                      </div>
+                    ) : null}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -292,43 +345,61 @@ export function AdminUserManagementView({ lang, isQuotaExceeded }: { lang: Langu
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Role Toggle */}
-                  <button 
-                    onClick={() => handleUpdateRole(user.uid, user.role === 'admin' ? 'user' : 'admin')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                      user.role === 'admin' 
-                      ? 'bg-zinc-900 text-white hover:bg-zinc-800' 
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                    }`}
-                  >
-                    {user.role === 'admin' ? <ShieldAlert size={14} /> : <Shield size={14} />}
-                    {user.role === 'admin' ? t('demoteToUser') : t('promoteToAdmin')}
-                  </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Role Selector */}
+                  <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-xl">
+                    {(['sleeper', 'dreamer', 'VIP', 'mod'] as const).map((role) => {
+                      const isUpdating = updatingRoleUid === user.uid;
+                      return (
+                        <button
+                          key={role}
+                          onClick={() => !isUpdating && handleUpdateRole(user.uid, role)}
+                          disabled={isUpdating}
+                          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                            user.role === role
+                              ? (role === 'mod' ? 'bg-orange-500 text-white shadow-sm' : 
+                                 role === 'VIP' ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-sm' :
+                                 role === 'dreamer' ? 'bg-blue-500 text-white shadow-sm' :
+                                 'bg-zinc-300 text-zinc-600 shadow-sm')
+                              : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200'
+                          } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {isUpdating && user.role !== role ? '...' : role}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                  {/* Ban Toggle */}
-                  <button 
-                    onClick={() => handleToggleBan(user.uid, !!user.banned)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                      user.banned 
-                      ? 'bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-green-500/20' 
-                      : 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'
-                    }`}
-                  >
-                    {user.banned ? <UserCheck size={14} /> : <UserMinus size={14} />}
-                    {user.banned ? t('unbanUser') : t('banUser')}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* Ban Toggle */}
+                    <button 
+                      onClick={() => !togglingBanUid && handleToggleBan(user.uid, !!user.banned)}
+                      disabled={togglingBanUid === user.uid}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        user.banned 
+                        ? 'bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-green-500/20' 
+                        : 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'
+                      } ${togglingBanUid === user.uid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {togglingBanUid === user.uid ? (
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        user.banned ? <UserCheck size={14} /> : <UserMinus size={14} />
+                      )}
+                      {togglingBanUid === user.uid ? '...' : (user.banned ? t('unbanUser') : t('banUser'))}
+                    </button>
 
-                  {/* Delete User */}
-                  <button 
-                    onClick={() => handleDeleteUser(user.uid)}
-                    disabled={deletingUid === user.uid}
-                    className="flex items-center gap-2 px-4 py-2 bg-zinc-100 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all disabled:opacity-50"
-                    title={t('deleteUserAccount')}
-                  >
-                    <Trash2 size={14} />
-                    {deletingUid === user.uid ? '...' : t('delete')}
-                  </button>
+                    {/* Delete User */}
+                    <button 
+                      onClick={() => handleDeleteUser(user.uid)}
+                      disabled={deletingUid === user.uid}
+                      className="flex items-center gap-2 px-4 py-2 bg-zinc-100 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all disabled:opacity-50"
+                      title={t('deleteUserAccount')}
+                    >
+                      <Trash2 size={14} />
+                      {deletingUid === user.uid ? '...' : t('delete')}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="mt-2 text-[8px] font-bold text-zinc-300 uppercase tracking-widest">
@@ -344,6 +415,16 @@ export function AdminUserManagementView({ lang, isQuotaExceeded }: { lang: Langu
           )}
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        lang={lang}
+        isDestructive={confirmModal.isDestructive}
+      />
     </div>
   );
 }

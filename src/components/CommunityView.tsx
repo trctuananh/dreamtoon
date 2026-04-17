@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Trash2, Heart, PenTool, MessageCircle, Send } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Trash2, Heart, PenTool, MessageCircle, Send, Share2 } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit, updateDoc, increment, arrayUnion, arrayRemove, addDoc, serverTimestamp, getDocs, getDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification, checkQuota } from '../firebase';
 import { View, Post, Comic, Following, UserProfile } from '../types';
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
+import { ShareModal } from './ShareModal';
 
-export function CommunityView({ user, isAdmin, comics, following = [], lang, searchQuery = '', onBack, onArtistClick, onLogin, setView, onMessageClick, isQuotaExceeded }: { user: any, isAdmin: boolean, comics: Comic[], following?: Following[], lang: Language, searchQuery?: string, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void, onMessageClick?: (target: UserProfile) => void, isQuotaExceeded?: boolean }) {
+export function CommunityView({ user, isAdmin, comics, following = [], lang, searchQuery = '', onBack, onArtistClick, onLogin, setView, onMessageClick, isQuotaExceeded, sharedPostId, onPostHandled }: { user: any, isAdmin: boolean, comics: Comic[], following?: Following[], lang: Language, searchQuery?: string, onBack: () => void, onArtistClick: (uid: string) => void, onLogin: () => void, setView: (v: View) => void, onMessageClick?: (target: UserProfile) => void, isQuotaExceeded?: boolean, sharedPostId?: string | null, onPostHandled?: () => void }) {
   const { t } = useTranslation(lang);
   const [posts, setPosts] = useState<Post[]>([]);
   const [feedTab, setFeedTab] = useState<'all' | 'following'>('all');
@@ -16,6 +17,10 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
   const [newCommentText, setNewCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const lastActionTimeRef = useRef<number>(0);
+  const ACTION_THROTTLE = 3000;
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareData, setShareData] = useState({ url: '', title: '' });
 
   // Profile Fetch (One-time)
   useEffect(() => {
@@ -93,6 +98,21 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
     fetchPosts();
   }, []);
 
+  // Shared Post Handling
+  useEffect(() => {
+    if (sharedPostId && posts.length > 0) {
+      const timer = setTimeout(() => {
+        const postElement = document.getElementById(`post-${sharedPostId}`);
+        if (postElement) {
+          postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setActivePostId(sharedPostId);
+          onPostHandled?.();
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [sharedPostId, posts, onPostHandled]);
+
   const handleDelete = async (postId: string) => {
     if (!window.confirm(t('confirmDelete'))) return;
     try {
@@ -101,9 +121,6 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
       handleFirestoreError(error, OperationType.DELETE, `posts/${postId}`);
     }
   };
-
-  const lastActionTimeRef = React.useRef<number>(0);
-  const ACTION_THROTTLE = 3000;
 
   const handleLike = async (post: Post) => {
     if (!user) {
@@ -227,22 +244,14 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
     }
   };
 
-  const handleChatAuthor = async (post: Post) => {
-    if (!onMessageClick) return;
-    if (!user) {
-      onLogin();
-      return;
-    }
-    
-    // Create a temporary profile object for the author
-    const authorProfile: UserProfile = {
-      uid: post.authorUid,
-      displayName: post.authorName,
-      photoURL: post.authorPhoto,
-      email: '' // We don't have the email here, but MessengerView handles it
-    };
-    
-    onMessageClick(authorProfile);
+  const handleSharePost = (post: Post) => {
+    // Generate the canonical share link as requested
+    const shareUrl = `https://dreamtoon.vn/post/${post.id}`;
+    setShareData({
+      url: shareUrl,
+      title: post.content.substring(0, 100)
+    });
+    setShowShareModal(true);
   };
 
   return (
@@ -289,6 +298,7 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
           {filteredPosts.map((post) => (
               <motion.div
                 key={post.id}
+                id={`post-${post.id}`}
                 layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -382,17 +392,14 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
                     {post.comments || 0}
                   </button>
 
-                  {user?.uid !== post.authorUid && (
-                    <button 
-                      onClick={() => handleChatAuthor(post)}
-                      className="flex items-center gap-2 text-zinc-400 hover:text-indigo-500 transition-all text-xs font-black uppercase tracking-wider"
-                    >
-                      <div className="p-2 rounded-full hover:bg-indigo-50 transition-colors">
-                        <MessageCircle size={18} />
-                      </div>
-                      {t('messenger')}
-                    </button>
-                  )}
+                  <button 
+                    onClick={() => handleSharePost(post)}
+                    className="flex items-center gap-2 transition-all text-xs font-black uppercase tracking-wider text-zinc-400 hover:text-blue-400"
+                  >
+                    <div className="p-2 rounded-full transition-colors hover:bg-zinc-50">
+                      <Share2 size={18} />
+                    </div>
+                  </button>
                 </div>
 
                 {/* Comments Section */}
@@ -490,6 +497,14 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
             </div>
           )}
         </div>
+
+        <ShareModal 
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          shareUrl={shareData.url}
+          title={shareData.title}
+          lang={lang}
+        />
     </div>
   );
 }

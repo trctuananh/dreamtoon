@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Heart, ArrowLeft, DollarSign, Briefcase, Share2, Copy, Check, X, Send, Trash2, MessageCircle, Layout } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, increment, addDoc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc, setDoc, limit, getDocs } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, createNotification, checkQuota } from '../firebase';
@@ -7,6 +7,7 @@ import { Post, UserProfile, Donation, CommissionWork, Following, PostComment } f
 import { Language } from '../translations';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
+import { ShareModal } from './ShareModal';
 
 export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfile, following, lang, onBack, onProfileClick, onToggleFollow, onMessageClick, onLogin, isQuotaExceeded }: { user: any, profile: UserProfile | null, isAdmin: boolean, artistUid: string, artistProfile: UserProfile, following: Following[], lang: Language, onBack: () => void, onProfileClick: (uid: string) => void, onToggleFollow: (id: string, type: 'artist' | 'comic') => void, onMessageClick: (target: UserProfile) => void, onLogin: () => void, isQuotaExceeded?: boolean }) {
   const { t } = useTranslation(lang);
@@ -32,7 +33,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
 
   // Share State
   const [showShareModal, setShowShareModal] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [shareData, setShareData] = useState({ url: '', title: '' });
   const isFollowing = following.some(f => f.targetId === artistUid && f.type === 'artist');
   const [viewingWorkImage, setViewingWorkImage] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
@@ -206,22 +207,23 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     }
   };
 
-  const shareUrl = `https://dreamtoon.vn/${artistProfile.handle || artistUid}`;
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const wallUrl = `https://dreamtoon.vn/${artistProfile.handle || artistUid}`;
+  
+  const handleShareWall = () => {
+    setShareData({
+      url: wallUrl,
+      title: artistProfile.displayName
+    });
+    setShowShareModal(true);
   };
 
-  const shareOnSocial = (platform: 'facebook' | 'twitter' | 'telegram') => {
-    const text = `Check out ${artistProfile?.displayName}'s wall on Dreamtoon!`;
-    const urls = {
-      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-      twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`,
-      telegram: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`
-    };
-    window.open(urls[platform], '_blank');
+  const handleSharePost = (post: Post) => {
+    const postUrl = `https://dreamtoon.vn/post/${post.id}`;
+    setShareData({
+      url: postUrl,
+      title: post.content.substring(0, 100)
+    });
+    setShowShareModal(true);
   };
 
   const handleSubmitCommission = async (e: React.FormEvent) => {
@@ -562,7 +564,7 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
               {t('commission')}
             </button>
             <button 
-              onClick={() => setShowShareModal(true)}
+              onClick={handleShareWall}
               className="p-2.5 sm:p-3.5 bg-zinc-100 text-zinc-600 rounded-xl sm:rounded-2xl hover:bg-zinc-200 transition-all"
             >
               <Share2 size={18} className="sm:w-[22px] sm:h-[22px]" />
@@ -739,6 +741,15 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
                     <MessageCircle size={18} />
                   </div>
                   {post.comments || 0}
+                </button>
+
+                <button 
+                  onClick={() => handleSharePost(post)}
+                  className="flex items-center gap-2 transition-all text-xs font-black uppercase tracking-wider text-zinc-400 hover:text-blue-400"
+                >
+                  <div className="p-2 rounded-full transition-colors hover:bg-zinc-50">
+                    <Share2 size={18} />
+                  </div>
                 </button>
               </div>
 
@@ -1097,70 +1108,13 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
       </AnimatePresence>
 
       {/* Share Modal */}
-      <AnimatePresence>
-        {showShareModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl"
-            >
-              <div className="p-6 flex items-center justify-between bg-zinc-900 text-white">
-                <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-2">
-                  <Share2 size={20} />
-                  {t('shareWall')}
-                </h3>
-                <button onClick={() => setShowShareModal(false)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="p-8 space-y-6">
-                <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4 flex items-center justify-between gap-4">
-                  <p className="text-xs text-zinc-500 truncate font-medium">{shareUrl}</p>
-                  <button 
-                    onClick={handleCopyLink}
-                    className={`p-2 rounded-xl transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300'}`}
-                  >
-                    {copied ? <Check size={16} /> : <Copy size={16} />}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <button 
-                    onClick={() => shareOnSocial('facebook')}
-                    className="flex flex-col items-center gap-2 group"
-                  >
-                    <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-blue-600/20">
-                      <svg width={24} height={24} fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">FB</span>
-                  </button>
-                  <button 
-                    onClick={() => shareOnSocial('twitter')}
-                    className="flex flex-col items-center gap-2 group"
-                  >
-                    <div className="w-12 h-12 bg-black text-white rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-black/20">
-                      <svg width={20} height={20} fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">X</span>
-                  </button>
-                  <button 
-                    onClick={() => shareOnSocial('telegram')}
-                    className="flex flex-col items-center gap-2 group"
-                  >
-                    <div className="w-12 h-12 bg-sky-500 text-white rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-sky-500/20">
-                      <svg width={20} height={20} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">TG</span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ShareModal 
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        shareUrl={shareData.url}
+        title={shareData.title}
+        lang={lang}
+      />
 
       {/* Generic Confirmation Modal */}
       <AnimatePresence>

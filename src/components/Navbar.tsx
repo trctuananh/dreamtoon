@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown, Star, LayoutDashboard, HelpCircle, Upload, MessageCircle, Bell } from 'lucide-react';
+import { Search, BookOpen, Home as HomeIcon, Compass, User, Menu, ChevronLeft, MessageSquare, Users, PenTool, ChevronDown, Star, LayoutDashboard, HelpCircle, Upload, MessageCircle, Bell, Shield } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { View, UserProfile } from '../types';
 import { Language } from '../translations';
@@ -443,6 +443,29 @@ export function Navbar({
                       </span>
                     )}
                   </button>
+
+                  {(user?.email === 'tr.c.tuananh@gmail.com' || profile?.role === 'admin') && (
+                    <>
+                      <button 
+                        onClick={() => { setView('manage-featured'); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'manage-featured' ? 'text-blue-500' : 'text-ink'}`}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+                          <LayoutDashboard size={24} className="text-zinc-600" />
+                        </div>
+                        Manage Featured
+                      </button>
+                      <button 
+                        onClick={() => { setView('admin-users'); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left py-3 text-lg font-black flex items-center gap-4 ${view === 'admin-users' ? 'text-blue-500' : 'text-ink'}`}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center">
+                          <Shield size={24} className="text-blue-500" />
+                        </div>
+                        Manage Users
+                      </button>
+                    </>
+                  )}
                 </>
               )}
               

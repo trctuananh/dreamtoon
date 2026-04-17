@@ -111,6 +111,7 @@ export default function App() {
   const [history, setHistory] = useState<ReadingHistory[]>([]);
   const [artists, setArtists] = useState<UserProfile[]>([]);
   const [chatTarget, setChatTarget] = useState<UserProfile | null>(null);
+  const [sharedPostId, setSharedPostId] = useState<string | null>(null);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(checkQuota());
 
   const { t } = useTranslation(lang);
@@ -134,6 +135,14 @@ export default function App() {
     const handleLocationChange = async () => {
       const params = new URLSearchParams(window.location.search);
       let artistHandle = params.get('artist');
+      const postId = params.get('post');
+
+      if (postId) {
+        setSharedPostId(postId);
+        setView('community');
+        window.scrollTo(0, 0);
+        return;
+      }
       
       const path = window.location.pathname;
       
@@ -154,7 +163,7 @@ export default function App() {
 
         if (artistHandle) {
           // Check if it's a reserved path
-          const reservedPaths = ['explore', 'upload', 'community', 'notifications', 'profile', 'privacy', 'manage-featured', 'admin-users', 'create-article', 'reader', 'detail', 'article'];
+          const reservedPaths = ['explore', 'upload', 'community', 'notifications', 'profile', 'privacy', 'manage-featured', 'admin-users', 'create-article', 'reader', 'detail', 'article', 'post'];
           if (reservedPaths.includes(artistHandle)) {
             // Special handling for paths that need IDs
             if (artistHandle === 'detail' && subPath) {
@@ -174,6 +183,12 @@ export default function App() {
                 window.scrollTo(0, 0);
                 return;
               }
+            }
+            if (artistHandle === 'post' && subPath) {
+              setSharedPostId(subPath);
+              setView('community');
+              window.scrollTo(0, 0);
+              return;
             }
             if (artistHandle === 'reader' && subPath) {
               const chapterId = pathParts[2];
@@ -1568,6 +1583,8 @@ export default function App() {
                 setView={setView}
                 onMessageClick={handleMessageClick}
                 isQuotaExceeded={isQuotaExceeded}
+                sharedPostId={sharedPostId}
+                onPostHandled={() => setSharedPostId(null)}
               />
             )}
 

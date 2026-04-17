@@ -45,7 +45,7 @@ export type View = 'home' | 'explore' | 'detail' | 'reader' | 'upload' | 'add-ch
 export interface Conversation {
   id: string;
   participants: string[];
-  participantProfiles?: { [uid: string]: { displayName: string, photoURL: string, role?: 'admin' | 'VIP' | 'dreamer' | 'sleeper' } };
+  participantProfiles?: { [uid: string]: { displayName: string, photoURL: string, role?: 'admin' | 'mod' | 'VIP' | 'dreamer' | 'sleeper' } };
   lastMessage?: string;
   lastMessageAt?: any;
   unreadCount?: { [uid: string]: number };
@@ -114,7 +114,7 @@ export interface UserProfile {
   photoURL: string;
   bio?: string;
   handle?: string;
-  role?: 'admin' | 'VIP' | 'dreamer' | 'sleeper';
+  role?: 'admin' | 'mod' | 'VIP' | 'dreamer' | 'sleeper';
   banned?: boolean;
   pioneerNumber?: number;
   donateInfo?: { text: string; imageUrl: string };
