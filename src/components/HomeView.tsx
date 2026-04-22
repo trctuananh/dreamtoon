@@ -17,6 +17,7 @@ export function HomeView({
   user,
   lang, 
   searchQuery,
+  isLoading,
   onComicClick, 
   onArticleClick, 
   onChapterClick,
@@ -33,6 +34,7 @@ export function HomeView({
   user: any,
   lang: Language, 
   searchQuery: string, 
+  isLoading?: boolean,
   onComicClick: (comic: Comic) => void, 
   onArticleClick: (article: Article) => void, 
   onChapterClick: (chapter: Chapter) => void,
@@ -123,6 +125,17 @@ export function HomeView({
     }, 5000);
     return () => clearInterval(interval);
   }, [featuredItems.length]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-paper flex flex-col items-center justify-center p-6 gap-4">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-ink/40 font-black uppercase tracking-widest text-[10px] sm:text-xs">
+          {lang === 'vi' ? 'Đang tải dữ liệu...' : 'Loading Dreamtoon...'}
+        </p>
+      </div>
+    );
+  }
 
   if (searchQuery.trim()) {
     return (

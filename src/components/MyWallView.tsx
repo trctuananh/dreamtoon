@@ -80,11 +80,12 @@ export function MyWallView({
 
   useEffect(() => {
     if (!user || isQuotaExceeded) return;
+    
+    // Simple query to avoid composite index
     const q = query(
       collection(db, 'posts'),
       where('authorUid', '==', user.uid),
-      orderBy('createdAt', 'desc'),
-      limit(50)
+      limit(100)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -92,21 +93,27 @@ export function MyWallView({
         id: doc.id,
         ...doc.data()
       })) as Post[];
-      setPosts(newPosts);
+      
+      // Memory sort
+      setPosts(newPosts.sort((a, b) => {
+        const timeA = a.createdAt?.toDate?.()?.getTime() || 0;
+        const timeB = b.createdAt?.toDate?.()?.getTime() || 0;
+        return timeB - timeA;
+      }));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'posts');
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, isQuotaExceeded]);
 
   useEffect(() => {
     if (!user || isQuotaExceeded) return;
+    
     const q = query(
       collection(db, 'donations'),
       where('artistUid', '==', user.uid),
-      orderBy('createdAt', 'desc'),
-      limit(20)
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -114,13 +121,19 @@ export function MyWallView({
         id: doc.id,
         ...doc.data()
       })) as Donation[];
-      setDonationMessages(newDonations);
+      
+      // Memory sort
+      setDonationMessages(newDonations.sort((a, b) => {
+        const timeA = a.createdAt?.toDate?.()?.getTime() || 0;
+        const timeB = b.createdAt?.toDate?.()?.getTime() || 0;
+        return timeB - timeA;
+      }));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'donations');
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, isQuotaExceeded]);
 
   useEffect(() => {
     if (!user || isQuotaExceeded) return;
@@ -144,10 +157,11 @@ export function MyWallView({
 
   useEffect(() => {
     if (!user || isQuotaExceeded) return;
+    
     const q = query(
       collection(db, 'commissions'),
       where('artistUid', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -155,13 +169,19 @@ export function MyWallView({
         id: doc.id,
         ...doc.data()
       })) as CommissionRequest[];
-      setCommissionRequests(requests);
+      
+      // Memory sort
+      setCommissionRequests(requests.sort((a, b) => {
+        const timeA = a.createdAt?.toDate?.()?.getTime() || 0;
+        const timeB = b.createdAt?.toDate?.()?.getTime() || 0;
+        return timeB - timeA;
+      }));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'commissions');
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, isQuotaExceeded]);
 
   useEffect(() => {
     if (!activePostId || isQuotaExceeded) {

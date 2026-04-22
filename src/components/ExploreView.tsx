@@ -11,6 +11,7 @@ export function ExploreView({
   artists = [],
   lang, 
   searchQuery,
+  isLoading,
   onComicClick,
   onArtistClick
 }: { 
@@ -18,11 +19,24 @@ export function ExploreView({
   artists?: UserProfile[],
   lang: Language, 
   searchQuery: string,
+  isLoading?: boolean,
   onComicClick: (comic: Comic) => void,
   onArtistClick?: (artist: UserProfile) => void
 }) {
   const { t } = useTranslation(lang);
   const [selectedGenre, setSelectedGenre] = React.useState<Genre | 'all'>('all');
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-paper flex flex-col items-center justify-center py-12 gap-4">
+        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-ink/40 font-black uppercase tracking-widest text-[10px]">
+          {lang === 'vi' ? 'Đang tải...' : 'Loading...'}
+        </p>
+      </div>
+    );
+  }
+
   const [filter, setFilter] = React.useState<'trending' | 'download' | 'topRated'>('trending');
   const genreKeys: string[] = ['action', 'romance', 'comedy', 'fantasy', 'horror', 'sliceOfLife', 'drama', 'sciFi', 'thriller'];
 

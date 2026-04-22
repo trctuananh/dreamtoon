@@ -135,7 +135,7 @@ export function MessengerView({
     const q = query(
       collection(db, 'conversations'),
       where('participants', 'array-contains', user.uid),
-      orderBy('updatedAt', 'desc')
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -144,14 +144,21 @@ export function MessengerView({
       
       snapshot.docs.forEach(doc => {
         const data = doc.data();
-        const id = data.id || doc.id; // Prefer data.id if it exists (deterministic)
+        const id = data.id || doc.id; 
         if (!seenIds.has(id)) {
           seenIds.add(id);
           convs.push({ id, ...data } as Conversation);
         }
       });
       
-      setConversations(convs);
+      // Sort manually by updatedAt desc
+      const sorted = convs.sort((a, b) => {
+        const timeA = a.updatedAt?.toDate?.()?.getTime() || 0;
+        const timeB = b.updatedAt?.toDate?.()?.getTime() || 0;
+        return timeB - timeA;
+      });
+      
+      setConversations(sorted);
 
       // Update selected conversation if it changed in the background
       if (selectedConversation) {

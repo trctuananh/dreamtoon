@@ -18,7 +18,7 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const lastActionTimeRef = useRef<number>(0);
-  const ACTION_THROTTLE = 3000;
+  const ACTION_THROTTLE = 1000;
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState({ url: '', title: '' });
 
@@ -40,27 +40,26 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
     fetchProfile();
   }, [user]);
 
-  // Comments Fetch (One-time when activePostId changes)
+  // Comments Fetch (Real-time when activePostId changes)
   useEffect(() => {
     if (!activePostId || isQuotaExceeded) {
       setPostComments([]);
       return;
     }
-    const fetchComments = async () => {
 
-      try {
-        const q = query(
-          collection(db, 'posts', activePostId, 'comments'),
-          orderBy('createdAt', 'asc')
-        );
-        const snapshot = await getDocs(q);
-        setPostComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
-      }
-    };
-    fetchComments();
-  }, [activePostId]);
+    const q = query(
+      collection(db, 'posts', activePostId, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPostComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
+    });
+
+    return () => unsubscribe();
+  }, [activePostId, isQuotaExceeded]);
 
   // Search filtering for posts
   const filteredPosts = posts.filter(post => {
@@ -75,28 +74,28 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
     return matchesSearch && matchesTab;
   });
 
-  // Posts Fetch (One-time)
+  // Posts Fetch (Real-time)
   useEffect(() => {
     if (isQuotaExceeded) return;
-    const fetchPosts = async () => {
-      try {
-        const q = query(
-          collection(db, 'posts'),
-          orderBy('createdAt', 'desc'),
-          limit(50)
-        );
-        const snapshot = await getDocs(q);
-        const newPosts = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Post[];
-        setPosts(newPosts);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'posts');
-      }
-    };
-    fetchPosts();
-  }, []);
+    
+    const q = query(
+      collection(db, 'posts'),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newPosts = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Post[];
+      setPosts(newPosts);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'posts');
+    });
+
+    return () => unsubscribe();
+  }, [isQuotaExceeded]);
 
   // Shared Post Handling
   useEffect(() => {
@@ -133,6 +132,13 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
     if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
     lastActionTimeRef.current = now;
     
+    // Optimistic Update
+    setPosts(prev => prev.map(p => 
+      p.id === post.id 
+        ? { ...p, likes: (p.likes || 0) + 1, likedBy: [...(p.likedBy || []), user.uid] }
+        : p
+    ));
+
     try {
       const batch = writeBatch(db);
       const postRef = doc(db, 'posts', post.id);
@@ -159,6 +165,12 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
 
       await batch.commit();
     } catch (error) {
+      // Revert Optimistic Update
+      setPosts(prev => prev.map(p => 
+        p.id === post.id 
+          ? { ...p, likes: Math.max(0, (p.likes || 1) - 1), likedBy: (p.likedBy || []).filter(id => id !== user.uid) }
+          : p
+      ));
       handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
     }
   };
@@ -170,12 +182,25 @@ export function CommunityView({ user, isAdmin, comics, following = [], lang, sea
     if (now - lastActionTimeRef.current < ACTION_THROTTLE) return;
     lastActionTimeRef.current = now;
 
+    // Optimistic Update
+    setPosts(prev => prev.map(p => 
+      p.id === post.id 
+        ? { ...p, likes: Math.max(0, (p.likes || 1) - 1), likedBy: (p.likedBy || []).filter(id => id !== user.uid) }
+        : p
+    ));
+
     try {
       await updateDoc(doc(db, 'posts', post.id), {
         likes: increment(-1),
         likedBy: arrayRemove(user.uid)
       });
     } catch (error) {
+      // Revert Optimistic Update
+      setPosts(prev => prev.map(p => 
+        p.id === post.id 
+          ? { ...p, likes: (p.likes || 0) + 1, likedBy: [...(p.likedBy || []), user.uid] }
+          : p
+      ));
       handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
     }
   };

@@ -65,101 +65,111 @@ export function ArtistWallView({ user, profile, isAdmin, artistUid, artistProfil
     onToggleFollow(artistUid, 'artist');
   };
 
-  // Posts Fetch (One-time)
+  // Posts Fetch (Real-time)
   useEffect(() => {
     if (isQuotaExceeded) return;
-    const fetchPosts = async () => {
-      try {
-        const q = query(
-          collection(db, 'posts'),
-          where('authorUid', '==', artistUid),
-          orderBy('createdAt', 'desc'),
-          limit(50)
-        );
-        const snapshot = await getDocs(q);
-        const newPosts = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Post[];
-        setPosts(newPosts);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'posts');
-      }
-    };
-    fetchPosts();
-  }, [artistUid]);
+    
+    // Simple query to avoid composite index
+    const q = query(
+      collection(db, 'posts'),
+      where('authorUid', '==', artistUid),
+      limit(100)
+    );
 
-  // Donations Fetch (One-time)
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newPosts = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Post[];
+      
+      // Memory sort
+      setPosts(newPosts.sort((a, b) => {
+        const timeA = a.createdAt?.toDate?.()?.getTime() || 0;
+        const timeB = b.createdAt?.toDate?.()?.getTime() || 0;
+        return timeB - timeA;
+      }));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'posts');
+    });
+
+    return () => unsubscribe();
+  }, [artistUid, isQuotaExceeded]);
+
+  // Donations Fetch (Real-time)
   useEffect(() => {
     if (isQuotaExceeded) return;
-    const fetchDonations = async () => {
-      try {
-        const q = query(
-          collection(db, 'donations'),
-          where('artistUid', '==', artistUid),
-          orderBy('createdAt', 'desc'),
-          limit(20)
-        );
-        const snapshot = await getDocs(q);
-        const newDonations = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Donation[];
-        setDonationMessages(newDonations);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'donations');
-      }
-    };
-    fetchDonations();
-  }, [artistUid]);
+    
+    const q = query(
+      collection(db, 'donations'),
+      where('artistUid', '==', artistUid),
+      limit(50)
+    );
 
-  // Commissions Fetch (One-time)
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newDonations = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Donation[];
+      
+      // Memory sort
+      setDonationMessages(newDonations.sort((a, b) => {
+        const timeA = a.createdAt?.toDate?.()?.getTime() || 0;
+        const timeB = b.createdAt?.toDate?.()?.getTime() || 0;
+        return timeB - timeA;
+      }));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'donations');
+    });
+
+    return () => unsubscribe();
+  }, [artistUid, isQuotaExceeded]);
+
+  // Commissions Fetch (Real-time)
   useEffect(() => {
     if (isQuotaExceeded) return;
-    const fetchCommissions = async () => {
-      try {
-        const q = query(
-          collection(db, 'users', artistUid, 'commissions'),
-          orderBy('order', 'asc')
-        );
-        const snapshot = await getDocs(q);
-        const newWorks = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as CommissionWork[];
-        setCommissionWorks(newWorks);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, `users/${artistUid}/commissions`);
-      }
-    };
-    fetchCommissions();
-  }, [artistUid]);
+    
+    const q = query(
+      collection(db, 'users', artistUid, 'commissions'),
+      orderBy('order', 'asc')
+    );
 
-  // Comments Fetch (One-time when activePostId changes)
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newWorks = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CommissionWork[];
+      setCommissionWorks(newWorks);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `users/${artistUid}/commissions`);
+    });
+
+    return () => unsubscribe();
+  }, [artistUid, isQuotaExceeded]);
+
+  // Comments Fetch (Real-time when activePostId changes)
   useEffect(() => {
     if (!activePostId || isQuotaExceeded) {
       setPostComments([]);
       return;
     }
-    const fetchComments = async () => {
 
-      try {
-        const q = query(
-          collection(db, 'posts', activePostId, 'comments'),
-          orderBy('createdAt', 'asc')
-        );
-        const snapshot = await getDocs(q);
-        const newComments = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as PostComment[];
-        setPostComments(newComments);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
-      }
-    };
-    fetchComments();
-  }, [activePostId]);
+    const q = query(
+      collection(db, 'posts', activePostId, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newComments = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as PostComment[];
+      setPostComments(newComments);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `posts/${activePostId}/comments`);
+    });
+
+    return () => unsubscribe();
+  }, [activePostId, isQuotaExceeded]);
 
   const handleLike = async (post: Post) => {
     if (!user || post.likedBy?.includes(user.uid) || checkQuota()) return;

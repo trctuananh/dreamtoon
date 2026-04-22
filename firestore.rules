@@ -176,7 +176,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        (request.auth.token.email == "tr.c.tuananh@gmail.com" || 
+        ((request.auth.token.email == "tr.c.tuananh@gmail.com" && request.auth.token.email_verified == true) || 
          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
@@ -321,7 +321,7 @@ service cloud.firestore {
     }
 
     function isValidPost(data) {
-      return data.authorUid == request.auth.uid &&
+      return (data.authorUid == request.auth.uid || (isStaff() && resource != null && data.authorUid == resource.data.authorUid)) &&
              data.content is string && data.content.size() <= 5000 &&
              (data.content.size() > 0 || (data.get('imageUrl', null) != null && data.imageUrl != "")) &&
              (data.get('imageUrl', null) == null || data.imageUrl == "" || isValidUrl(data.imageUrl));
@@ -520,19 +520,28 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidPost(request.resource.data);
       allow update: if (request.auth.uid == resource.data.authorUid || isStaff()) && 
                        isValidPost(request.resource.data);
-      // Allow anyone to like/unlike
+      // Allow anyone to like/unlike or increment comment count
       allow update: if isAuthenticated() && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy']) &&
                        (
-                         (request.resource.data.likes == resource.data.likes + 1 && 
-                          request.resource.data.likedBy.hasAll(resource.data.likedBy) && 
-                          request.resource.data.likedBy.size() == resource.data.likedBy.size() + 1 &&
-                          request.auth.uid in request.resource.data.likedBy) 
-                         ||
-                         (request.resource.data.likes == resource.data.likes - 1 && 
-                          resource.data.likedBy.hasAll(request.resource.data.likedBy) && 
-                          request.resource.data.likedBy.size() == resource.data.likedBy.size() - 1 &&
-                          !(request.auth.uid in request.resource.data.likedBy))
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy']) ||
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments'])
+                       ) &&
+                       (
+                         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments']) && 
+                          request.resource.data.comments == resource.data.get('comments', 0) + 1) ||
+                         (request.resource.data.diff(resource.data).affectedKeys().hasAny(['likes', 'likedBy']) && 
+                          (
+                            (request.resource.data.likes == resource.data.likes + 1 && 
+                             request.resource.data.likedBy.hasAll(resource.data.likedBy) && 
+                             request.resource.data.likedBy.size() == resource.data.likedBy.size() + 1 &&
+                             request.auth.uid in request.resource.data.likedBy) 
+                            ||
+                            (request.resource.data.likes == resource.data.likes - 1 && 
+                             resource.data.likedBy.hasAll(request.resource.data.likedBy) && 
+                             request.resource.data.likedBy.size() == resource.data.likedBy.size() - 1 &&
+                             !(request.auth.uid in request.resource.data.likedBy))
+                          )
+                         )
                        );
       allow delete: if request.auth.uid == resource.data.authorUid || isStaff();
 

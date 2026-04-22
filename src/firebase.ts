@@ -63,9 +63,10 @@ function notifyQuotaChange(exhausted: boolean) {
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorCode = (error as any)?.code || 'unknown';
   
   // Detect quota exhaustion
-  if (errorMessage.includes('resource-exhausted') || errorMessage.includes('quota') || errorMessage.includes('Quota limit exceeded')) {
+  if (errorCode === 'resource-exhausted' || errorMessage.includes('quota') || errorMessage.includes('Quota limit exceeded')) {
     if (!isQuotaExhausted) {
       isQuotaExhausted = true;
       notifyQuotaChange(true);
@@ -99,8 +100,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.error('Firestore Error Details: ', JSON.stringify(errInfo));
+  
+  // Only throw for critical configuration errors or if explicitly desired
+  // For most LIST/GET operations, we prefer to log and show empty state
+  if (operationType === OperationType.WRITE || operationType === OperationType.UPDATE) {
+    throw new Error(JSON.stringify(errInfo));
+  }
 }
 
 export async function createNotification({
